@@ -602,8 +602,8 @@ The following values for `--id` are supported:
 ##### Examples
 
 ```bash
-xunnctl raw --id conf.nginx.allow-only-cloudflare
-x r --id conf.nginx.allow-only-cloudflare
+xunnctl raw --id conf.nginx.allowOnlyCloudflare
+x r --id conf.nginx.allowOnlyCloudflare
 ```
 
 ##### Parameters
