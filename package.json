@@ -127,7 +127,7 @@
     "jest-extended": "^4.0.0",
     "lint-staged": "^13.2.2",
     "lodash.mergewith": "^4.6.2",
-    "prettier": "^2.8.8",
+    "prettier": "^3.0.3",
     "remark-capitalize-headings": "^1.0.3",
     "remark-cli": "^11.0.0",
     "remark-frontmatter": "^4.0.1",
