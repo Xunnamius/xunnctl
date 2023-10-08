@@ -68,7 +68,10 @@
       }
     }
   },
-  "dependencies": {},
+  "dependencies": {
+    "@listr2/manager": "^1.0.1",
+    "listr2": "^7.0.1"
+  },
   "devDependencies": {
     "@babel/cli": "^7.23.0",
     "@babel/eslint-parser": "^7.22.15",
@@ -186,8 +189,8 @@
     "text-extensions": "^2.4.0",
     "toss-expression": "^0.1.2",
     "tsconfig-replace-paths": "^0.0.14",
-    "type-fest": "^4.3.3",
-    "typedoc": "^0.25.1",
+    "type-fest": "^4.4.0",
+    "typedoc": "^0.25.2",
     "typedoc-plugin-markdown": "^3.16.0",
     "typescript": "^5.2.2",
     "unique-filename": "^3.0.0"
