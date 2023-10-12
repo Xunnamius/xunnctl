@@ -11,7 +11,7 @@ type _InternalDebuggerNoExtends = Omit<InternalDebugger, 'extend'>;
 export const $instances = Symbol('debug-extended-builtin-sub-instances');
 
 /**
- * The base `Debug` interface coming from the [debug](https://npmi.im/debug)
+ * The base `Debug` interface coming from the [debug](https://npm.im/debug)
  * package.
  */
 export interface InternalDebug extends Debug_ {
@@ -19,7 +19,7 @@ export interface InternalDebug extends Debug_ {
 }
 
 /**
- * The base `Debugger` interface coming from the [debug](https://npmi.im/debug)
+ * The base `Debugger` interface coming from the [debug](https://npm.im/debug)
  * package.
  */
 export interface InternalDebugger extends Debugger__ {

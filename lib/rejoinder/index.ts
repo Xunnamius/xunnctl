@@ -161,13 +161,16 @@ export function createListrManager<T = any>(options?: {
  * `debug`, or both (`all`).
  */
 export function getLoggersByType({
-  type = 'stdout'
+  type
 }: {
   /**
-   * The type of loggers to return. Defaults to `"stdout"`, meaning loggers
-   * created via `createDebugLogger` will not be returned by default.
+   * The type of loggers to return. Valid values are one of:
    *
-   * @default "stdout"
+   * - `stdout` returns loggers created via `createGenericLogger`
+   *
+   * - `debug` returns loggers created via `createDebugLogger`
+   *
+   * - `all` returns all loggers
    */
   type: 'all' | 'stdout' | 'debug';
 }) {
@@ -188,14 +191,17 @@ export function getLoggersByType({
  * Disable all logger instances.
  */
 export function disableLogging({
-  type = 'stdout',
+  type,
   filter
 }: {
   /**
-   * The type of logging to disable. Defaults to `"stdout"`, meaning loggers
-   * created via `createDebugLogger` are unaffected by default.
+   * The type of logging to disable. Valid values are one of:
    *
-   * @default "stdout"
+   * - `stdout` disables loggers created via `createGenericLogger`
+   *
+   * - `debug` disables loggers created via `createDebugLogger`
+   *
+   * - `all` disables all loggers
    */
   type: 'all' | 'stdout' | 'debug';
 
@@ -226,14 +232,17 @@ export function disableLogging({
  * Enable all logger instances.
  */
 export function enableLogging({
-  type = 'stdout',
+  type,
   filter
 }: {
   /**
-   * The type of logging to enable. Defaults to `"stdout"`, meaning loggers
-   * created via `createDebugLogger` are unaffected by default.
+   * The type of logging to enable. Valid values are one of:
    *
-   * @default "stdout"
+   * - `stdout` enables loggers created via `createGenericLogger`
+   *
+   * - `debug` enables loggers created via `createDebugLogger`
+   *
+   * - `all` enables all loggers
    */
   type: 'all' | 'stdout' | 'debug';
 

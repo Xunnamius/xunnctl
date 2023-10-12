@@ -66,6 +66,36 @@ describe('::createGenericLogger', () => {
       ]);
     });
   });
+
+  it('returns extensions that can themselves be extended', async () => {
+    expect.hasAssertions();
+
+    await withMockedOutput(({ logSpy }) => {
+      const log = createGenericLogger({ namespace });
+      const extension1 = log.extend(namespace);
+      const extension2 = extension1.extend(namespace);
+
+      expect(log.enabled).toBeTrue();
+      expect(extension1.enabled).toBeTrue();
+      expect(extension2.enabled).toBeTrue();
+
+      expect(log.log).toBeDefined();
+      expect(extension1.log).toBeDefined();
+      expect(extension2.log).toBeDefined();
+
+      log('logged');
+      extension1('logged');
+      extension2('logged');
+
+      expect(logSpy.mock.calls).toStrictEqual([
+        expect.arrayContaining([expect.stringMatching(/namespace.+logged/)]),
+        expect.arrayContaining([expect.stringMatching(/namespace:namespace.+logged/)]),
+        expect.arrayContaining([
+          expect.stringMatching(/(?:namespace:){2}namespace.+log{2}ed/)
+        ])
+      ]);
+    });
+  });
 });
 
 describe('::createListrTaskLogger', () => {
@@ -94,6 +124,36 @@ describe('::createListrTaskLogger', () => {
     log('logged: %O', { success: true });
     expect(task.output).toStrictEqual(expect.stringMatching(complexLogExpectationRegExp));
   });
+
+  it('returns extensions that can themselves be extended', async () => {
+    expect.hasAssertions();
+
+    const task = { output: null } as unknown as GenericListrTask;
+    const log = createListrTaskLogger({ namespace, task });
+    const extension1 = log.extend(namespace);
+    const extension2 = extension1.extend(namespace);
+
+    expect(log.enabled).toBeTrue();
+    expect(extension1.enabled).toBeTrue();
+    expect(extension2.enabled).toBeTrue();
+
+    expect(log.log).toBeDefined();
+    expect(extension1.log).toBeDefined();
+    expect(extension2.log).toBeDefined();
+
+    log('logged');
+    expect(task.output).toStrictEqual(expect.stringMatching(/namespace.+logged/));
+
+    extension1('logged');
+    expect(task.output).toStrictEqual(
+      expect.stringMatching(/namespace:namespace.+logged/)
+    );
+
+    extension2('logged');
+    expect(task.output).toStrictEqual(
+      expect.stringMatching(/(?:namespace:){2}namespace.+log{2}ed/)
+    );
+  });
 });
 
 describe('::createDebugLogger', () => {
@@ -112,6 +172,13 @@ describe('::createDebugLogger', () => {
     });
   });
 
+  it('returns a disabled instance by default', async () => {
+    expect.hasAssertions();
+
+    const debug = createDebugLogger({ namespace });
+    expect(debug.enabled).toBeFalsy();
+  });
+
   it('returns instance capable of handling complex input', async () => {
     expect.hasAssertions();
 
@@ -123,6 +190,33 @@ describe('::createDebugLogger', () => {
 
       expect(stdErrSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([expect.stringMatching(complexLogExpectationRegExp)])
+      ]);
+    });
+  });
+
+  it('returns extensions that can themselves be extended', async () => {
+    expect.hasAssertions();
+
+    await withMockedOutput(({ stdErrSpy }) => {
+      const debug = createDebugLogger({ namespace });
+      const extension1 = debug.extend(namespace);
+      const extension2 = extension1.extend(namespace);
+
+      debug.enabled = true;
+      debug('logged');
+
+      extension1.enabled = true;
+      extension1('logged');
+
+      extension2.enabled = true;
+      extension2('logged');
+
+      expect(stdErrSpy.mock.calls).toStrictEqual([
+        expect.arrayContaining([expect.stringMatching(/namespace.+logged/)]),
+        expect.arrayContaining([expect.stringMatching(/namespace:namespace.+logged/)]),
+        expect.arrayContaining([
+          expect.stringMatching(/(?:namespace:){2}namespace.+log{2}ed/)
+        ])
       ]);
     });
   });
