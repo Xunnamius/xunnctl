@@ -12,6 +12,8 @@
 
 # xunnctl
 
+<!-- TODO: move common flags/options to one single usage section -->
+
 This is a highly-opinionated personal tool for interacting with various
 disparate networks, systems, and other resources of interest to me.
 
@@ -93,7 +95,7 @@ the bare `xunnctl` command at the root.
 This command can be used to retrieve metadata about the `xunnctl` software
 itself, such as the currently installed version number.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl --version
@@ -101,7 +103,7 @@ xctl --version
 x --version
 ```
 
-##### Parameters
+#### Parameters
 
 |                     |    Name     |  Type   |  Default  | Description                                                                |
 | :-----------------: | :---------: | :-----: | :-------: | :------------------------------------------------------------------------- |
@@ -115,14 +117,14 @@ x --version
 This command, unless called with `--help`, is an alias for
 [`xunnctl config get --all`][3].
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl config
 x c
 ```
 
-##### Parameters
+#### Parameters
 
 See [`xunnctl config get`][3].
 
@@ -133,7 +135,7 @@ See [`xunnctl config get`][3].
 This command outputs the value of one or more `xunnctl` configuration options.
 These values are stored [locally][1] and protected with `0600` permissions.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl config get --name cloudflare.apiToken
@@ -144,7 +146,7 @@ x c g --all
 x c g
 ```
 
-##### Parameters
+#### Parameters
 
 |                     |      Name       |   Type    |           Default           | Description                                                                                      |
 | :-----------------: | :-------------: | :-------: | :-------------------------: | :----------------------------------------------------------------------------------------------- |
@@ -161,14 +163,14 @@ This command updates the value of the `--name` configuration option to
 `--content`. This value is stored [locally][1] and protected with `0600`
 permissions.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl config set --name cloudflare.apiToken --content AbCd1234
 x c s --name cloudflare.apiToken --content AbCd1234
 ```
 
-##### Parameters
+#### Parameters
 
 |                         |      Name       |                     Type                     |           Default           | Description                                                                                                      |
 | :---------------------: | :-------------: | :------------------------------------------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -185,14 +187,14 @@ x c s --name cloudflare.apiToken --content AbCd1234
 This command, unless called with `--help`, is an alias for
 [`xunnctl dns record retrieve --apex-api`][4].
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record
 x d r
 ```
 
-##### Parameters
+#### Parameters
 
 See [`xunnctl dns record retrieve`][4].
 
@@ -202,14 +204,14 @@ See [`xunnctl dns record retrieve`][4].
 
 This command creates a new DNS A resource record in one or more existing zones.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record create a --apex xunn.io --name @ --ipv4 1.2.3.4 --proxied=false
 x d r c A --apex xunn.io --name 'something.else' --ipv4 1.2.3.4
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -230,14 +232,14 @@ x d r c A --apex xunn.io --name 'something.else' --ipv4 1.2.3.4
 This command creates a new DNS AAAA resource record in one or more existing
 zones.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record create aaaa --apex xunn.io --name @ --ipv6 ::ffff:1.2.3.4 --proxied=false
 x d r c AAAA --apex xunn.io --name 'something.else' --ipv6 2001:db8::8a2e:7334
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -258,14 +260,14 @@ x d r c AAAA --apex xunn.io --name 'something.else' --ipv6 2001:db8::8a2e:7334
 This command creates pre-configured "issue" and "iodef" CAA resource records in
 one or more existing zones.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record create caa --apex xunn.io
 x d r c CAA --apex xunn.io --apex xunn.at
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -283,14 +285,14 @@ x d r c CAA --apex xunn.io --apex xunn.at
 This command creates a new DNS CNAME resource record in one or more existing
 zones.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record create cname --apex xunn.io --name 'sub.domain' --to-name 'diff.com'
 x d r c CNAME --apex xunn.io --apex xunn.at --name 'sub.domain' --to-name 'diff.com'
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -310,14 +312,14 @@ x d r c CNAME --apex xunn.io --apex xunn.at --name 'sub.domain' --to-name 'diff.
 
 This command creates a new DNS MX resource record in one or more existing zones.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record create mx --apex xunn.io --name '@' --mail-name 'mail.xunn.io'
 x d r c MX --apex xunn.io --apex xunn.at --name 'something.else' --mail-name 'mail.xunn.io'
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -337,14 +339,14 @@ x d r c MX --apex xunn.io --apex xunn.at --name 'something.else' --mail-name 'ma
 This command creates a new DNS TXT resource record in one or more existing
 zones.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record create txt --apex xunn.io --name @ --content '...'
 x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...'
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -369,7 +371,7 @@ Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping (e.g. `--query { id: id }` and
 `--query '{ id: id }'` are identical).
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns record retrieve --apex xunn.io --name mail --type CNAME
@@ -377,7 +379,7 @@ x d r r --apex-api --apex new-site.com --name mail --type cname
 x d r r --apex xunn.io --apex xunn.at --name mail --type cname --query id
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |                     Type                     |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :------------------------------------------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -398,14 +400,14 @@ x d r r --apex xunn.io --apex xunn.at --name mail --type cname --query id
 This command, unless called with `--help`, is an alias for
 [`xunnctl dns zone retrieve --apex-api`][6].
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns zone
 x d z
 ```
 
-##### Parameters
+#### Parameters
 
 See [`xunnctl dns zone retrieve`][6].
 
@@ -418,14 +420,14 @@ apex zone already exists, this command will fail. If you're trying to bring an
 existing zone up to current configuration standards, see
 [`xunnctl dns zone update`][7] instead.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns zone create --apex xunn.at
 x d z c --apex xunn.at
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -447,7 +449,7 @@ Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping (e.g. `--query { id: id }` and
 `--query '{ id: id }'` are identical).
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns zone retrieve --apex xunn.at
@@ -455,7 +457,7 @@ x d z r --apex-api --apex new-site.com --query id
 x d z r --apex xunn.io --apex xunn.at --query { id: id, cdnOnly: meta.cdn_only }
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |                     Type                     |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :------------------------------------------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -476,7 +478,7 @@ already exist. It will attempt to bring one or more zones up to date with the
 latest best practices with respect to zone configuration; any failures thrown
 when attempting to create records, while reported, are ignored.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl dns zone update --apex-api
@@ -484,7 +486,7 @@ x d z u --apex-file /file/containing/domain/names.txt
 x d z u --apex xunn.at
 ```
 
-##### Parameters
+#### Parameters
 
 |                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
 | :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -502,14 +504,14 @@ x d z u --apex xunn.at
 This command, unless called with `--help`, is an alias for
 [`xunnctl firewall status`][9].
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl firewall
 x f
 ```
 
-##### Parameters
+#### Parameters
 
 See [`xunnctl firewall status`][9].
 
@@ -522,14 +524,14 @@ This command adds an ip address to the global hostile ip list, which is a
 IP on this list. Both ipv4 and ipv6 addresses are supported, as is CIDR
 notation.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl firewall ban --ip 1.2.3.4
 x f b --ip 1.2.3.4
 ```
 
-##### Parameters
+#### Parameters
 
 |                         |      Name       |  Type   |           Default           | Description                                                                                                      |
 | :---------------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -546,14 +548,14 @@ This command returns the contents of the global hostile ip list, which is a
 [Cloudflare WAF List][10]. No managed system will accept packets coming from an
 IP on this list.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl firewall status
 x f s
 ```
 
-##### Parameters
+#### Parameters
 
 |                     |      Name       |  Type   |           Default           | Description                                                                                                      |
 | :-----------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -569,14 +571,14 @@ This command removes an ip address from the global hostile ip list, which is a
 [Cloudflare WAF List][10]. No managed system will accept packets coming from an
 IP on this list.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl firewall unban --ip 1.2.3.4
 x f u --ip 1.2.3.4
 ```
 
-##### Parameters
+#### Parameters
 
 |                         |      Name       |  Type   |           Default           | Description                                                                                                      |
 | :---------------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -599,14 +601,14 @@ The following values for `--id` are supported:
   reject all connection attempts from IP addresses that do not belong to
   Cloudflare.
 
-##### Examples
+#### Examples
 
 ```bash
 xunnctl raw --id conf.nginx.allowOnlyCloudflare
 x r --id conf.nginx.allowOnlyCloudflare
 ```
 
-##### Parameters
+#### Parameters
 
 |                         |      Name       |  Type   |           Default           | Description                                                                                                      |
 | :---------------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
@@ -705,7 +707,6 @@ key][x-repo-all-contributors-emojis]):
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
-
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 <!-- remark-ignore-end -->
 
