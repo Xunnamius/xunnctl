@@ -1,58 +1,81 @@
 /* eslint-disable no-console */
-import getDebugger, { type Debug as Debug_, type Debugger as Debugger_ } from 'debug';
+import getDebugger, { type Debug as _Debug, type Debugger as _Debugger } from 'debug';
+import overwriteDescriptors from 'merge-descriptors';
+
+import type { Merge } from 'type-fest';
 
 type _InternalDebuggerNoExtends = Omit<InternalDebugger, 'extend'>;
 
 /**
- * Represents a property on a "root" Debug instance that returns an array of its
- * sub-instances (e.g. "error", "warn", etc). The array will also include the
- * root Debug instance.
+ * Represents a property on a "root" {@link ExtendedDebugger} instance that
+ * returns an array of its {@link UnextendableInternalDebugger} sub-instances
+ * (e.g. "error", "warn", etc). The array will also include the root
+ * {@link ExtendedDebugger} instance.
  */
 export const $instances = Symbol('debug-extended-builtin-sub-instances');
 
 /**
+ * A type representing the property names of the sub-instances made available
+ * by {@link $instances}.
+ *
+ * @internal
+ */
+export type InstanceKey = keyof ExtendedDebugger[typeof $instances];
+
+/**
  * The base `Debug` interface coming from the [debug](https://npm.im/debug)
  * package.
+ *
+ * @internal
  */
-export interface InternalDebug extends Debug_ {
-  (...args: Parameters<Debug_>): ReturnType<Debug_>;
+export interface InternalDebug extends _Debug {
+  /**
+   * Send an optionally-formatted message to output.
+   */
+  (...args: Parameters<_Debug>): InternalDebugger;
 }
 
 /**
  * The base `Debugger` interface coming from the [debug](https://npm.im/debug)
  * package.
+ *
+ * @internal
  */
-export interface InternalDebugger extends Debugger__ {
-  (...args: Parameters<Debugger_>): ReturnType<Debugger_>;
+export interface InternalDebugger extends __Debugger {
+  /**
+   * Send an optionally-formatted message to output.
+   */
+  (...args: Parameters<_Debugger>): void;
 }
-type Debugger__ = Omit<Debugger_, 'log'> & { log?: Debugger_['log'] };
+type __Debugger = Omit<_Debugger, 'log'> & { log?: _Debugger['log'] };
 
 /**
  * An instance of {@link InternalDebugger} that cannot be extended via
  * {@link InternalDebugger.extend}.
  */
 export interface UnextendableInternalDebugger extends InternalDebugger {
-  (...args: Parameters<InternalDebugger>): ReturnType<InternalDebugger>;
+  extend: (...args: Parameters<InternalDebugger['extend']>) => never;
 }
 
 /**
- * A Debug factory interface that returns {@link ExtendedDebugger} instances.
+ * An {@link InternalDebug} factory interface that returns
+ * {@link ExtendedDebugger} instances.
  */
 export interface ExtendedDebug extends InternalDebug {
+  /**
+   * Send an optionally-formatted message to output.
+   */
   (...args: Parameters<InternalDebug>): ExtendedDebugger;
 }
 
 /**
- * A Debugger interface extended with convenience methods.
+ * A {@link InternalDebugger} interface extended with convenience methods.
  */
 export interface ExtendedDebugger extends _InternalDebuggerNoExtends, DebuggerExtension {
+  /**
+   * Send an optionally-formatted message to output.
+   */
   (...args: Parameters<InternalDebugger>): ReturnType<InternalDebugger>;
-  [$instances]: DebuggerExtension & {
-    /**
-     * A cyclical reference to the current logger.
-     */
-    log: ExtendedDebugger;
-  };
   /**
    * Creates a new instance by appending `namespace` to the current logger's
    * namespace.
@@ -65,22 +88,48 @@ export interface ExtendedDebugger extends _InternalDebuggerNoExtends, DebuggerEx
 }
 
 /**
- * The shape of the new keys that are added to the {@link InternalDebugger} object.
- * {@link InternalDebugger} + {@link DebuggerExtension} = {@link ExtendedDebugger}.
+ * The shape of the new keys that are added to the {@link InternalDebugger}
+ * object. {@link InternalDebugger} + {@link DebuggerExtension} =
+ * {@link ExtendedDebugger}.
+ *
+ * @internal
  */
-export type DebuggerExtension = {
+export type DebuggerExtension<
+  T = UnextendableInternalDebugger,
+  U = ExtendedDebugger
+> = _DebuggerExtension<T> & {
+  /**
+   * An array of sub-instances (e.g. "error", "warn", etc), including the root
+   * instance.
+   */
+  [$instances]: Merge<
+    _DebuggerExtension<T>,
+    {
+      /**
+       * A cyclical reference to the current logger.
+       */
+      $log: U;
+    }
+  >;
+};
+
+/**
+ * The single source of truth for the keys and types of the convenience various
+ * sub-instances (e.g. "error", "warn", etc).
+ */
+type _DebuggerExtension<T = UnextendableInternalDebugger> = {
   /**
    * A sub-instance for outputting messages to the attention of the reader.
    */
-  message: UnextendableInternalDebugger;
+  message: T;
   /**
    * A sub-instance for outputting error messages.
    */
-  error: UnextendableInternalDebugger;
+  error: T;
   /**
    * A sub-instance for outputting warning messages.
    */
-  warn: UnextendableInternalDebugger;
+  warn: T;
 };
 
 /**
@@ -91,7 +140,8 @@ const debugFactory = ((...args: Parameters<InternalDebug>) => {
   return extendDebugger(getDebugger(...args));
 }) as ExtendedDebug;
 
-Object.assign(debugFactory, getDebugger);
+// * Note that this does NOT rebind getDebugger's methods!
+overwriteDescriptors(debugFactory, getDebugger);
 
 export { debugFactory };
 
@@ -103,9 +153,30 @@ export function extendDebugger(instance: InternalDebugger) {
   const extend = instance.extend.bind(instance);
   const finalInstance = instance as unknown as ExtendedDebugger;
 
-  finalInstance.message = finalizeDebugger(extend('<message>'));
-  finalInstance.error = finalizeDebugger(extend('<error>'));
-  finalInstance.warn = finalizeDebugger(extend('<warn>'));
+  finalInstance[$instances] = Object.create(null);
+  finalInstance[$instances].$log = finalInstance;
+  finalInstance[$instances].error = finalizeDebugger(extend('<error>'));
+  finalInstance[$instances].message = finalizeDebugger(extend('<message>'));
+  finalInstance[$instances].warn = finalizeDebugger(extend('<warn>'));
+
+  Object.defineProperties(finalInstance, {
+    error: {
+      configurable: true,
+      enumerable: true,
+      get: () => finalInstance[$instances].error
+    },
+    message: {
+      configurable: true,
+      enumerable: true,
+      get: () => finalInstance[$instances].message
+    },
+    warn: {
+      configurable: true,
+      enumerable: true,
+      get: () => finalInstance[$instances].warn
+    }
+  });
+
   finalInstance.extend = (...args) => extendDebugger(extend(...args));
 
   finalInstance.newline = () => {
@@ -118,13 +189,6 @@ export function extendDebugger(instance: InternalDebugger) {
     }
   };
 
-  finalInstance[$instances] = {
-    log: finalInstance,
-    message: finalInstance.message,
-    error: finalInstance.error,
-    warn: finalInstance.warn
-  };
-
   return finalInstance;
 }
 
@@ -135,9 +199,11 @@ export function extendDebugger(instance: InternalDebugger) {
 export function finalizeDebugger(
   instance: InternalDebugger
 ): UnextendableInternalDebugger {
-  instance.extend = () => {
+  const unextendable = instance as UnextendableInternalDebugger;
+
+  unextendable.extend = () => {
     throw new Error('instance is not extendable');
   };
 
-  return instance;
+  return unextendable;
 }

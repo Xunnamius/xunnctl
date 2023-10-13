@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable unicorn/prefer-regexp-test */
 // TODO: replace this with the actual rejoinder and vice-versa!
@@ -5,9 +6,11 @@
 import {
   $instances,
   debugFactory,
+  type InstanceKey,
+  type DebuggerExtension,
   type ExtendedDebugger,
   type UnextendableInternalDebugger
-} from '../debug-extended';
+} from 'multiverse/debug-extended';
 
 import {
   PRESET_TIMER,
@@ -18,15 +21,65 @@ import {
 } from 'listr2';
 
 import { Manager } from '@listr2/manager';
+import overwriteDescriptors from 'merge-descriptors';
+
+export { debugFactory as extendedDebugFactory };
+export { type ExtendedDebugger };
 
 /**
- * A thin wrapper around {@link ExtendedDebugger } representing the extension
- * from mere "debug" logger to general purpose "logger".
+ * A pre-customized Listr {@link Manager} instance.
  */
-export interface ExtendedLogger extends ExtendedDebugger {}
+export type ListrManager<T = any> = Manager<T, 'default' | 'verbose'>;
+
+/**
+ * @internal
+ */
+export type WithExtendedParameters<
+  T extends (...args: unknown[]) => unknown,
+  Optional = true
+> = Optional extends true
+  ? [tags?: string[], ...Parameters<T>]
+  : [tags: string[], ...Parameters<T>];
+
+/**
+ * @internal
+ */
+export type WithTagSupport<
+  T extends (...args: unknown[]) => unknown,
+  Optional = true
+> = ((...args: WithExtendedParameters<T, Optional>) => ReturnType<T> | undefined) & {
+  [P in keyof T]: T[P];
+};
+
+/**
+ * @internal
+ */
+export type ExtendedLoggerParameters = WithExtendedParameters<ExtendedDebugger, false>;
+
+/**
+ * A wrapper around {@link ExtendedDebugger } representing the extension from
+ * mere "debug" logger to general purpose "logger".
+ */
+export interface ExtendedLogger extends _ExtendedLogger<ExtendedLogger> {
+  /**
+   * Send an optionally-formatted message to output.
+   */
+  (...args: Parameters<ExtendedDebugger>): ReturnType<ExtendedDebugger>;
+  /**
+   * Send a tagged optionally-formatted message to output.
+   */
+  (...args: ExtendedLoggerParameters): ReturnType<ExtendedDebugger>;
+  newline: (
+    ...args: WithExtendedParameters<ExtendedDebugger['newline']>
+  ) => ReturnType<ExtendedDebugger['newline']>;
+  extend: (...args: Parameters<ExtendedDebugger['extend']>) => ExtendedLogger;
+}
+type _ExtendedLogger<T> = Omit<ExtendedDebugger, keyof DebuggerExtension> &
+  DebuggerExtension<WithTagSupport<UnextendableInternalDebugger>, T>;
 
 /**
  * Represents a generic Listr2 Task object.
+ *
  * @internal
  */
 export type GenericListrTask = ListrTaskWrapper<
@@ -37,11 +90,13 @@ export type GenericListrTask = ListrTaskWrapper<
 
 /**
  * Keeps track of our various "logger" (i.e. debug) instances and their
- * associated metadata.
+ * associated metadata. Also keeps track of those tags for which we disable
+ * output.
  */
 const metadata = {
   stdout: [] as ExtendedLogger[],
-  debug: [] as ExtendedDebugger[]
+  debug: [] as ExtendedDebugger[],
+  blacklist: new Set<string>()
 };
 
 /**
@@ -64,7 +119,9 @@ export function createGenericLogger({
   namespace: string;
 }) {
   const logger = makeExtendedLogger(debugFactory(namespace), {
-    log: console.log.bind(console)
+    log(...args) {
+      console.log(...args);
+    }
   });
 
   metadata.stdout.push(logger);
@@ -91,12 +148,13 @@ export function createListrTaskLogger({
    */
   task: GenericListrTask;
 }) {
-  const logger = makeExtendedLogger(createGenericLogger({ namespace }), {
-    log: (...args) => {
+  const logger = makeExtendedLogger(debugFactory(namespace), {
+    log(...args) {
       task.output = args.join(' ');
     }
   });
 
+  metadata.stdout.push(logger);
   return logger;
 }
 
@@ -130,7 +188,6 @@ export function createDebugLogger({
  *   - Switches to the verbose renderer when the DEBUG environment variable is
  *     present or any of the debug logger namespaces are enabled.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createListrManager<T = any>(options?: {
   /**
    * Properties provided here will override the defaults passed to the
@@ -140,7 +197,9 @@ export function createListrManager<T = any>(options?: {
 }) {
   const manager = new Manager<T, 'default' | 'verbose'>({
     concurrent: false,
+    collectErrors: 'minimal',
     exitOnError: true,
+    registerSignalListeners: true,
     renderer:
       !!process.env.DEBUG || metadata.debug.some((l) => l.enabled)
         ? 'verbose'
@@ -188,9 +247,9 @@ export function getLoggersByType({
 }
 
 /**
- * Disable all logger instances.
+ * Disable all logger instances (coarse-grain).
  */
-export function disableLogging({
+export function disableLoggers({
   type,
   filter
 }: {
@@ -229,9 +288,9 @@ export function disableLogging({
 }
 
 /**
- * Enable all logger instances.
+ * Enable all logger instances (coarse-grain).
  */
-export function enableLogging({
+export function enableLoggers({
   type,
   filter
 }: {
@@ -270,28 +329,110 @@ export function enableLogging({
 }
 
 /**
+ * Prevents logs with the specified tags from being sent to output.
+ */
+export function disableLoggingByTag({
+  tags
+}: {
+  /**
+   * The tags of messages that will no longer be sent to output.
+   */
+  tags: string[];
+}) {
+  tags.forEach((tag) => metadata.blacklist.add(tag));
+}
+
+/**
+ * Allows logs with the specified tags to resume being sent to output. Only relevant as the inverse function of {@link disableLoggingByTag}.
+ */
+export function enableLoggingByTag({
+  tags
+}: {
+  /**
+   * The tags of messages that will resume being sent to output.
+   */
+  tags: string[];
+}) {
+  tags.forEach((tag) => metadata.blacklist.delete(tag));
+}
+
+/**
  * A function that resets the internal logger cache. Essentially, calling this
- * function causes rejoinder to forget any loggers created prior.
+ * function causes rejoinder to forget any disabled tags or loggers created
+ * prior.
  */
 export function resetInternalState() {
   metadata.debug.length = 0;
   metadata.stdout.length = 0;
+  metadata.blacklist.clear();
 }
 
 /**
  * Transforms an {@link ExtendedDebugger} into an {@link ExtendedLogger}.
  */
 function makeExtendedLogger(
-  logger: ExtendedDebugger,
-  overrides?: Partial<UnextendableInternalDebugger>
+  extendedDebugger: ExtendedDebugger,
+  /**
+   * The property descriptors of `overrides` will overwrite matching properties
+   * in `extendedDebugger`. Note that function overrides should try to avoid
+   * using `this`.
+   */
+  overrides: Partial<UnextendableInternalDebugger> = {}
 ): ExtendedLogger {
-  const extend = logger.extend.bind(logger);
-  logger.extend = (...args) => makeExtendedLogger(extend(...args), overrides);
+  const extendedLogger = patchInstance('$log', extendedDebugger);
+  // TODO: fork merge-descriptors to make @xunnamius/merge-descriptors that
+  // TODO: fixes this.
+  // ! merge-descriptors does not copy over symbols!
+  extendedLogger[$instances] = extendedDebugger[$instances];
 
-  for (const instance of Object.values(logger[$instances])) {
+  const extend = extendedDebugger.extend.bind(extendedDebugger);
+  extendedLogger.extend = (...args) => makeExtendedLogger(extend(...args), overrides);
+
+  extendedLogger.newline = decorateWithTagSupport(extendedDebugger.newline, 1);
+
+  Object.entries(extendedLogger[$instances])
+    // eslint-disable-next-line unicorn/no-array-callback-reference
+    .filter((o): o is [Exclude<InstanceKey, '$log'>, (typeof o)[1]] => o[0] !== '$log')
+    .forEach(([key, instance]) => patchInstance(key, instance));
+
+  return extendedLogger;
+
+  function patchInstance<T extends ExtendedDebugger | UnextendableInternalDebugger>(
+    key: InstanceKey,
+    instance: T
+  ) {
     instance.enabled = true;
-    Object.assign(instance, overrides);
-  }
+    overwriteDescriptors(instance, overrides);
 
-  return logger;
+    // @ts-expect-error: TS isn't smart enough to figure this out just yet
+    const patchedInstance = ((extendedDebugger as ExtendedLogger)[$instances][key] =
+      // ? Ensure TS errors aren't swallowed
+      // prettier-ignore
+      decorateWithTagSupport(instance, 2));
+
+    return patchedInstance;
+  }
+}
+
+/**
+ * Allows logging to be disabled via tags at the fine-grain message level. Set
+ * `trapdoorArgLength` to the number of params necessary to trigger
+ * blacklisting.
+ */
+function decorateWithTagSupport<T extends (...args: unknown[]) => unknown>(
+  fn: T,
+  trapdoorArgsMinLength: number
+): WithTagSupport<T> {
+  // * Note that this does NOT rebind fn's methods!
+  return overwriteDescriptors((...args: unknown[]) => {
+    if (args.length >= trapdoorArgsMinLength && Array.isArray(args[0])) {
+      if (args[0].some((tag) => metadata.blacklist.has(tag))) {
+        return undefined;
+      }
+
+      return fn(...args.slice(1)) as ReturnType<T>;
+    }
+
+    return fn(...args) as ReturnType<T>;
+  }, fn) as WithTagSupport<T>;
 }

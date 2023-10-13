@@ -1,6 +1,13 @@
 import { debug as oldDebug } from 'debug';
 
-import { debugFactory, extendDebugger, $instances, finalizeDebugger } from '../index';
+import {
+  debugFactory,
+  extendDebugger,
+  $instances,
+  finalizeDebugger
+} from 'multiverse/debug-extended/index';
+
+// TODO: update paths to use proper alias names
 import { expectExtendedDebugger, expectUnextendableDebugger } from './helpers';
 
 const factoryLogFn = jest.fn();
@@ -86,19 +93,24 @@ describe('::ExtendedDebugger', () => {
     });
   });
 
-  describe('::[$instances]', () => {
+  describe('::[$instances] (and named convenience methods)', () => {
     it('returns all sub-instances attached to the current instance', async () => {
       expect.hasAssertions();
 
       const debug = debugFactory('namespace');
-      const { log, message, warn, error, ...rest } = debug[$instances];
+      const extended = debug.extend('namespace');
+      const { $log: log, message, warn, error, ...rest } = debug[$instances];
 
       expect(rest).toStrictEqual({});
       expect(log).toBe(debug);
 
-      expect(expectUnextendableDebugger(message, { returnType: 'boolean' })).toBeTrue();
-      expect(expectUnextendableDebugger(warn, { returnType: 'boolean' })).toBeTrue();
-      expect(expectUnextendableDebugger(error, { returnType: 'boolean' })).toBeTrue();
+      expectUnextendableDebugger(message);
+      expectUnextendableDebugger(warn);
+      expectUnextendableDebugger(error);
+
+      expectUnextendableDebugger(extended.message);
+      expectUnextendableDebugger(extended.warn);
+      expectUnextendableDebugger(extended.error);
     });
   });
 });
