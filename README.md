@@ -12,8 +12,6 @@
 
 # xunnctl
 
-<!-- TODO: move common flags/options to one single usage section -->
-
 This is a highly-opinionated personal tool for interacting with various
 disparate networks, systems, and other resources of interest to me.
 
@@ -78,15 +76,22 @@ For first time usage, or if credentials are inaccessible, you will be prompted
 to enter your credentials, which will be saved [locally][1]. You can do this
 manually at any time via [`xunnctl config set`][2].
 
-From there, you can begin issuing commands. For the most up-to-date list of
-available commands and flags, use `xunnctl ... --help`.
+From there, you can begin issuing commands. Commands are organized
+hierarchically, starting with the bare `xunnctl` command at the root. For the
+most up-to-date list of available commands and flags, use `xunnctl ... --help`.
 
 You can also use the `xctl` and `x` aliases, e.g. `x --help`. Most commands also
 have a single-letter alias, which is always the first letter of that command.
 
 There are many individual commands available, each with their own accepted
-parameters and help text. Commands are organized hierarchically, starting with
-the bare `xunnctl` command at the root.
+parameters and help text. These commands also share several standard parameters,
+which can be found in the following table:
+
+<!-- TODO: move common flags/options to one single usage section -->
+
+|                     |   Name   |  Type   |  Default  | Description                                                           |
+| :-----------------: | :------: | :-----: | :-------: | :-------------------------------------------------------------------- |
+| <sub>optional</sub> | `--help` | boolean | undefined | Show help text. Cannot be used with other parameters or sub-commands. |
 
 ### `xunnctl`
 
