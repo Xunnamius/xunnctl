@@ -26,7 +26,7 @@ documentation, even if I'm the only one who will ever read it!
 
 - [Install](#install)
 - [Usage](#usage)
-  - [`xunnctl`](#xunnctl)
+  - [`xunnctl` (Entry Point)](#xunnctl-entry-point)
   - [`xunnctl config`](#xunnctl-config)
   - [`xunnctl config get`](#xunnctl-config-get)
   - [`xunnctl config set`](#xunnctl-config-set)
@@ -72,9 +72,13 @@ npx xunnctl ...
 
 ## Usage
 
+> Be careful running commands with huge footprints (e.g. using the `--apex-api`
+> parameter) in quick succession. Take note of the [rate limits][1] for the APIs
+> you're invoking.
+
 For first time usage, or if credentials are inaccessible, you will be prompted
-to enter your credentials, which will be saved [locally][1]. You can do this
-manually at any time via [`xunnctl config set`][2].
+to enter your credentials, which will be saved [locally][2]. You can do this
+manually at any time via [`xunnctl config set`][3].
 
 From there, you can begin issuing commands. Commands are organized
 hierarchically, starting with the bare `xunnctl` command at the root. For the
@@ -84,21 +88,28 @@ You can also use the `xctl` and `x` aliases, e.g. `x --help`. Most commands also
 have a single-letter alias, which is always the first letter of that command.
 
 There are many individual commands available, each with their own accepted
-parameters and help text. These commands also share several standard parameters,
+parameters and help text. These commands also share several standard parameters
 which can be found in the following table:
 
 <!-- TODO: move common flags/options to one single usage section -->
 
-|                     |   Name   |  Type   |  Default  | Description                                                           |
-| :-----------------: | :------: | :-----: | :-------: | :-------------------------------------------------------------------- |
-| <sub>optional</sub> | `--help` | boolean | undefined | Show help text. Cannot be used with other parameters or sub-commands. |
+|                     |      Name       |  Type   |           Default           | Description                                                                                                    |
+| :-----------------: | :-------------: | :-----: | :-------------------------: | :------------------------------------------------------------------------------------------------------------- |
+| <sub>optional</sub> | `--config-path` | string  | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                      |
+| <sub>optional</sub> |    `--help`     | boolean |          undefined          | Show command-specific help text. Cannot be used with other parameters or sub-commands.                         |
+| <sub>optional</sub> |    `--hush`     | boolean |            false            | The program output will be somewhat less verbose than usual.                                                   |
+| <sub>optional</sub> |    `--quiet`    | boolean |            false            | The program output will be dramatically less verbose than usual. Implies (and takes precedence over) `--hush`. |
+| <sub>optional</sub> |   `--silent`    | boolean |            false            | The program will not output anything at all. Implies (and takes precedence over) `--quiet` and `--hush`.       |
 
-### `xunnctl`
+Currently, the available commands are:
+
+### `xunnctl` (Entry Point)
 
 > Alias: `xctl`, `x`
 
-This command can be used to retrieve metadata about the `xunnctl` software
-itself, such as the currently installed version number.
+This command is the entry point into the CLI and as such can be used to retrieve
+metadata about the `xunnctl` software itself, including the currently installed
+version number.
 
 #### Examples
 
@@ -112,7 +123,6 @@ x --version
 
 |                     |    Name     |  Type   |  Default  | Description                                                                |
 | :-----------------: | :---------: | :-----: | :-------: | :------------------------------------------------------------------------- |
-| <sub>optional</sub> |  `--help`   | boolean | undefined | Show help text. Cannot be used with other parameters or sub-commands.      |
 | <sub>optional</sub> | `--version` | boolean | undefined | Show version number. Cannot be used with other parameters or sub-commands. |
 
 ### `xunnctl config`
@@ -120,7 +130,7 @@ x --version
 > Alias: `x c`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl config get --all`][3].
+[`xunnctl config get --all`][4].
 
 #### Examples
 
@@ -131,14 +141,14 @@ x c
 
 #### Parameters
 
-See [`xunnctl config get`][3].
+See [`xunnctl config get`][4].
 
 ### `xunnctl config get`
 
 > Alias: `x c g`
 
 This command outputs the value of one or more `xunnctl` configuration options.
-These values are stored [locally][1] and protected with `0600` permissions.
+These values are stored [locally][2] and protected with `0660` permissions.
 
 #### Examples
 
@@ -153,19 +163,17 @@ x c g
 
 #### Parameters
 
-|                     |      Name       |   Type    |           Default           | Description                                                                                      |
-| :-----------------: | :-------------: | :-------: | :-------------------------: | :----------------------------------------------------------------------------------------------- |
-| <sub>optional</sub> |     `--all`     |  boolean  |          undefined          | Dump the current value of all configuration options. Cannot be used with the `--name` parameter. |
-| <sub>optional</sub> | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                        |
-| <sub>optional</sub> |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.   |
-| <sub>optional</sub> |    `--name`     | string\[] |          undefined          | The names of one or more options to retrieve. Cannot be used with the `--all` parameter.         |
+|                     |   Name   |   Type    |  Default  | Description                                                                                      |
+| :-----------------: | :------: | :-------: | :-------: | :----------------------------------------------------------------------------------------------- |
+| <sub>optional</sub> | `--all`  |  boolean  | undefined | Dump the current value of all configuration options. Cannot be used with the `--name` parameter. |
+| <sub>optional</sub> | `--name` | string\[] | undefined | The names of one or more options to retrieve. Cannot be used with the `--all` parameter.         |
 
 ### `xunnctl config set`
 
 > Alias: `x c s`
 
 This command updates the value of the `--name` configuration option to
-`--content`. This value is stored [locally][1] and protected with `0600`
+`--content`. This value is stored [locally][2] and protected with `0660`
 permissions.
 
 #### Examples
@@ -177,20 +185,17 @@ x c s --name cloudflare.apiToken --content AbCd1234
 
 #### Parameters
 
-|                         |      Name       |                     Type                     |           Default           | Description                                                                                                      |
-| :---------------------: | :-------------: | :------------------------------------------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** |   `--content`   | string <sub>(unescaped spaces allowed)</sub> |          undefined          | The new value of the option to update. <sub>(unescaped spaces allowed)</sub>                                     |
-| **<sub>REQUIRED</sub>** |    `--name`     |                    string                    |          undefined          | The name of the option to update.                                                                                |
-|   <sub>optional</sub>   | `--config-path` |                    string                    | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|   <sub>optional</sub>   |    `--help`     |                   boolean                    |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|   <sub>optional</sub>   |    `--quiet`    |                    count                     |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                         |    Name     |                       Type                        |  Default  | Description                            |
+| :---------------------: | :---------: | :-----------------------------------------------: | :-------: | :------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--content` | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | The new value of the option to update. |
+| **<sub>REQUIRED</sub>** |  `--name`   |                      string                       | undefined | The name of the option to update.      |
 
 ### `xunnctl dns record`
 
 > Alias: `x d r`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns record retrieve --apex-api`][4].
+[`xunnctl dns record retrieve --apex-api`][5].
 
 #### Examples
 
@@ -201,7 +206,7 @@ x d r
 
 #### Parameters
 
-See [`xunnctl dns record retrieve`][4].
+See [`xunnctl dns record retrieve`][5].
 
 ### `xunnctl dns record create A`
 
@@ -218,17 +223,14 @@ x d r c A --apex xunn.io --name 'something.else' --ipv4 1.2.3.4
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|        **<sub>REQUIRED</sub>**         |    `--ipv4`     |  string   |          undefined          | A valid IPv4 address.                                                                                            |
-|        **<sub>REQUIRED</sub>**         |    `--name`     |  string   |          undefined          | DNS record name (or @ for the zone apex) in Punycode.                                                            |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |   `--proxied`   |  boolean  |            false            | Whether the record is receiving the performance and security benefits of Cloudflare.                             |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |   `--ipv4`    |  string   | undefined | A valid IPv4 address.                                                                                                      |
+|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|          <sub>optional</sub>           |  `--proxied`  |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.                                       |
 
 ### `xunnctl dns record create AAAA`
 
@@ -246,17 +248,14 @@ x d r c AAAA --apex xunn.io --name 'something.else' --ipv6 2001:db8::8a2e:7334
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|        **<sub>REQUIRED</sub>**         |    `--ipv6`     |  string   |          undefined          | A valid IPv6 address.                                                                                            |
-|        **<sub>REQUIRED</sub>**         |    `--name`     |  string   |          undefined          | DNS record name (or @ for the zone apex) in Punycode.                                                            |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |   `--proxied`   |  boolean  |            false            | Whether the record is receiving the performance and security benefits of Cloudflare.                             |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |   `--ipv6`    |  string   | undefined | A valid IPv6 address.                                                                                                      |
+|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|          <sub>optional</sub>           |  `--proxied`  |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.                                       |
 
 ### `xunnctl dns record create CAA`
 
@@ -274,14 +273,11 @@ x d r c CAA --apex xunn.io --apex xunn.at
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl dns record create CNAME`
 
@@ -299,17 +295,14 @@ x d r c CNAME --apex xunn.io --apex xunn.at --name 'sub.domain' --to-name 'diff.
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|        **<sub>REQUIRED</sub>**         |    `--name`     |  string   |          undefined          | DNS record name (or @ for the zone apex) in Punycode.                                                            |
-|        **<sub>REQUIRED</sub>**         |   `--to-name`   |  string   |          undefined          | A valid hostname. Must not match the record's name.                                                              |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |   `--proxied`   |  boolean  |            false            | Whether the record is receiving the performance and security benefits of Cloudflare.                             |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|        **<sub>REQUIRED</sub>**         |  `--to-name`  |  string   | undefined | A valid hostname. Must not match the record's name.                                                                        |
+|          <sub>optional</sub>           |  `--proxied`  |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.                                       |
 
 ### `xunnctl dns record create MX`
 
@@ -326,16 +319,13 @@ x d r c MX --apex xunn.io --apex xunn.at --name 'something.else' --mail-name 'ma
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|        **<sub>REQUIRED</sub>**         |    `--name`     |  string   |          undefined          | DNS record name (or @ for the zone apex) in Punycode.                                                            |
-|        **<sub>REQUIRED</sub>**         |  `--mail-name`  |  string   |          undefined          | A valid mail server hostname.                                                                                    |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|        **<sub>REQUIRED</sub>**         | `--mail-name` |  string   | undefined | A valid mail server hostname.                                                                                              |
 
 ### `xunnctl dns record create TXT`
 
@@ -353,16 +343,13 @@ x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|        **<sub>REQUIRED</sub>**         |    `--name`     |  string   |          undefined          | DNS record name (or @ for the zone apex) in Punycode.                                                            |
-|        **<sub>REQUIRED</sub>**         |   `--content`   |  string   |          undefined          | Text content for the record.                                                                                     |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|        **<sub>REQUIRED</sub>**         |  `--content`  |  string   | undefined | Text content for the record.                                                                                               |
 
 ### `xunnctl dns record retrieve`
 
@@ -371,7 +358,7 @@ x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...
 This command retrieves the resource record `--name` of type `--type` from the
 `--apex` DNS zone.
 
-The result can be queried via `--query`, which accepts a [JMESPath][5] value.
+The result can be queried via `--query`, which accepts a [JMESPath][6] value.
 Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping (e.g. `--query { id: id }` and
 `--query '{ id: id }'` are identical).
@@ -386,24 +373,21 @@ x d r r --apex xunn.io --apex xunn.at --name mail --type cname --query id
 
 #### Parameters
 
-|                                        |      Name       |                     Type                     |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :------------------------------------------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     |                  string\[]                   |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |                   boolean                    |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |                    string                    |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|        **<sub>REQUIRED</sub>**         |    `--name`     |                    string                    |          undefined          | DNS record name (or @ for the zone apex) in Punycode.                                                            |
-|        **<sub>REQUIRED</sub>**         |    `--type`     |                    string                    |          undefined          | Text content for the record.                                                                                     |
-|          <sub>optional</sub>           | `--config-path` |                    string                    | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |                   boolean                    |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--query`    | string <sub>(unescaped spaces allowed)</sub> |          undefined          | A [JMESPath][5] query string. Unescaped spaces are preserved in CLI.                                             |
-|          <sub>optional</sub>           |    `--quiet`    |                    count                     |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |                       Type                        |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |                      boolean                      | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |                      string                       | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |   `--name`    |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|        **<sub>REQUIRED</sub>**         |   `--type`    |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
+|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI.                                                       |
 
 ### `xunnctl dns zone`
 
 > Alias: `x d z`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns zone retrieve --apex-api`][6].
+[`xunnctl dns zone retrieve --apex-api`][7].
 
 #### Examples
 
@@ -414,7 +398,7 @@ x d z
 
 #### Parameters
 
-See [`xunnctl dns zone retrieve`][6].
+See [`xunnctl dns zone retrieve`][7].
 
 ### `xunnctl dns zone create`
 
@@ -423,7 +407,7 @@ See [`xunnctl dns zone retrieve`][6].
 This command creates and initializes a new DNS `--apex` zone. If a conflicting
 apex zone already exists, this command will fail. If you're trying to bring an
 existing zone up to current configuration standards, see
-[`xunnctl dns zone update`][7] instead.
+[`xunnctl dns zone update`][8] instead.
 
 #### Examples
 
@@ -434,14 +418,11 @@ x d z c --apex xunn.at
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl dns zone retrieve`
 
@@ -449,7 +430,7 @@ x d z c --apex xunn.at
 
 This command returns information about one or more `--apex` zones.
 
-The result can be queried via `--query`, which accepts a [JMESPath][5] value.
+The result can be queried via `--query`, which accepts a [JMESPath][6] value.
 Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping (e.g. `--query { id: id }` and
 `--query '{ id: id }'` are identical).
@@ -464,21 +445,18 @@ x d z r --apex xunn.io --apex xunn.at --query { id: id, cdnOnly: meta.cdn_only }
 
 #### Parameters
 
-|                                        |      Name       |                     Type                     |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :------------------------------------------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     |                  string\[]                   |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |                   boolean                    |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |                    string                    |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|          <sub>optional</sub>           | `--config-path` |                    string                    | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |                   boolean                    |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--query`    | string <sub>(unescaped spaces allowed)</sub> |          undefined          | A [JMESPath][5] query string. Unescaped spaces are preserved in CLI.                                             |
-|          <sub>optional</sub>           |    `--quiet`    |                    count                     |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |                       Type                        |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |                      boolean                      | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |                      string                       | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI.                                                       |
 
 ### `xunnctl dns zone update`
 
 > Alias: `x d z u`
 
-This command is equivalent to [`xunnctl dns zone create`][8] but for zones that
+This command is equivalent to [`xunnctl dns zone create`][9] but for zones that
 already exist. It will attempt to bring one or more zones up to date with the
 latest best practices with respect to zone configuration; any failures thrown
 when attempting to create records, while reported, are ignored.
@@ -493,21 +471,18 @@ x d z u --apex xunn.at
 
 #### Parameters
 
-|                                        |      Name       |   Type    |           Default           | Description                                                                                                      |
-| :------------------------------------: | :-------------: | :-------: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |    `--apex`     | string\[] |          undefined          | Zero or more zone apex domains.                                                                                  |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** |  `--apex-api`   |  boolean  |          undefined          | Include all known domains zone apex domains.                                                                     |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** |  `--apex-file`  |  string   |          undefined          | A path to a newline-delimited file containing zero or more zone apex domains.                                    |
-|          <sub>optional</sub>           | `--config-path` |  string   | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|          <sub>optional</sub>           |    `--help`     |  boolean  |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|          <sub>optional</sub>           |    `--quiet`    |   count   |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
+| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl firewall`
 
 > Alias: `x f`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl firewall status`][9].
+[`xunnctl firewall status`][10].
 
 #### Examples
 
@@ -518,14 +493,14 @@ x f
 
 #### Parameters
 
-See [`xunnctl firewall status`][9].
+See [`xunnctl firewall status`][10].
 
 ### `xunnctl firewall ban`
 
 > Alias: `x f b`
 
 This command adds an ip address to the global hostile ip list, which is a
-[Cloudflare WAF List][10]. No managed system will accept packets coming from an
+[Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list. Both ipv4 and ipv6 addresses are supported, as is CIDR
 notation.
 
@@ -538,19 +513,16 @@ x f b --ip 1.2.3.4
 
 #### Parameters
 
-|                         |      Name       |  Type   |           Default           | Description                                                                                                      |
-| :---------------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** |     `--ip`      | string  |          undefined          | The IP address to ban. Both ipv4 and ipv6 are supported.                                                         |
-|   <sub>optional</sub>   | `--config-path` | string  | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|   <sub>optional</sub>   |    `--help`     | boolean |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|   <sub>optional</sub>   |    `--quiet`    |  count  |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                         |  Name  |  Type  |  Default  | Description                                                                                                                |
+| :---------------------: | :----: | :----: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
 
 ### `xunnctl firewall status`
 
 > Alias: `x f s`
 
 This command returns the contents of the global hostile ip list, which is a
-[Cloudflare WAF List][10]. No managed system will accept packets coming from an
+[Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list.
 
 #### Examples
@@ -562,18 +534,14 @@ x f s
 
 #### Parameters
 
-|                     |      Name       |  Type   |           Default           | Description                                                                                                      |
-| :-----------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| <sub>optional</sub> | `--config-path` | string  | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-| <sub>optional</sub> |    `--help`     | boolean |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-| <sub>optional</sub> |    `--quiet`    |  count  |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+This command does not accept additional parameters.
 
 ### `xunnctl firewall unban`
 
 > Alias: `x f u`
 
 This command removes an ip address from the global hostile ip list, which is a
-[Cloudflare WAF List][10]. No managed system will accept packets coming from an
+[Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list.
 
 #### Examples
@@ -585,12 +553,9 @@ x f u --ip 1.2.3.4
 
 #### Parameters
 
-|                         |      Name       |  Type   |           Default           | Description                                                                                                      |
-| :---------------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** |     `--ip`      | string  |          undefined          | The IP address to ban. Both ipv4 and ipv6 are supported.                                                         |
-|   <sub>optional</sub>   | `--config-path` | string  | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|   <sub>optional</sub>   |    `--help`     | boolean |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|   <sub>optional</sub>   |    `--quiet`    |  count  |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                         |  Name  |  Type  |  Default  | Description                                                                                                                  |
+| :---------------------: | :----: | :----: | :-------: | :--------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
 
 ### `xunnctl raw`
 
@@ -615,12 +580,9 @@ x r --id conf.nginx.allowOnlyCloudflare
 
 #### Parameters
 
-|                         |      Name       |  Type   |           Default           | Description                                                                                                      |
-| :---------------------: | :-------------: | :-----: | :-------------------------: | :--------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** |     `--id`      | string  |          undefined          | The identifier associated with the target data.                                                                  |
-|   <sub>optional</sub>   | `--config-path` | string  | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                        |
-|   <sub>optional</sub>   |    `--help`     | boolean |          undefined          | Show help text specific to this command. Cannot be used with other parameters or sub-commands.                   |
-|   <sub>optional</sub>   |    `--quiet`    |  count  |              0              | The amount of output generated is inversely proportional to the number of times this parameter appears (max: 2). |
+|                         |  Name  |  Type  |  Default  | Description                                     |
+| :---------------------: | :----: | :----: | :-------: | :---------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--id` | string | undefined | The identifier associated with the target data. |
 
 ## Appendix
 
@@ -769,13 +731,14 @@ specification. Contributions of any kind welcome!
 [x-repo-package-json]: package.json
 [x-repo-pr-compare]: https://github.com/xunnamius/xunnctl/compare
 [x-repo-support]: /.github/SUPPORT.md
-[1]: https://github.com/sindresorhus/env-paths
-[2]: #xunnctl-config-set
-[3]: #xunnctl-config-get
-[4]: #xunnctl-dns-record-retrieve
-[5]: https://jmespath.org/tutorial.html
-[6]: #xunnctl-dns-zone-retrieve
-[7]: #xunnctl-dns-zone-update
-[8]: #xunnctl-dns-zone-create
-[9]: #xunnctl-firewall-status
-[10]: https://developers.cloudflare.com/waf/tools/lists
+[1]: https://developers.cloudflare.com/fundamentals/api/reference/limits
+[2]: https://github.com/sindresorhus/env-paths
+[3]: #xunnctl-config-set
+[4]: #xunnctl-config-get
+[5]: #xunnctl-dns-record-retrieve
+[6]: https://jmespath.org/tutorial.html
+[7]: #xunnctl-dns-zone-retrieve
+[8]: #xunnctl-dns-zone-update
+[9]: #xunnctl-dns-zone-create
+[10]: #xunnctl-firewall-status
+[11]: https://developers.cloudflare.com/waf/tools/lists
