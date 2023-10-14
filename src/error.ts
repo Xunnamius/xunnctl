@@ -11,7 +11,7 @@ export * from 'named-app-errors';
 // TODO: replace a lot of all that follows with the official package(s),
 // TODO: including the symbol use
 
-export const $type = Symbol('object-type-hint');
+export const $type = Symbol.for('object-type-hint');
 
 export function isCliError(parameter: unknown): parameter is CliError {
   return (
@@ -41,6 +41,8 @@ export type CliErrorOptions = {
 // TODO: of the X-app-errors pages
 export class CliError extends AppError implements NonNullable<CliErrorOptions> {
   suggestedExitCode = 0;
+  // TODO: this prop should be added by makeNamedError or whatever other fn
+  [$type] = 'CliError';
   /**
    * Represents a CLI-specific error, optionally with suggested exit code and
    * other context.
