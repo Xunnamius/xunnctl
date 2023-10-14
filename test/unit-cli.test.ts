@@ -1,89 +1,75 @@
-import { configureProgram } from 'universe/index';
 import { asMockedFunction } from '@xunnamius/jest-types';
-import { protectedImportFactory, withMockedOutput } from './setup';
 
-import type { PreExecutionContext } from 'universe/index';
+import { protectedImportFactory } from 'testverse/setup';
+import { CliError } from 'universe/error';
+import {
+  DEFAULT_ERROR_EXIT_CODE,
+  configureProgram,
+  type PreExecutionContext
+} from 'universe/index';
 
-const CLI_PATH = '../src/cli';
+const CLI_PATH = 'universe/cli';
 
 jest.mock('universe/index');
 
-// eslint-disable-next-line jest/require-hook
-let mockSilent = false;
-
 const protectedImport = protectedImportFactory(CLI_PATH);
-const mockedParse = jest.fn();
+const mockedExecute = jest.fn();
 const mockedConfigureProgram = asMockedFunction(configureProgram);
 
 beforeEach(() => {
-  mockedParse.mockImplementation(async () => ({}));
-  mockedConfigureProgram.mockImplementation(
-    () =>
-      ({
-        program: { argv: { silent: mockSilent } },
-        parse: mockedParse
-      }) as unknown as PreExecutionContext
-  );
-});
-
-it('executes program on import', async () => {
-  expect.hasAssertions();
-
-  await withMockedOutput(async () => {
-    await protectedImport();
-
-    expect(mockedConfigureProgram).toBeCalledWith();
-    expect(mockedParse).toBeCalledWith();
+  mockedExecute.mockImplementation(async () => ({}));
+  mockedConfigureProgram.mockImplementation(() => {
+    return {
+      program: {},
+      execute: mockedExecute
+    } as unknown as PreExecutionContext;
   });
 });
 
-it('errors gracefully on exception (with Error instance)', async () => {
+it('executes program on import and exits with 0 upon success', async () => {
   expect.hasAssertions();
 
-  mockedParse.mockImplementationOnce(async () => {
+  await protectedImport({ expectedExitCode: 0 });
+
+  expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+  expect(mockedExecute.mock.calls).toStrictEqual([[]]);
+});
+
+it('exits with DEFAULT_ERROR_EXIT_CODE upon string error type', async () => {
+  expect.hasAssertions();
+
+  mockedExecute.mockImplementationOnce(async () => {
+    throw 'problems!';
+  });
+
+  await protectedImport({ expectedExitCode: DEFAULT_ERROR_EXIT_CODE });
+
+  expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+  expect(mockedExecute.mock.calls).toStrictEqual([[]]);
+});
+
+it('exits with DEFAULT_ERROR_EXIT_CODE upon non-CliError error type', async () => {
+  expect.hasAssertions();
+
+  mockedExecute.mockImplementationOnce(async () => {
     throw new Error('problems!');
   });
 
-  await withMockedOutput(async ({ errorSpy }) => {
-    await protectedImport({ expectedExitCode: 1 });
+  await protectedImport({ expectedExitCode: DEFAULT_ERROR_EXIT_CODE });
 
-    expect(mockedConfigureProgram).toBeCalledWith();
-    expect(mockedParse).toBeCalledWith();
-    expect(errorSpy).toBeCalledWith(expect.toInclude('problems!'));
-  });
-
-  mockedParse.mockReset();
+  expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+  expect(mockedExecute.mock.calls).toStrictEqual([[]]);
 });
 
-it('errors gracefully on exception (with error string)', async () => {
+it('exits with specified exit code upon CliError error type', async () => {
   expect.hasAssertions();
 
-  mockedParse.mockImplementationOnce(() => Promise.reject('problems!'));
-
-  await withMockedOutput(async ({ errorSpy }) => {
-    await protectedImport({ expectedExitCode: 1 });
-
-    expect(mockedConfigureProgram).toBeCalledWith();
-    expect(mockedParse).toBeCalledWith();
-    expect(errorSpy).toBeCalledWith(expect.toInclude('problems!'));
+  mockedExecute.mockImplementationOnce(async () => {
+    throw new CliError('problems!', { suggestedExitCode: 5 });
   });
 
-  mockedParse.mockReset();
-});
+  await protectedImport({ expectedExitCode: 5 });
 
-it('respects --silent flag', async () => {
-  expect.hasAssertions();
-
-  mockSilent = true;
-  mockedParse.mockImplementationOnce(() => Promise.reject('BIG BOY ERROR'));
-
-  await withMockedOutput(async ({ errorSpy }) => {
-    await protectedImport({ expectedExitCode: 1 });
-
-    expect(mockedConfigureProgram).toBeCalledWith();
-    expect(mockedParse).toBeCalledWith();
-    expect(errorSpy).not.toHaveBeenCalled();
-  });
-
-  mockedParse.mockReset();
+  expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+  expect(mockedExecute.mock.calls).toStrictEqual([[]]);
 });
