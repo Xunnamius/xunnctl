@@ -1,5 +1,6 @@
 /* eslint-disable unicorn/prefer-top-level-await */
 /* eslint-disable unicorn/no-process-exit */
+import { FrameworkExitCode } from 'universe/constant';
 import { isCliError } from 'universe/error';
 
 // ? Kill node warnings.
@@ -12,11 +13,13 @@ process.removeAllListeners('warning');
  * This is the simple CLI entry point executed directly by node.
  */
 export default (async () => {
-  const { configureProgram, DEFAULT_ERROR_EXIT_CODE } = await import('universe/index');
+  const { configureProgram } = await import('universe/index');
   try {
-    await configureProgram().execute();
-    process.exit(0);
+    await (await configureProgram()).execute();
+    process.exit(FrameworkExitCode.OK);
   } catch (error) {
-    process.exit(isCliError(error) ? error.suggestedExitCode : DEFAULT_ERROR_EXIT_CODE);
+    process.exit(
+      isCliError(error) ? error.suggestedExitCode : FrameworkExitCode.DEFAULT_ERROR
+    );
   }
 })();
