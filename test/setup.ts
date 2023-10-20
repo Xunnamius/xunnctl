@@ -374,7 +374,7 @@ export async function withMockedOutput(
     errorSpy: jest.SpyInstance;
     infoSpy: jest.SpyInstance;
     stdoutSpy: jest.SpyInstance;
-    stdErrSpy: jest.SpyInstance;
+    stderrSpy: jest.SpyInstance;
   }) => unknown
 ) {
   const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -382,7 +382,7 @@ export async function withMockedOutput(
   const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
   const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-  const stdErrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  const stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
   try {
     await fn({
@@ -391,7 +391,7 @@ export async function withMockedOutput(
       errorSpy,
       infoSpy,
       stdoutSpy,
-      stdErrSpy
+      stderrSpy
     });
   } finally {
     logSpy.mockRestore();
@@ -399,7 +399,7 @@ export async function withMockedOutput(
     errorSpy.mockRestore();
     infoSpy.mockRestore();
     stdoutSpy.mockRestore();
-    stdErrSpy.mockRestore();
+    stderrSpy.mockRestore();
   }
 }
 

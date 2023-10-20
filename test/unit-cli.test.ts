@@ -1,12 +1,11 @@
 import { asMockedFunction } from '@xunnamius/jest-types';
 
 import { protectedImportFactory } from 'testverse/setup';
+import { FrameworkExitCode } from 'universe/constant';
 import { CliError } from 'universe/error';
-import {
-  DEFAULT_ERROR_EXIT_CODE,
-  configureProgram,
-  type PreExecutionContext
-} from 'universe/index';
+import { configureProgram } from 'universe/index';
+
+import type { PreExecutionContext } from 'types/global';
 
 const CLI_PATH = 'universe/cli';
 
@@ -19,10 +18,10 @@ const mockedConfigureProgram = asMockedFunction(configureProgram);
 beforeEach(() => {
   mockedExecute.mockImplementation(async () => ({}));
   mockedConfigureProgram.mockImplementation(() => {
-    return {
+    return Promise.resolve({
       program: {},
       execute: mockedExecute
-    } as unknown as PreExecutionContext;
+    } as unknown as PreExecutionContext);
   });
 });
 
@@ -35,27 +34,27 @@ it('executes program on import and exits with 0 upon success', async () => {
   expect(mockedExecute.mock.calls).toStrictEqual([[]]);
 });
 
-it('exits with DEFAULT_ERROR_EXIT_CODE upon string error type', async () => {
+it('exits with FrameworkExitCode.DEFAULT_ERROR upon string error type', async () => {
   expect.hasAssertions();
 
   mockedExecute.mockImplementationOnce(async () => {
     throw 'problems!';
   });
 
-  await protectedImport({ expectedExitCode: DEFAULT_ERROR_EXIT_CODE });
+  await protectedImport({ expectedExitCode: FrameworkExitCode.DEFAULT_ERROR });
 
   expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
   expect(mockedExecute.mock.calls).toStrictEqual([[]]);
 });
 
-it('exits with DEFAULT_ERROR_EXIT_CODE upon non-CliError error type', async () => {
+it('exits with FrameworkExitCode.DEFAULT_ERROR upon non-CliError error type', async () => {
   expect.hasAssertions();
 
   mockedExecute.mockImplementationOnce(async () => {
     throw new Error('problems!');
   });
 
-  await protectedImport({ expectedExitCode: DEFAULT_ERROR_EXIT_CODE });
+  await protectedImport({ expectedExitCode: FrameworkExitCode.DEFAULT_ERROR });
 
   expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
   expect(mockedExecute.mock.calls).toStrictEqual([[]]);
