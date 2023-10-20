@@ -66,6 +66,8 @@ export interface ExtendedDebug extends InternalDebug {
    * Send an optionally-formatted message to output.
    */
   (...args: Parameters<InternalDebug>): ExtendedDebugger;
+  // ? Fix an error in the official debug package types
+  disable: (namespace?: string) => ReturnType<InternalDebug['disable']>;
 }
 
 /**

@@ -1,9 +1,9 @@
 import { debug as oldDebug } from 'debug';
 
 import {
+  $instances,
   debugFactory,
   extendDebugger,
-  $instances,
   finalizeDebugger
 } from 'multiverse/debug-extended/index';
 
