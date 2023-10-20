@@ -131,7 +131,7 @@
     "jest": "^29.7.0",
     "jest-circus": "^29.7.0",
     "jest-extended": "^4.0.2",
-    "lint-staged": "^14.0.1",
+    "lint-staged": "^15.0.2",
     "lodash.mergewith": "^4.6.2",
     "prettier": "^3.0.3",
     "remark-capitalize-headings": "^1.0.3",
