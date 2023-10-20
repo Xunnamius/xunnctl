@@ -1,7 +1,7 @@
 import { Manager } from '@listr2/manager';
 
-import { withMockedEnv, withMockedOutput } from 'testverse/setup';
 import { type ExtendedDebugger } from 'multiverse/debug-extended';
+import { withMockedEnv, withMockedOutput } from 'testverse/setup';
 
 import {
   TAB,
@@ -15,8 +15,8 @@ import {
   enableLoggingByTag,
   getLoggersByType,
   resetInternalState,
-  type GenericListrTask,
-  type ExtendedLogger
+  type ExtendedLogger,
+  type GenericListrTask
 } from 'multiverse/rejoinder';
 
 const namespace = 'namespace';
@@ -251,13 +251,13 @@ describe('::createDebugLogger', () => {
   it('returns ExtendedDebugger instance', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ stdErrSpy }) => {
+    await withMockedOutput(({ stderrSpy }) => {
       const debug = createDebugLogger({ namespace });
 
       debug.enabled = true;
       debug('logged');
 
-      expect(stdErrSpy.mock.calls).toStrictEqual([
+      expect(stderrSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([expect.stringMatching(/namespace.+logged/)])
       ]);
     });
@@ -273,13 +273,13 @@ describe('::createDebugLogger', () => {
   it('returns instance capable of handling complex input', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ stdErrSpy }) => {
+    await withMockedOutput(({ stderrSpy }) => {
       const debug = createDebugLogger({ namespace });
 
       debug.enabled = true;
       debug('logged: %O', { success: true });
 
-      expect(stdErrSpy.mock.calls).toStrictEqual([
+      expect(stderrSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([
           expect.stringMatching(/namespace.+logged:.+{.+success:.+true.+}/)
         ])
@@ -290,7 +290,7 @@ describe('::createDebugLogger', () => {
   it('returns extensions that can themselves be extended', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ stdErrSpy }) => {
+    await withMockedOutput(({ stderrSpy }) => {
       const debug = createDebugLogger({ namespace });
       const extension1 = debug.extend(namespace);
       const extension2 = extension1.extend(namespace);
@@ -304,7 +304,7 @@ describe('::createDebugLogger', () => {
       extension2.enabled = true;
       extension2('logged');
 
-      expect(stdErrSpy.mock.calls).toStrictEqual([
+      expect(stderrSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([expect.stringMatching(/namespace.+logged/)]),
         expect.arrayContaining([expect.stringMatching(/namespace:namespace.+logged/)]),
         expect.arrayContaining([
