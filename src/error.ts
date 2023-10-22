@@ -12,6 +12,8 @@ export * from 'named-app-errors';
 
 // TODO: replace a lot of all that follows with the official package(s),
 // TODO: including the symbol use below
+
+// TODO: Need to ensure isXError functions deal with inheritance/extends
 export const $type = Symbol.for('object-type-hint');
 
 /**
@@ -20,7 +22,10 @@ export const $type = Symbol.for('object-type-hint');
 // TODO: make-named-error should create and return this function automatically
 export function isCliError(parameter: unknown): parameter is CliError {
   return (
-    isNativeError(parameter) && $type in parameter && parameter[$type] === CliError.name
+    isNativeError(parameter) &&
+    $type in parameter &&
+    Array.isArray(parameter[$type]) &&
+    parameter[$type].includes(CliError.name)
   );
 }
 
@@ -34,7 +39,8 @@ export function isGracefulEarlyExitError(
   return (
     isNativeError(parameter) &&
     $type in parameter &&
-    parameter[$type] === GracefulEarlyExitError.name
+    Array.isArray(parameter[$type]) &&
+    parameter[$type].includes(GracefulEarlyExitError.name)
   );
 }
 
@@ -61,7 +67,7 @@ export type CliErrorOptions = {
 export class CliError extends AppError implements NonNullable<CliErrorOptions> {
   suggestedExitCode = FrameworkExitCode.DEFAULT_ERROR;
   // TODO: this prop should be added by makeNamedError or whatever other fn
-  [$type] = 'CliError';
+  [$type] = ['CliError'];
   /**
    * Represents a CLI-specific error, optionally with suggested exit code and
    * other context.
@@ -101,7 +107,7 @@ makeNamedError(CliError, 'CliError');
 // TODO: replace with named-app-error (or whatever it's called now) class
 export class CommandNotImplementedError extends CliError {
   // TODO: this prop should be added by makeNamedError or whatever other fn
-  [$type] = 'CliError';
+  [$type] = ['CommandNotImplementedError', 'CliError'];
   /**
    * Represents trying to execute a CLI command that has not yet been implemented.
    */
@@ -120,7 +126,7 @@ makeNamedError(CommandNotImplementedError, 'CommandNotImplementedError');
 // TODO: replace with named-app-error (or whatever it's called now) class
 export class GracefulEarlyExitError extends CliError {
   // TODO: this prop should be added by makeNamedError or whatever other fn
-  [$type] = 'GracefulEarlyExitError';
+  [$type] = ['GracefulEarlyExitError', 'CliError'];
   /**
    * Represents trying to execute a CLI command that has not yet been implemented.
    */
@@ -136,7 +142,7 @@ makeNamedError(GracefulEarlyExitError, 'GracefulEarlyExitError');
 // TODO: replace with named-app-error (or whatever it's called now) class
 export class AssertionFailedError extends CliError {
   // TODO: this prop should be added by makeNamedError or whatever other fn
-  [$type] = 'AssertionFailedError';
+  [$type] = ['AssertionFailedError', 'CliError'];
   /**
    * Represents a failed sanity check.
    */

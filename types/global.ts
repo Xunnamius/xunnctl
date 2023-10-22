@@ -45,7 +45,7 @@ export type Program<RawArgs extends Record<string, unknown>> = Omit<
       builder: Configuration<RawArgs>['builder'],
       handler: Configuration<RawArgs>['handler'],
       // ? configureArguments already handles this use case, so...
-      middlewares: undefined,
+      middlewares: [],
       deprecated: Configuration<RawArgs>['deprecated']
     ): Program<RawArgs>;
   };

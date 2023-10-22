@@ -15,7 +15,7 @@ module.exports = async (context) => {
   return {
     description: `description for child program ${filename}`,
     builder: (yargs) => {
-      return yargs.option(filename.split('.')[0], { boolean: true });
+      return yargs.option(filename.split('.')[0], { count: true });
     },
     handler: (argv) => {
       argv.handled_by = __filename;

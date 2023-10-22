@@ -3,15 +3,16 @@
 
 // * Exports async function to test handling async exports...
 module.exports = async (context) => {
-  const filename = require('node:path').basename(__filename);
+  const {dirname, basename } = require('node:path');
+  const name = basename(dirname(__filename));
 
   /**
    * @type {Type.RootConfig}
    */
   const commandModule = {
-    description: `description for root program ${filename}`,
+    description: `description for root program ${name}`,
     builder: (yargs) => {
-      return yargs.option(filename.split('.')[0], { boolean: true });
+      return yargs.option(name, { count: true });
     },
     handler: (argv) => {
       argv.handled_by = __filename;

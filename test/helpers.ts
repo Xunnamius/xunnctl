@@ -1,9 +1,7 @@
 import path from 'node:path';
 
-import { withMockedArgv, withMockedExit, withMockedOutput } from 'testverse/setup';
-
-import type { Merge } from 'type-fest';
 import type { Arguments, PreExecutionContext } from 'types/global';
+import { isGracefulEarlyExitError } from 'universe/error';
 
 /**
  * Returns a `Program` instance's {@link PreExecutionContext}.
@@ -47,44 +45,38 @@ export async function runProgram<
   argv: string | string[],
   preExecutionContext?: PreExecutionContext
 ): Promise<Arguments<CmdArgs>> {
-  return (preExecutionContext || (await getProgram())).execute(
-    Array.isArray(argv) ? argv : argv.split(' ')
-  ) as Promise<Arguments<CmdArgs>>;
+  const context = preExecutionContext || (await getProgram());
+
+  try {
+    return (await context.execute(
+      Array.isArray(argv) ? argv : argv.split(' ')
+    )) as Arguments<CmdArgs>;
+  } catch (error) {
+    if (isGracefulEarlyExitError(error)) {
+      // ? Replicate a little bit of cli.ts functionality here, and alter
+      // ? downstream testing code that this is what we're doing now
+      const argv = (context.program.parsed || { argv: {} }).argv as Arguments<CmdArgs>;
+      return Object.assign(argv, { $gracefulExit: true });
+    }
+
+    throw error;
+  }
 }
 
-/**
- * Wraps {@link withMockedExit} + {@link withMockedOutput} with {@link withMockedArgv}.
- */
-export async function withMocks(
-  fn: (
-    spies: Merge<
-      Parameters<Parameters<typeof withMockedOutput>[0]>[0],
-      Parameters<Parameters<typeof withMockedExit>[0]>[0]
-    >
-  ) => Promise<void>,
-  argv: string[] = [],
-  options?: Parameters<typeof withMockedArgv>[2]
+export function getFixturePath(fixture: string | string[]) {
+  return path.join(__dirname, 'fixtures', ...[fixture].flat());
+}
+
+export function expectedCommandsRegex(
+  childCommands: string[],
+  parentFullName = 'xunnctl'
 ) {
-  return withMockedArgv(
-    () => {
-      return withMockedExit((exitSpies) =>
-        withMockedOutput((outputSpies) => fn(Object.assign({}, exitSpies, outputSpies)))
-      );
-    },
-    argv,
-    options
-  );
-}
-
-export function getFixturePath(fixture: string) {
-  return path.join(__dirname, 'fixtures', fixture);
-}
-
-export function expectedCommandsRegex(expectedCommands: string[]) {
   return new RegExp(
-    'Commands:\\n\\s+xunnctl\\s+Description.*?\\s+\\[default]\\n' +
-      expectedCommands
-        .map((cmd) => '\\s+xunnctl\\s+' + cmd + '\\s+Description.*?\\n')
+    'Commands:\\n\\s+' +
+      parentFullName +
+      '\\s+Description.*?\\s+\\[default]\\n' +
+      childCommands
+        .map((cmd) => '\\s+' + parentFullName + '\\s+' + cmd + '\\s+Description.*?\\n')
         .join('') +
       '\\n'
   );

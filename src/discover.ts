@@ -56,9 +56,10 @@ const hasSpacesRegExp = /\s+/;
  *
  * Supported extensions in precedence order: `.js`, `.mjs`, `.cjs`.
  *
- * @returns An object with a `firstParseResult` property containing the result
- * of the very first program that finishes executing. Due to the tree-like
- * nature of the
+ * @returns An object with a `result` property containing the result of the very
+ * first program that finishes executing. Due to the tree-like nature of
+ * execution, `result` will not be available when the promise returned by
+ * `discoverCommands` is resolved.
  */
 export async function discoverCommands<T extends Record<string, unknown>>(
   basePath: string,
@@ -66,23 +67,24 @@ export async function discoverCommands<T extends Record<string, unknown>>(
   context: ExecutionContext
 ): Promise<{
   /**
-   * Stores the result of the latest call to `Program::parse*`, hence the need
-   * for passing around a reference to the object containing this result.
+   * Stores the result of the latest call to `Program::parseAsync`, hence the
+   * need for passing around a reference to the object containing this result.
    *
    * This is necessary because, with our depth-first multi-yargs architecture,
    * the parse job done by shallower yargs instances in the chain must not
-   * replace the result of the deepest call to `Program::parse*` in the chain of
-   * distinct yargs instances' command handlers.
+   * mutate the result of the deepest call to `Program::parse*` in the execution
+   * chain.
    */
-  firstParseResult: Arguments<T> | undefined;
+  result: Arguments<T> | undefined;
 }> {
   // ! Invariant: first program to be discovered, if any, is the root program.
   let alreadyLoadedRootProgram = false;
 
   const debug = context.debug.extend('discover');
   const debug_load = debug.extend('load');
-  const reference: Awaited<ReturnType<typeof discoverCommands<T>>> = {
-    firstParseResult: undefined
+
+  const deepestParseResult: Awaited<ReturnType<typeof discoverCommands<T>>> = {
+    result: undefined
   };
 
   debug('beginning configuration module auto-discovery at %O', basePath);
@@ -92,20 +94,29 @@ export async function discoverCommands<T extends Record<string, unknown>>(
   debug('configuration module auto-discovery completed');
 
   if (context.commands.size) {
-    debug_load.message('%O commands loaded: %O', context.commands.size, context.commands);
+    debug_load.message(
+      '%O commands loaded: %O',
+      context.commands.size,
+      context.commands.keys()
+    );
+    debug_load.message('%O', context.commands);
   } else {
     debug_load.warn('auto-discovery failed to find any loadable configuration!');
   }
 
-  return reference;
+  return deepestParseResult;
 
-  async function discover(configPath: string, lineage: string[] = []): Promise<void> {
+  async function discover(
+    configPath: string,
+    lineage: string[] = [],
+    previousParentProgram: Program<T> | undefined = undefined
+  ): Promise<void> {
     const isRootProgram = !alreadyLoadedRootProgram;
     const parentType = isRootProgram ? 'root' : 'parent-child';
 
     const depth = lineage.length;
 
-    debug('current parent lineage: %O', lineage);
+    debug('initial parent lineage: %O', lineage);
     debug('is root program: %O', isRootProgram);
 
     const parentProgram = isRootProgram ? rootProgram : makeProgram<T>();
@@ -126,7 +137,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
       return;
     }
 
-    lineage.push(parentConfig.name);
+    lineage = [...lineage, parentConfig.name];
     const parentConfigFullName = lineage.join(' ');
 
     debug('updated parent lineage: %O', lineage);
@@ -135,7 +146,12 @@ export async function discoverCommands<T extends Record<string, unknown>>(
     if (isRootProgram) {
       configureRootProgram(parentProgram, parentConfig, parentConfigFullName);
     } else {
-      configureParentProgram(parentProgram, parentConfig, parentConfigFullName);
+      configureParentProgram(
+        parentProgram,
+        parentConfig,
+        parentConfigFullName,
+        previousParentProgram
+      );
     }
 
     debug_load(
@@ -153,65 +169,71 @@ export async function discoverCommands<T extends Record<string, unknown>>(
     debug(`added ${parentType} program to ExecutionContext::commands`);
 
     const configDir = await fs.opendir(configPath);
-    let configDirIsEmpty = true;
+    const originalCommandCardinality = context.commands.size;
 
     for await (const entry of configDir) {
-      configDirIsEmpty = false;
-
       const isPotentialChildConfigOfCurrentParent = /.*(?<!index)\.(?:js|cjs|mjs)$/.test(
         entry.name
       );
 
-      if (isPotentialChildConfigOfCurrentParent) {
-        if (entry.isDirectory()) {
-          await discover(entry.path, lineage);
-        } else {
-          const { configuration: childConfig, metadata: childMeta } =
-            await loadConfiguration(entry.path, context);
+      debug('saw potential child configuration file: %O', entry.path);
 
-          if (!childConfig) {
-            debug.error(
-              `failed to load child configuration (depth: %O) due to missing or invalid file %O`,
-              depth,
-              entry.path
-            );
+      if (entry.isDirectory()) {
+        debug('file is actually a directory, recursing...');
+        await discover(entry.path, lineage, parentProgram);
+      } else if (isPotentialChildConfigOfCurrentParent) {
+        debug('attempting to load file...');
+        const { configuration: childConfig, metadata: childMeta } =
+          await loadConfiguration(entry.path, context);
 
-            throw new AssertionFailedError(ErrorMessage.ConfigLoadFailure(entry.path));
-          }
-
-          const childProgram = makeProgram<T>();
-          const childConfigFullName = `${parentConfigFullName} ${childConfig.name}`;
-
-          debug('child full name (lineage): %O', childConfigFullName);
-
-          configureChildProgram(
-            childProgram,
-            childConfig,
-            childConfigFullName,
-            parentProgram
+        if (!childConfig) {
+          debug.error(
+            `failed to load child configuration (depth: %O) due to missing or invalid file %O`,
+            depth,
+            entry.path
           );
 
-          debug_load(
-            `discovered child configuration (depth: %O) for command %O`,
-            depth + 1,
-            childConfigFullName
-          );
-
-          context.commands.set(childConfigFullName, {
-            // ? Cast as superclass
-            program: childProgram as Program<Record<string, unknown>>,
-            metadata: childMeta
-          });
-
-          debug('added child program to ExecutionContext::commands');
+          throw new AssertionFailedError(ErrorMessage.ConfigLoadFailure(entry.path));
         }
+
+        const childProgram = makeProgram<T>();
+        const childConfigFullName = `${parentConfigFullName} ${childConfig.name}`;
+
+        debug('child full name (lineage): %O', childConfigFullName);
+
+        configureChildProgram(
+          childProgram,
+          childConfig,
+          childConfigFullName,
+          parentProgram
+        );
+
+        debug_load(
+          `discovered child configuration (depth: %O) for command %O`,
+          depth + 1,
+          childConfigFullName
+        );
+
+        context.commands.set(childConfigFullName, {
+          // ? Cast as superclass
+          program: childProgram as Program<Record<string, unknown>>,
+          metadata: childMeta
+        });
+
+        debug('added child program to ExecutionContext::commands');
+      } else {
+        debug(
+          'file was ignored (only non-index sibling JS files are considered at this stage)'
+        );
       }
     }
 
-    if (configDirIsEmpty) {
-      // ? If there were no child commands added from the above loop, loosen
-      // ? restrictions on this poor childless parent program.
+    if (context.commands.size === originalCommandCardinality) {
+      // ? If there were no child commands added in the last pass, making this
+      // ? parent program a leaf node on the tree (i.e. child-like), then
+      // ? tighten restrictions on this parent program.
       parentProgram.strict(true);
+      debug('enabled strictness constraint on childless parent program');
     }
   }
 
@@ -291,7 +313,10 @@ export async function discoverCommands<T extends Record<string, unknown>>(
             deprecated: rawConfig.deprecated ?? false,
             // ? This property is trimmed below
             description: rawConfig.description ?? '',
-            handler: rawConfig.handler || defaultHandler,
+            handler(...args) {
+              debug_('entered actual handler function of %O', finalConfig.name);
+              return (rawConfig.handler || defaultHandler)(...args);
+            },
             name: (rawConfig.name || isRootProgram
               ? pkgName
               : isParentProgram
@@ -365,7 +390,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
   }
 
   /**
-   * Configures the root program. Currently, this function:
+   * Configures the root (or _pure_ parent) program. Currently, this function:
    *
    * - Calls {@link configureParentProgram}
    * - Enables built-in `--version` support unless `package.json::version` is not
@@ -382,28 +407,31 @@ export async function discoverCommands<T extends Record<string, unknown>>(
 
     program.version(pkgVersion || false);
 
-    // ? Allow output text to span the entire screen
-
-    program.wrap(context.state.initialTerminalWidth);
-
-    debug('%O was additionally configured as: %O', config.name, 'root');
+    debug('%O was additionally configured as: %O', config.name, 'root (pure parent)');
   }
 
   /**
-   * Configures a parent program. Currently, this function:
+   * Configures a parent (or parent-child) program. Currently, this function:
    *
    * - Disables built-in `--help` magic and replaces it with a custom solution
    * - Disables built-in `--version` support
    * - Configures usage help text template
    * - Configures script name
-   * - Registers a default command and its aliases
+   * - Registers a default command and its aliases to `program`
    * - Disables strict mode as it's incompatible with programs with children
    * - Disables built-in exit-on-error behavior (we handle errors ourselves)
+   * - Allow output to span entire terminal width
+   * - Disable built-in error/help reporting (we'll handle it ourselves)
+   *
+   * And for parent-child programs (i.e. non-root parents) specifically:
+   *
+   * - Registers a proxy command (including aliases) to `parentProgram`
    */
   function configureParentProgram(
     program: Program<T>,
     config: Configuration<T>,
-    fullName: string
+    fullName: string,
+    parentParentProgram?: Program<T>
   ): void {
     // ? Swap out --help support for something that plays nice with the
     // ? existence of child programs
@@ -439,7 +467,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
       config.description,
       config.builder,
       config.handler,
-      undefined,
+      [],
       config.deprecated
     );
 
@@ -455,18 +483,49 @@ export async function discoverCommands<T extends Record<string, unknown>>(
 
     program.wrap(context.state.initialTerminalWidth);
 
-    debug('%O was additionally configured as: %O', config.name, 'parent');
+    // ? For parent-child programs, the same command with the parent, but use a
+    // ? proxy handler
+
+    parentParentProgram?.command_deferred(
+      [config.command.replace('$0', config.name), ...config.aliases],
+      config.description,
+      config.builder,
+      proxyHandler(program, config, fullName),
+      [],
+      config.deprecated
+    );
+
+    // ? We'll report on any errors manually
+
+    program.showHelpOnFail(false);
+
+    // ? Make Yargs stop being so noisy when exceptional stuff happens
+
+    program.fail((message, error) => {
+      debug('entered custom yargs failure handler');
+      throw error || message;
+    });
+
+    debug(
+      '%O was additionally configured as: %O',
+      config.name,
+      !!parentParentProgram ? 'parent-child' : 'pure parent (root)'
+    );
   }
 
   /**
-   * Configures a child program. Currently, this function:
+   * Configures a _pure_ child program. Currently, this function:
    *
+   * - Enables built-in `--help` magic
    * - Disables built-in `--version` support
    * - Configures usage help text template
    * - Configures script name
-   * - Registers a default command and its aliases
+   * - Registers a default command and its aliases to `program`
+   * - Registers a proxy command (including aliases) to `parentProgram`
    * - Disables strict mode since pure child commands don't have children
    * - Disables built-in exit-on-error behavior (we handle errors ourselves)
+   * - Allow output to span entire terminal width
+   * - Disable built-in error/help reporting (we'll handle it ourselves)
    */
   function configureChildProgram(
     program: Program<T>,
@@ -474,6 +533,10 @@ export async function discoverCommands<T extends Record<string, unknown>>(
     fullName: string,
     parentProgram: Program<T>
   ): void {
+    // ? Only child programs should use the built-in --help magic
+
+    program.help(true);
+
     // ? Only the root program should recognize the --version flag
 
     program.version(false);
@@ -493,46 +556,18 @@ export async function discoverCommands<T extends Record<string, unknown>>(
       config.description,
       config.builder,
       config.handler,
-      undefined,
+      [],
       config.deprecated
     );
 
-    // ? Register the same command with the parent, but use a custom handler
+    // ? Register the same command with the parent, but use a proxy handler
 
-    parentProgram.command(
+    parentProgram.command_deferred(
       [config.command.replace('$0', config.name), ...config.aliases],
       config.description,
       config.builder,
-      async (_parsed) => {
-        const givenName = context.state.rawArgv.shift();
-        const acceptableNames = [config.name, ...config.aliases];
-
-        debug('entered handler function of %O', fullName);
-        debug('ordering invariant: %O must be one of: %O', givenName, acceptableNames);
-
-        const rawArgvSatisfiesArgumentOrderingInvariant =
-          givenName && acceptableNames.includes(givenName);
-
-        if (!rawArgvSatisfiesArgumentOrderingInvariant) {
-          debug.error('ordering invariant violated!');
-
-          throw new AssertionFailedError(
-            ErrorMessage.AssertionFailureOrderingInvariant()
-          );
-        }
-
-        debug('invariant satisfied');
-        debug('is first parse result: %O', !reference.firstParseResult);
-        debug('calling ::parseAsync on child program');
-
-        reference.firstParseResult ??= await program.parseAsync(
-          context.state.rawArgv,
-          wrapExecutionContext(context)
-        );
-
-        debug('::parseAsync result: %O', reference.firstParseResult);
-      },
-      undefined,
+      proxyHandler(program, config, fullName),
+      [],
       config.deprecated
     );
 
@@ -544,21 +579,89 @@ export async function discoverCommands<T extends Record<string, unknown>>(
 
     program.exitProcess(false);
 
-    debug('%O was additionally configured as: %O', config.name, 'child');
+    // ? Allow output text to span the entire screen
+
+    program.wrap(context.state.initialTerminalWidth);
+
+    // ? We'll report on any errors manually
+
+    program.showHelpOnFail(false);
+
+    // ? Make Yargs stop being so noisy when exceptional stuff happens
+
+    program.fail((message, error) => {
+      debug('entered custom yargs failure handler');
+      throw error || message;
+    });
+
+    debug('%O was additionally configured as: %O', config.name, 'pure child');
   }
-}
 
-/**
- * The default handler used when a {@link Configuration} is missing a `handler`
- * export.
- */
-function defaultHandler() {
-  throw new NotImplementedError();
-}
+  /**
+   * A proxy handler used to bridge nested commands between parent and child
+   * yargs instances, similar in intent to a reverse-proxy in networking.
+   */
+  function proxyHandler(
+    childProgram: Program<T>,
+    childConfig: Configuration<T>,
+    fullName: string
+  ) {
+    return async function (_parsed: Arguments<T>) {
+      const debug_ = debug.extend('proxy');
+      const givenName = context.state.rawArgv.shift();
+      const acceptableNames = [childConfig.name, ...childConfig.aliases];
 
-/**
- * Uppercase the first letter of a string.
- */
-function capitalize(str: string) {
-  return (str.at(0)?.toUpperCase() || '') + str.slice(1);
+      if (debug_.enabled) {
+        const splitName = fullName.split(' ');
+        debug_.message(
+          'entered proxy handler function bridging %O ==> %O',
+          splitName.slice(0, -1).join(' '),
+          splitName.at(-1)
+        );
+      }
+
+      debug_('ordering invariant: %O must be one of: %O', givenName, acceptableNames);
+
+      const rawArgvSatisfiesArgumentOrderingInvariant =
+        givenName && acceptableNames.includes(givenName);
+
+      if (!rawArgvSatisfiesArgumentOrderingInvariant) {
+        debug_.error('ordering invariant violated!');
+
+        throw new AssertionFailedError(ErrorMessage.AssertionFailureOrderingInvariant());
+      }
+
+      debug_('invariant satisfied');
+      debug_('calling ::parseAsync on child program');
+
+      const localArgv = await childProgram.parseAsync(
+        context.state.rawArgv,
+        wrapExecutionContext(context)
+      );
+
+      const isDeepestParseResult = !deepestParseResult.result;
+      deepestParseResult.result ??= localArgv;
+
+      debug_('is deepest parse result: %O', isDeepestParseResult);
+      debug_(
+        `::parseAsync result${!isDeepestParseResult ? ' (discarded)' : ''}: %O`,
+        localArgv
+      );
+    };
+  }
+
+  /**
+   * The default handler used when a {@link Configuration} is missing a `handler`
+   * export.
+   */
+  function defaultHandler() {
+    throw new NotImplementedError();
+  }
+
+  /**
+   * Uppercase the first letter of a string.
+   */
+  function capitalize(str: string) {
+    return (str.at(0)?.toUpperCase() || '') + str.slice(1);
+  }
 }

@@ -1,6 +1,4 @@
 /* eslint-disable jest/no-conditional-in-test */
-import path from 'node:path';
-
 import { asMockedFunction } from '@xunnamius/jest-types';
 
 import { $executionContext } from 'universe/constant';
@@ -15,12 +13,8 @@ import {
   configureExecutionPrologue
 } from 'universe/configure';
 
-import {
-  expectedCommandsRegex,
-  getFixturePath,
-  runProgram,
-  withMocks
-} from 'testverse/helpers';
+import { expectedCommandsRegex, getFixturePath, runProgram } from 'testverse/helpers';
+import { withMocks } from 'testverse/setup';
 
 import type { Arguments, ExecutionContext } from 'types/global';
 
@@ -172,15 +166,15 @@ describe('::configureProgram', () => {
           runProgram('exports-function --exports-function')
         ).resolves.toStrictEqual(
           expect.objectContaining({
-            exportsFunction: true,
-            handled_by: path.join(mockCommandModulesRootPath, 'exports-function.js')
+            exportsFunction: 1,
+            handled_by: getFixturePath(['different-module-types', 'exports-function.js'])
           })
         );
 
         await expect(runProgram('exports-object test-positional')).resolves.toStrictEqual(
           expect.objectContaining({
             testPositional: 'test-positional',
-            handled_by: path.join(mockCommandModulesRootPath, 'exports-object.js')
+            handled_by: getFixturePath(['different-module-types', 'exports-object.js'])
           })
         );
 
@@ -219,67 +213,90 @@ describe('::configureProgram', () => {
       });
     });
 
-    it.todo(
-      'supports --help on deeply nested commands' /*, async () => {
+    it('delegates parsing and handling to deeply nested commands', async () => {
       expect.hasAssertions();
 
       mockCommandModulesRootPath = getFixturePath('nested-depth');
 
       await withMocks(async ({ logSpy }) => {
-         await expect(
-          runProgram('good1 good2 good3 command --test')
-        ).resolves.toStrictEqual(
-          expect.objectContaining({
-            test: true,
-            rest: 'command.js'
-          })
-        );
-
         await expect(
-          runProgram('good1 good2 good3 --test')
+          runProgram('good1 good2 good3 command --command')
         ).resolves.toStrictEqual(
           expect.objectContaining({
-            test: true,
-            rest: 'good3'
+            command: 1,
+            handled_by: getFixturePath([
+              'nested-depth',
+              'good1',
+              'good2',
+              'good3',
+              'command.js'
+            ])
           })
         );
 
-        await expect(runProgram('good1 good2 --test')).resolves.toStrictEqual(
+        await expect(runProgram('good1 good2 good3 --good3')).resolves.toStrictEqual(
           expect.objectContaining({
-            test: true,
-            rest: 'good2'
+            good3: 1,
+            handled_by: getFixturePath([
+              'nested-depth',
+              'good1',
+              'good2',
+              'good3',
+              'index.js'
+            ])
           })
         );
 
-        await expect(runProgram('good1 --test')).resolves.toStrictEqual(
+        await expect(runProgram('good1 good2 --good2')).resolves.toStrictEqual(
           expect.objectContaining({
-            test: true,
-            rest: 'good1'
+            good2: 1,
+            handled_by: getFixturePath(['nested-depth', 'good1', 'good2', 'index.js'])
           })
         );
 
-        await expect(runProgram('--test')).resolves.toStrictEqual(
+        await expect(runProgram('good1 --good1')).resolves.toStrictEqual(
           expect.objectContaining({
-            test: true,
-            rest: 'index.js'
+            good1: 1,
+            handled_by: getFixturePath(['nested-depth', 'good1', 'index.js'])
+          })
+        );
+
+        await expect(runProgram('--nested-depth')).resolves.toStrictEqual(
+          expect.objectContaining({
+            nestedDepth: 1,
+            'nested-depth': 1,
+            handled_by: getFixturePath(['nested-depth', 'index.js'])
           })
         );
 
         await runProgram('--help');
         await runProgram('good1 --help');
-        await runProgram('--help');
-        /* await runProgram('good1 good2 good3 --help');
+        await runProgram('good1 good2 --help');
+        await runProgram('good1 good2 good3 --help');
         await runProgram('good1 good2 good3 command --help');
 
         expect(logSpy.mock.calls).toStrictEqual([
-          /* [expect.stringMatching(expectedCommandsRegex(['good1']))],
-          [expect.stringMatching(expectedCommandsRegex(['good2']))]
-          /* [expect.stringMatching(expectedCommandsRegex(['good3']))],
-          [expect.stringMatching(expectedCommandsRegex(['command']))],
+          [expect.stringMatching(expectedCommandsRegex(['good1']))],
+          [
+            expect.stringMatching(
+              expectedCommandsRegex(['good', 'good2'], 'xunnctl good1')
+            )
+          ],
+          [
+            expect.stringMatching(
+              expectedCommandsRegex(['good', 'good3'], 'xunnctl good1 good2')
+            )
+          ],
+          [
+            expect.stringMatching(
+              expectedCommandsRegex(['command'], 'xunnctl good1 good2 good3')
+            )
+          ],
           [expect.not.stringContaining('Commands:')]
         ]);
       });
-    }*/
-    );
+    });
+
+    it.todo('supports --help on deeply nested commands');
   });
 });

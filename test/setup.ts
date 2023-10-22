@@ -1,21 +1,21 @@
 /* eslint-disable unicorn/no-keyword-prefix */
-import { name as pkgName, version as pkgVersion } from '../package.json';
-import { tmpdir } from 'node:os';
 import { promises as fs } from 'node:fs';
-import { resolve as resolvePath, join as joinPath, basename } from 'node:path';
+import { tmpdir } from 'node:os';
+import { basename, join as joinPath, resolve as resolvePath } from 'node:path';
+import { name as pkgName, version as pkgVersion } from '../package.json';
 
-import glob from 'glob';
-import execa from 'execa';
-import uniqueFilename from 'unique-filename';
 import debugFactory from 'debug';
+import execa from 'execa';
+import glob from 'glob';
+import uniqueFilename from 'unique-filename';
 //import gitFactory from 'simple-git';
 // ? https://github.com/jest-community/jest-extended#typescript
-import 'jest-extended/all';
 import 'jest-extended';
+import 'jest-extended/all';
 
-import type { ExecaReturnValue } from 'execa';
-import type { Promisable } from 'type-fest';
 import type { Debugger } from 'debug';
+import type { ExecaReturnValue } from 'execa';
+import type { Merge, Promisable } from 'type-fest';
 //import type { SimpleGit } from 'simple-git';
 
 // ! Note that these notes are relics of a copy-paste and are not recent. Most
@@ -41,7 +41,7 @@ globalDebug(`pkgName: "${pkgName}"`);
 globalDebug(`pkgVersion: "${pkgVersion}"`);
 
 // TODO: XXX: make this into a separate (mock-argv) package (along w/ the below)
-export type MockArgvOptions = {
+export type MockedArgvOptions = {
   /**
    * By default, the first two elements in `process.argv` are preserved. Setting
    * `replace` to `true` will cause the entire process.argv array to be replaced
@@ -51,7 +51,7 @@ export type MockArgvOptions = {
 };
 
 // TODO: XXX: make this into a separate (mock-env) package (along w/ the below)
-export type MockEnvOptions = {
+export type MockedEnvOptions = {
   /**
    * By default, the `process.env` object is emptied and re-hydrated with
    * `newEnv`. Setting `replace` to `false` will cause `newEnv` to be appended
@@ -59,6 +59,14 @@ export type MockEnvOptions = {
    * @default true
    */
   replace?: boolean;
+  /**
+   * If true, whenever `process.env.DEBUG` is present, it will be forwarded
+   * as-is to the underlying environment mock even when `replace` is `true`.
+   * This allows debug output to make it to the screen.
+   *
+   * @default true
+   */
+  passthroughDebugEnv?: boolean;
 };
 
 // TODO: make these fs-style functions accessible from the context object
@@ -207,15 +215,15 @@ export async function withMockedArgv(
   fn: () => Promisable<void>,
   simulatedArgv: string[],
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  options: MockArgvOptions = { replace: false }
+  { replace = false }: MockedArgvOptions = {}
 ) {
   // ? Take care to preserve the original argv array reference in memory
-  const previousArgv = process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
+  const previousArgv = process.argv.splice(replace ? 0 : 2, process.argv.length);
   process.argv.push(...simulatedArgv);
 
   await fn();
 
-  process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
+  process.argv.splice(replace ? 0 : 2, process.argv.length);
   process.argv.push(...previousArgv);
 }
 
@@ -223,17 +231,17 @@ export async function withMockedArgv(
 export function mockArgvFactory(
   factorySimulatedArgv: typeof process.argv,
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  factoryOptions: MockArgvOptions = { replace: false }
+  factoryOptions: MockedArgvOptions = {}
 ) {
   return (
     fn: () => Promisable<void>,
     simulatedArgv?: string[],
-    options?: MockArgvOptions
+    localOptions?: MockedArgvOptions
   ) => {
     return withMockedArgv(
       fn,
       [...factorySimulatedArgv, ...(simulatedArgv || [])],
-      options || factoryOptions
+      Object.assign({}, factoryOptions, localOptions)
     );
   };
 }
@@ -243,7 +251,7 @@ export async function withMockedEnv(
   fn: () => Promisable<void>,
   simulatedEnv: Record<string, string>,
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  options: MockEnvOptions = { replace: true }
+  { passthroughDebugEnv = true, replace = true }: MockedEnvOptions = {}
 ) {
   const previousEnv = { ...process.env };
   const clearEnv = () =>
@@ -252,8 +260,13 @@ export async function withMockedEnv(
     );
 
   // ? Take care to preserve the original env object reference in memory
-  if (options.replace) clearEnv();
-  Object.assign(process.env, simulatedEnv);
+  if (replace) clearEnv();
+
+  Object.assign(
+    process.env,
+    simulatedEnv,
+    passthroughDebugEnv && previousEnv.DEBUG ? { DEBUG: previousEnv.DEBUG } : {}
+  );
 
   await fn();
 
@@ -265,17 +278,17 @@ export async function withMockedEnv(
 export function mockEnvFactory(
   factorySimulatedEnv: Record<string, string>,
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  factoryOptions: MockEnvOptions = { replace: true }
+  factoryOptions: MockedEnvOptions = {}
 ) {
   return (
     fn: () => Promisable<void>,
     simulatedEnv: Record<string, string> = {},
-    options?: MockEnvOptions
+    localOptions?: MockedEnvOptions
   ) => {
     return withMockedEnv(
       fn,
       { ...factorySimulatedEnv, ...simulatedEnv },
-      options || factoryOptions
+      Object.assign({}, factoryOptions, localOptions)
     );
   };
 }
@@ -349,13 +362,13 @@ export async function withMockedExit(
 
 // TODO: XXX: make this into a separate package (along with the above)
 export function protectedImportFactory(path: string) {
-  return async (parameters?: { expectedExitCode?: number }) => {
+  return async (factoryOptions?: { expectedExitCode?: number }) => {
     let pkg: unknown = undefined;
 
     await withMockedExit(async ({ exitSpy }) => {
       pkg = await isolatedImport({ path });
-      if (expect && parameters?.expectedExitCode)
-        expect(exitSpy).toBeCalledWith(parameters.expectedExitCode);
+      if (expect && factoryOptions?.expectedExitCode)
+        expect(exitSpy).toBeCalledWith(factoryOptions.expectedExitCode);
       else if (!expect)
         globalDebug.extend('protected-import-factory')(
           'WARNING: "expect" object not found, so exit check was skipped'
@@ -366,6 +379,22 @@ export function protectedImportFactory(path: string) {
   };
 }
 
+export type MockedOutputOptions = {
+  /**
+   * If true, whenever `process.env.DEBUG` is present, output functions will
+   * still be spied on but their implementations will not be mocked, allowing
+   * debug output to make it to the screen.
+   *
+   * @default true
+   */
+  passthroughOutputIfDebugging?: boolean;
+  /**
+   * Call `::mockRestore` on one or more output functions currently being spied
+   * upon.
+   */
+  passthrough?: ('log' | 'warn' | 'error' | 'info' | 'stdout' | 'stderr')[];
+};
+
 // TODO: XXX: make this into a separate (mock-output) package
 export async function withMockedOutput(
   fn: (spies: {
@@ -375,32 +404,83 @@ export async function withMockedOutput(
     infoSpy: jest.SpyInstance;
     stdoutSpy: jest.SpyInstance;
     stderrSpy: jest.SpyInstance;
-  }) => unknown
+  }) => unknown,
+  { passthrough = [], passthroughOutputIfDebugging = true }: MockedOutputOptions = {}
 ) {
-  const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
-  const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-  const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-  const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-  const stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  const spies = {
+    logSpy: jest.spyOn(console, 'log'),
+    warnSpy: jest.spyOn(console, 'warn'),
+    errorSpy: jest.spyOn(console, 'error'),
+    infoSpy: jest.spyOn(console, 'info'),
+    stdoutSpy: jest.spyOn(process.stdout, 'write'),
+    stderrSpy: jest.spyOn(process.stderr, 'write')
+  };
+
+  for (const [name, spy] of Object.entries(spies)) {
+    if (
+      (!process.env.DEBUG || !passthroughOutputIfDebugging) &&
+      !passthrough.includes(name as (typeof passthrough)[number])
+    ) {
+      if (name.startsWith('std')) {
+        spy.mockImplementation(() => true);
+      } else {
+        // @ts-expect-error: TypeScript isn't smart enough to figure this out
+        spy.mockImplementation(() => undefined);
+      }
+    }
+  }
 
   try {
-    await fn({
-      logSpy,
-      warnSpy,
-      errorSpy,
-      infoSpy,
-      stdoutSpy,
-      stderrSpy
-    });
+    await fn(spies);
   } finally {
-    logSpy.mockRestore();
-    warnSpy.mockRestore();
-    errorSpy.mockRestore();
-    infoSpy.mockRestore();
-    stdoutSpy.mockRestore();
-    stderrSpy.mockRestore();
+    spies.logSpy.mockRestore();
+    spies.warnSpy.mockRestore();
+    spies.errorSpy.mockRestore();
+    spies.infoSpy.mockRestore();
+    spies.stdoutSpy.mockRestore();
+    spies.stderrSpy.mockRestore();
   }
+}
+
+/**
+ * Wraps {@link withMockedExit} + {@link withMockedOutput} with
+ * {@link withMockedArgv} + {@link withMockedEnv}.
+ */
+export async function withMocks(
+  fn: (
+    spies: Merge<
+      Parameters<Parameters<typeof withMockedOutput>[0]>[0],
+      Parameters<Parameters<typeof withMockedExit>[0]>[0]
+    >
+  ) => Promise<void>,
+  {
+    simulatedEnv = {},
+    simulatedArgv = [],
+    options = undefined
+  }: {
+    simulatedEnv?: Record<string, string>;
+    simulatedArgv?: string[];
+    options?: Merge<Merge<MockedArgvOptions, MockedEnvOptions>, MockedOutputOptions>;
+  } = {}
+) {
+  return withMockedArgv(
+    () => {
+      return withMockedEnv(
+        () => {
+          return withMockedExit((exitSpies) =>
+            withMockedOutput(
+              (outputSpies) => fn(Object.assign({}, exitSpies, outputSpies)),
+              options
+            )
+          );
+        },
+        simulatedEnv,
+        options
+      );
+    },
+    simulatedArgv,
+    options
+  );
 }
 
 // TODO: XXX: make this into a separate (run) package (along w/ below)
