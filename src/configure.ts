@@ -1,124 +1,117 @@
+import { isNativeError } from 'node:util/types';
+
+import { ListrErrorTypes } from 'listr2';
+import { name as pkgName } from 'package';
 import { hideBin } from 'yargs/helpers';
 
-import type { Arguments, ExecutionContext, Program } from 'types/global';
-import type { $executionContext } from 'universe/constant';
+import {
+  createGenericLogger,
+  createListrManager,
+  type ExtendedLogger,
+  type ListrManager
+} from 'multiverse/rejoinder';
 
-// * This is the place where, along with universe/error and universe/command,
-// * customizations can easily be made. This makes creating new CLI apps really
-// * fast, easy, and fun! :)
+import { LogTag, MAX_LOG_ERROR_ENTRIES } from 'universe/constant';
 
-/**
- * The project-specific shape of the parsed CLI arguments, excluding `_`, `$0`,
- * and any framework arguments or catch-all indexers.
- *
- * This type is useful for "bare bones" implementations. Defining this type is
- * useless if you're using command auto-discovery, since each imported
- * `Configuration` should export and utilize its own command-specific
- * {@link Arguments} type and/or those exported by other commands.
- */
-export type CliArguments = {
-  //
+import type {
+  ConfigureArguments,
+  ConfigureErrorHandlingEpilogue,
+  ConfigureExecutionContext,
+  ExecutionContext
+} from 'multiverse/black-flag';
+
+const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
+const rootGenericLogger = createGenericLogger({ namespace: pkgName });
+
+export type CustomExecutionContext = ExecutionContext & {
+  /**
+   * The {@link ExtendedLogger} for the current runtime level.
+   */
+  log: ExtendedLogger;
+  /**
+   * The global Listr task manager singleton.
+   */
+  taskManager: ListrManager;
+  state: {
+    /**
+     * If `true`, the program should not output anything at all. It also implies
+     * `isQuieted` and `isHushed` are both `true`.
+     */
+    isSilenced: boolean;
+    /**
+     * If `true`, the program should be dramatically less verbose. It also
+     * implies `isHushed` is `true`.
+     */
+    isQuieted: boolean;
+    /**
+     * If `true`, the program should output only the most pertinent information.
+     */
+    isHushed: boolean;
+  };
 };
 
-// ** The following "lifecycle" functions are listed in order of execution ** \\
-
-/**
- * This function is called once towards the beginning of the execution of
- * `configureProgram` and should return a parsed `process.env`-style object
- * where the value type is not limited to `string`.
- *
- * Other than `process.env.DEBUG`, all environment variables will be sourced
- * from the object returned by this function. `process.env` will not be
- * consulted directly.
- */
-export function configureEnvironment(
-  environment: typeof process.env,
-  context: ExecutionContext
-) /*: as const */ {
-  void environment, context;
-
-  // ! Always return result "as const" so that the key-value types are explicit.
+export const configureExecutionContext: ConfigureExecutionContext<
+  CustomExecutionContext
+> = (context) => {
   return {
-    // TODO
-  } as const;
-}
+    ...context,
+    log: rootGenericLogger,
+    taskManager: createListrManager(),
+    state: {
+      ...context.state,
+      isSilenced: false,
+      isQuieted: false,
+      isHushed: false
+    }
+  };
+};
 
-/**
- * This function is called once towards the beginning of the execution of
- * `configureProgram` and should return a global "base" context object from
- * which to shallow copy.
- */
-export function configureExecutionContext(context: ExecutionContext): ExecutionContext {
-  return context;
-}
-
-/**
- * This function is called once towards the end of the execution of
- * `configureProgram`, after all commands have been discovered but before any
- * have been executed, and should apply any final configurations to the yargs
- * instances that constitute the command line interface.
- *
- * All commands and sub-commands known to yargs are available on the
- * {@link ExecutionContext} object, which can be accessed from the `context`
- * parameter or from the {@link Arguments} object returned by
- * {@link Program.parse} et al.
- *
- * This function is the complement of {@link configureExecutionEpilogue}.
- */
-export function configureExecutionPrologue(
-  program: Program<CliArguments>,
-  context: ExecutionContext
-): void {
-  void program, context;
-}
-
-/**
- * This function is called once towards the beginning of the execution of
- * `configureProgram` and should return a `process.argv`-like array.
- */
-export function configureArguments(
-  rawArgv: typeof process.argv,
-  context: ExecutionContext
-): typeof process.argv {
-  void context;
+export const configureArguments: ConfigureArguments = (rawArgv) => {
   return hideBin(rawArgv);
-}
+};
 
-/**
- * This function is called once after CLI argument parsing completes and command
- * auto-discovery and handler execution succeeds. The value returned by this
- * function is used as the return value (and return type) of the `execute`
- * method on the object returned by `configureProgram`.
- *
- * This function can be used to implement a simple "bare bones" command line
- * interface, rather than rely on command auto-discovery.
- *
- * This function is the complement of {@link configureExecutionPrologue}.
- */
-export async function configureExecutionEpilogue(
-  argv: Arguments<CliArguments>,
-  context: ExecutionContext
-): Promise<Arguments<CliArguments>> {
-  void context;
-  return argv;
-}
+export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
+  CustomExecutionContext
+> = async ({ error, message }, _argv, context) => {
+  if (!context.state.isSilenced) {
+    context.log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);
+    if (
+      !context.state.isQuieted &&
+      isNativeError(error) &&
+      error.cause &&
+      // ? Don't repeat what has already been output
+      error.cause !== message
+    ) {
+      context.log.error([IF_NOT_QUIETED], '❌ Causal stack:');
 
-/**
- * This function is called once at the very end of the error handling process
- * after an error has occurred.
- *
- * Note that this function is _always_ called whenever there is an error,
- * regardless of which other functions have already been called. The only
- * exception to this is if the error occurs within
- * `configureErrorHandlingEpilogue` itself.
- */
-export async function configureErrorHandlingEpilogue(
-  error: unknown,
-  argv: Omit<Partial<Arguments<CliArguments>>, typeof $executionContext> & {
-    // ? Ensure $executionContext is required
-    [$executionContext]: ExecutionContext;
-  },
-  context: ExecutionContext
-): Promise<void> {
-  void error, argv, context;
-}
+      for (
+        let count = 0, subError: Error | undefined = error;
+        subError?.cause && count < MAX_LOG_ERROR_ENTRIES;
+        count++
+      ) {
+        if (isNativeError(subError.cause)) {
+          context.log.error([IF_NOT_QUIETED], ` ⮕  ${subError.cause.message}`);
+          subError = subError.cause;
+        } else {
+          context.log.error([IF_NOT_QUIETED], ` ⮕  ${subError.cause}`);
+          subError = undefined;
+        }
+
+        if (count + 1 >= MAX_LOG_ERROR_ENTRIES) {
+          context.log.error([IF_NOT_QUIETED], `(remaining entries have been hidden)`);
+        }
+      }
+    }
+
+    if (!context.state.isHushed && context.taskManager.errors.length > 0) {
+      context.log.newline([IF_NOT_HUSHED]);
+      context.log.error([IF_NOT_HUSHED], '❌ Fatal task errors:');
+
+      for (const taskError of context.taskManager.errors) {
+        if (taskError.type !== ListrErrorTypes.HAS_FAILED_WITHOUT_ERROR) {
+          context.log.error([IF_NOT_HUSHED], `❗ ${taskError.message}`);
+        }
+      }
+    }
+  }
+};

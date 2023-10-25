@@ -115,7 +115,9 @@ const rules = {
   // ? This is not it, chief (Prettier prevails)
   'unicorn/number-literal-case': 'off',
   // ? I'll decide when I want switch cases for fallthrough or not, thanks
-  'unicorn/prefer-switch': 'off'
+  'unicorn/prefer-switch': 'off',
+  // ? No, thanks
+  'unicorn/prefer-set-has': 'off'
 };
 
 module.exports = {

@@ -3,25 +3,21 @@ import path from 'node:path';
 
 import { name as pkgName, version as pkgVersion } from 'package';
 
-import { makeProgram, wrapExecutionContext } from 'universe/index';
-
 import {
   AssertionFailedError,
+  CommandNotImplementedError,
+  DEFAULT_USAGE_TEXT,
   ErrorMessage,
   GracefulEarlyExitError,
-  NotImplementedError
-} from 'universe/error';
-
-import { DEFAULT_USAGE_TEXT } from 'universe/constant';
-
-import type {
-  Arguments,
-  Configuration,
-  ExecutionContext,
-  ImportedConfigurationModule,
-  Program,
-  ProgramMetadata
-} from 'types/global';
+  makeProgram,
+  wrapExecutionContext,
+  type Arguments,
+  type Configuration,
+  type ExecutionContext,
+  type ImportedConfigurationModule,
+  type Program,
+  type ProgramMetadata
+} from 'multiverse/black-flag';
 
 const hasSpacesRegExp = /\s+/;
 
@@ -61,9 +57,9 @@ const hasSpacesRegExp = /\s+/;
  * execution, `result` will not be available when the promise returned by
  * `discoverCommands` is resolved.
  */
-export async function discoverCommands<T extends Record<string, unknown>>(
+export async function discoverCommands(
   basePath: string,
-  rootProgram: Program<T>,
+  rootProgram: Program<Record<string, unknown>>,
   context: ExecutionContext
 ): Promise<{
   /**
@@ -75,7 +71,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
    * mutate the result of the deepest call to `Program::parse*` in the execution
    * chain.
    */
-  result: Arguments<T> | undefined;
+  result: Arguments | undefined;
 }> {
   // ! Invariant: first program to be discovered, if any, is the root program.
   let alreadyLoadedRootProgram = false;
@@ -83,7 +79,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
   const debug = context.debug.extend('discover');
   const debug_load = debug.extend('load');
 
-  const deepestParseResult: Awaited<ReturnType<typeof discoverCommands<T>>> = {
+  const deepestParseResult: Awaited<ReturnType<typeof discoverCommands>> = {
     result: undefined
   };
 
@@ -109,7 +105,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
   async function discover(
     configPath: string,
     lineage: string[] = [],
-    previousParentProgram: Program<T> | undefined = undefined
+    previousParentProgram: Program<Record<string, unknown>> | undefined = undefined
   ): Promise<void> {
     const isRootProgram = !alreadyLoadedRootProgram;
     const parentType = isRootProgram ? 'root' : 'parent-child';
@@ -119,7 +115,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
     debug('initial parent lineage: %O', lineage);
     debug('is root program: %O', isRootProgram);
 
-    const parentProgram = isRootProgram ? rootProgram : makeProgram<T>();
+    const parentProgram = isRootProgram ? rootProgram : makeProgram();
     const { configuration: parentConfig, metadata: parentMeta } = await loadConfiguration(
       ['js', 'mjs', 'cjs'].map((extension) =>
         path.join(configPath, `index.${extension}`)
@@ -196,7 +192,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
           throw new AssertionFailedError(ErrorMessage.ConfigLoadFailure(entry.path));
         }
 
-        const childProgram = makeProgram<T>();
+        const childProgram = makeProgram();
         const childConfigFullName = `${parentConfigFullName} ${childConfig.name}`;
 
         debug('child full name (lineage): %O', childConfigFullName);
@@ -278,7 +274,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
         debug_('configuration file absolute path: %O', maybeConfigPath);
         debug_('configuration file metadata: %O', meta);
 
-        let maybeImportedConfig: ImportedConfigurationModule<T> | undefined =
+        let maybeImportedConfig: ImportedConfigurationModule | undefined =
           // eslint-disable-next-line no-await-in-loop
           await import(maybeConfigPath).catch((error) => {
             debug_.warn(
@@ -288,7 +284,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
           });
 
         if (maybeImportedConfig) {
-          let rawConfig: Partial<Configuration<T>>;
+          let rawConfig: Partial<Configuration>;
 
           if (!maybeImportedConfig.__esModule) {
             maybeImportedConfig = maybeImportedConfig.default;
@@ -306,7 +302,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
           // ? Ensure configuration namespace is copied by value!
           rawConfig = Object.assign({}, rawConfig);
 
-          const finalConfig: Configuration<T> = {
+          const finalConfig: Configuration = {
             aliases: rawConfig.aliases?.map((str) => str.trim()) || [],
             builder: rawConfig.builder || {},
             command: (rawConfig.command ?? '$0').trim() as '$0',
@@ -397,8 +393,8 @@ export async function discoverCommands<T extends Record<string, unknown>>(
    *   available
    */
   function configureRootProgram(
-    program: Program<T>,
-    config: Configuration<T>,
+    program: Program<Record<string, unknown>>,
+    config: Configuration<Record<string, unknown>>,
     fullName: string
   ): void {
     configureParentProgram(program, config, fullName);
@@ -428,10 +424,10 @@ export async function discoverCommands<T extends Record<string, unknown>>(
    * - Registers a proxy command (including aliases) to `parentProgram`
    */
   function configureParentProgram(
-    program: Program<T>,
-    config: Configuration<T>,
+    program: Program<Record<string, unknown>>,
+    config: Configuration<Record<string, unknown>>,
     fullName: string,
-    parentParentProgram?: Program<T>
+    parentParentProgram?: Program<Record<string, unknown>>
   ): void {
     // ? Swap out --help support for something that plays nice with the
     // ? existence of child programs
@@ -499,7 +495,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
 
     program.showHelpOnFail(false);
 
-    // ? Make Yargs stop being so noisy when exceptional stuff happens
+    // ? Make yargs stop being so noisy when exceptional stuff happens
 
     program.fail((message, error) => {
       debug('entered custom yargs failure handler');
@@ -528,10 +524,10 @@ export async function discoverCommands<T extends Record<string, unknown>>(
    * - Disable built-in error/help reporting (we'll handle it ourselves)
    */
   function configureChildProgram(
-    program: Program<T>,
-    config: Configuration<T>,
+    program: Program<Record<string, unknown>>,
+    config: Configuration<Record<string, unknown>>,
     fullName: string,
-    parentProgram: Program<T>
+    parentProgram: Program<Record<string, unknown>>
   ): void {
     // ? Only child programs should use the built-in --help magic
 
@@ -587,7 +583,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
 
     program.showHelpOnFail(false);
 
-    // ? Make Yargs stop being so noisy when exceptional stuff happens
+    // ? Make yargs stop being so noisy when exceptional stuff happens
 
     program.fail((message, error) => {
       debug('entered custom yargs failure handler');
@@ -602,11 +598,13 @@ export async function discoverCommands<T extends Record<string, unknown>>(
    * yargs instances, similar in intent to a reverse-proxy in networking.
    */
   function proxyHandler(
-    childProgram: Program<T>,
-    childConfig: Configuration<T>,
+    childProgram: Program<Record<string, unknown>>,
+    childConfig: Configuration<Record<string, unknown>>,
     fullName: string
   ) {
-    return async function (_parsed: Arguments<T>) {
+    // TODO: create variable here that facilitates double parsing (may need to
+    // TODO: factor this out into its own function, since root needs it too)
+    return async function (_parsed: Arguments) {
       const debug_ = debug.extend('proxy');
       const givenName = context.state.rawArgv.shift();
       const acceptableNames = [childConfig.name, ...childConfig.aliases];
@@ -655,7 +653,7 @@ export async function discoverCommands<T extends Record<string, unknown>>(
    * export.
    */
   function defaultHandler() {
-    throw new NotImplementedError();
+    throw new CommandNotImplementedError();
   }
 
   /**

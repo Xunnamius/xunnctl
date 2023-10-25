@@ -1,4 +1,5 @@
 /* eslint-disable unicorn/no-keyword-prefix */
+import assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join as joinPath, resolve as resolvePath } from 'node:path';
@@ -19,7 +20,12 @@ import type { Merge, Promisable } from 'type-fest';
 //import type { SimpleGit } from 'simple-git';
 
 // ! Note that these notes are relics of a copy-paste and are not recent. Most
-// ! recent TODO notes for all of this stuff is in msft-todo-backup
+// ! recent TODO notes for all of this stuff is in msft-todo-backup.
+
+// ! HOWEVER
+
+// ! The versions of the functions here are fixed in various ways compared to
+// ! older versions of this file. A great merging will have to occur soon...
 
 // TODO: automated tests against both Windows and Linux (and for all tooling)
 
@@ -60,7 +66,7 @@ export type MockedEnvOptions = {
    */
   replace?: boolean;
   /**
-   * If true, whenever `process.env.DEBUG` is present, it will be forwarded
+   * If `true`, whenever `process.env.DEBUG` is present, it will be forwarded
    * as-is to the underlying environment mock even when `replace` is `true`.
    * This allows debug output to make it to the screen.
    *
@@ -347,16 +353,27 @@ export function isolatedImportFactory<T = unknown>(args: {
 
 // TODO: XXX: make this into a separate (mock-exit) package
 export async function withMockedExit(
-  fn: (spies: { exitSpy: jest.SpyInstance }) => Promisable<void>
+  fn: (spies: {
+    exitSpy: jest.SpyInstance;
+    exitCode: typeof process.exitCode;
+  }) => Promisable<void>
 ) {
   const exitSpy = jest
     .spyOn(process, 'exit')
     .mockImplementation(() => undefined as never);
 
+  const oldProcessExitCode = process.exitCode;
+
   try {
-    await fn({ exitSpy });
+    await fn({
+      exitSpy,
+      get exitCode() {
+        return process.exitCode;
+      }
+    });
   } finally {
     exitSpy.mockRestore();
+    process.exitCode = oldProcessExitCode;
   }
 }
 
@@ -365,14 +382,20 @@ export function protectedImportFactory(path: string) {
   return async (factoryOptions?: { expectedExitCode?: number }) => {
     let pkg: unknown = undefined;
 
-    await withMockedExit(async ({ exitSpy }) => {
+    await withMockedExit(async ({ exitSpy, exitCode }) => {
       pkg = await isolatedImport({ path });
-      if (expect && factoryOptions?.expectedExitCode)
-        expect(exitSpy).toBeCalledWith(factoryOptions.expectedExitCode);
-      else if (!expect)
+
+      if (expect && factoryOptions?.expectedExitCode !== undefined) {
+        if (exitCode === undefined) {
+          expect(exitSpy).toBeCalledWith(factoryOptions.expectedExitCode);
+        } else {
+          expect(exitCode).toBe(factoryOptions.expectedExitCode);
+        }
+      } else if (!expect) {
         globalDebug.extend('protected-import-factory')(
           'WARNING: "expect" object not found, so exit check was skipped'
         );
+      }
     });
 
     return pkg;
@@ -381,7 +404,7 @@ export function protectedImportFactory(path: string) {
 
 export type MockedOutputOptions = {
   /**
-   * If true, whenever `process.env.DEBUG` is present, output functions will
+   * If `true`, whenever `process.env.DEBUG` is present, output functions will
    * still be spied on but their implementations will not be mocked, allowing
    * debug output to make it to the screen.
    *
@@ -416,9 +439,13 @@ export async function withMockedOutput(
     stderrSpy: jest.spyOn(process.stderr, 'write')
   };
 
+  const $wasAccessed = Symbol('was-accessed');
+  const noDebugPassthrough = !process.env.DEBUG || !passthroughOutputIfDebugging;
+
   for (const [name, spy] of Object.entries(spies)) {
+    // ? If we're debugging, show all outputs instead of swallowing them
     if (
-      (!process.env.DEBUG || !passthroughOutputIfDebugging) &&
+      noDebugPassthrough &&
       !passthrough.includes(name as (typeof passthrough)[number])
     ) {
       if (name.startsWith('std')) {
@@ -428,10 +455,59 @@ export async function withMockedOutput(
         spy.mockImplementation(() => undefined);
       }
     }
+
+    // ? Sometimes useful warnings/errors and what not are swallowed when all we
+    // ? really wanted was to track log/stdout calls, or vice-versa. To prevent
+    // ? this, we expect that our spies have not been called at all UNLESS the
+    // ? caller of withMockedOutput uses the spy (accesses a property).
+    let wasAccessed = false;
+    // @ts-expect-error: TypeScript isn't smart enough to figure this out
+    spies[name as keyof typeof spies] =
+      //
+      new Proxy(spy, {
+        get(target, property) {
+          if (property === $wasAccessed) {
+            return wasAccessed;
+          }
+
+          wasAccessed = true;
+
+          const value: unknown =
+            // @ts-expect-error: TypeScript isn't smart enough to figure this out
+            target[property];
+
+          if (value instanceof Function) {
+            return function (...args: unknown[]) {
+              // ? "this-recovering" code
+              return value.apply(target, args);
+            };
+          }
+
+          return value;
+        }
+      });
   }
 
   try {
     await fn(spies);
+
+    // ? Let us know when output was swallowed unexpectedly
+    for (const [name, spy] of Object.entries(spies)) {
+      if (
+        noDebugPassthrough &&
+        !passthrough.includes(name as (typeof passthrough)[number])
+      ) {
+        const wasAccessed = (spy as typeof spy & { [$wasAccessed]: boolean })[
+          $wasAccessed
+        ];
+
+        assert(typeof wasAccessed === 'boolean');
+
+        if (!wasAccessed) {
+          expect(spy.mock.calls).toBeEmpty();
+        }
+      }
+    }
   } finally {
     spies.logSpy.mockRestore();
     spies.warnSpy.mockRestore();

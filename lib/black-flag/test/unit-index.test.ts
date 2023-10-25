@@ -1,91 +1,88 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable jest/no-conditional-in-test */
-import { asMockedFunction } from '@xunnamius/jest-types';
 
-import { $executionContext } from 'universe/constant';
-import * as universe from 'universe/index';
+// * These tests ensure index exports function as expected
 
-import {
-  configureArguments,
-  configureEnvironment,
-  configureErrorHandlingEpilogue,
-  configureExecutionContext,
-  configureExecutionEpilogue,
-  configureExecutionPrologue
-} from 'universe/configure';
-
-import { expectedCommandsRegex, getFixturePath, runProgram } from 'testverse/helpers';
+import { $executionContext, CliError, FrameworkExitCode } from 'multiverse/black-flag';
 import { withMocks } from 'testverse/setup';
 
-import type { Arguments, ExecutionContext } from 'types/global';
+import * as bf from 'multiverse/black-flag';
+import * as bf_discover from 'multiverse/black-flag/src/discover';
 
-jest.mock('universe/configure');
+import {
+  expectedCommandsRegex,
+  getFixturePath
+} from 'multiverse/black-flag/test/helpers';
 
-jest.mock('universe/constant', (): typeof import('universe/constant') => {
-  const universe = jest.requireActual('universe/constant');
-
-  Object.defineProperty(universe, 'CONFIG_MODULES_ROOT_PATH', {
-    configurable: true,
-    enumerable: true,
-    get: () => mockCommandModulesRootPath
-  });
-
-  return universe;
-});
-
-let mockCommandModulesRootPath: string;
-
-const mockConfigureArguments = asMockedFunction(configureArguments);
-const mockConfigureEnvironment = asMockedFunction(configureEnvironment);
-const mockConfigureExecutionContext = asMockedFunction(configureExecutionContext);
-const mockConfigureExecutionEpilogue = asMockedFunction(configureExecutionEpilogue);
-const mockConfigureFinalProgram = asMockedFunction(configureExecutionPrologue);
-
-const mockConfigureErrorHandlingEpilogue = asMockedFunction(
-  configureErrorHandlingEpilogue
-);
-
-beforeEach(() => {
-  mockCommandModulesRootPath = getFixturePath('empty');
-  mockConfigureArguments.mockImplementation((argv) => argv);
-  mockConfigureEnvironment.mockImplementation(() => ({}));
-  mockConfigureExecutionContext.mockImplementation((context) => context);
-  mockConfigureFinalProgram.mockImplementation(() => undefined);
-  mockConfigureExecutionEpilogue.mockImplementation(async (argv) => argv);
-  mockConfigureErrorHandlingEpilogue.mockImplementation(async () => undefined);
-});
+import type { Arguments, ExecutionContext } from 'multiverse/black-flag';
 
 describe('::configureProgram', () => {
   it('returns PreExecutionContext', async () => {
     expect.hasAssertions();
     await withMocks(async () => {
-      const { program, execute, commands, debug, log, state, taskManager, ...rest } =
-        await universe.configureProgram();
+      const { program, execute, commands, debug, state, ...rest } =
+        await bf.configureProgram();
 
       expect(program).toBeObject();
       expect(execute).toBeFunction();
       expect(commands).toBeDefined();
       expect(debug).toBeFunction();
-      expect(log).toBeFunction();
       expect(state).toBeObject();
-      expect(taskManager).toBeObject();
+      expect(state).toHaveProperty('rawArgv');
+      expect(state).toHaveProperty('initialTerminalWidth');
       expect(rest).toBeEmpty();
     });
   });
 
   it('creates new yargs instance when called with 0 arguments', async () => {
     expect.hasAssertions();
+
     await withMocks(async () => {
-      expect((await universe.configureProgram()).program).toBeObject();
+      expect((await bf.configureProgram()).program).toBeObject();
     });
   });
 
-  it('passes through yargs instance when called with 1 argument', async () => {
+  it('creates executable instance with default configuration hooks when called with 0 arguments', async () => {
     expect.hasAssertions();
-    await withMocks(async () => {
-      const program = universe.makeProgram();
 
-      expect((await universe.configureProgram(program)).program).toBe(program);
+    await withMocks(async ({ logSpy }) => {
+      await expect(
+        (await bf.configureProgram()).execute(['--help'])
+      ).resolves.toBeDefined();
+      expect(logSpy.mock.calls).toStrictEqual([
+        [expect.stringMatching(/^[^-]+--help[^-]+--version[^-]+$/)]
+      ]);
     });
+  });
+
+  it('does not attempt command auto-discovery when called with 0 arguments', async () => {
+    expect.hasAssertions();
+
+    const discoverSpy = jest
+      .spyOn(bf_discover, 'discoverCommands')
+      .mockImplementation(() => undefined as any);
+
+    await withMocks(async () => {
+      await bf.configureProgram();
+      expect(discoverSpy.mock.calls).toHaveLength(0);
+    });
+  });
+
+  it('attempts command auto-discovery when called with >=1 argument', async () => {
+    expect.hasAssertions();
+
+    const discoverSpy = jest
+      .spyOn(bf_discover, 'discoverCommands')
+      .mockImplementation(() => undefined as any);
+
+    await withMocks(async () => {
+      await bf.configureProgram('/does-not-exist');
+      expect(discoverSpy.mock.calls).toHaveLength(1);
+    });
+  });
+
+  it('outputs explicit help text to stdout and implicit to stderr', async () => {
+    expect.hasAssertions();
   });
 
   it('throws when configureExecutionContext returns falsy', async () => {
@@ -95,7 +92,7 @@ describe('::configureProgram', () => {
         () => undefined as unknown as ExecutionContext
       );
 
-      await expect(universe.configureProgram()).rejects.toMatchObject({
+      await expect(bf.configureProgram()).rejects.toMatchObject({
         message: expect.stringMatching(/ExecutionContext/)
       });
     });
@@ -106,9 +103,7 @@ describe('::configureProgram', () => {
       expect.hasAssertions();
 
       const expectedArgv = ['a', 'b', 'c'];
-      const expectedResult = { something: 'else' } as unknown as Arguments<
-        Record<string, unknown>
-      >;
+      const expectedResult = { something: 'else' } as unknown as Arguments;
 
       await withMocks(async () => {
         mockConfigureArguments.mockImplementation(() => expectedArgv);
@@ -118,7 +113,7 @@ describe('::configureProgram', () => {
           return expectedResult;
         });
 
-        await expect((await universe.configureProgram()).execute()).resolves.toBe(
+        await expect((await bf.configureProgram()).execute()).resolves.toBe(
           expectedResult
         );
       });
@@ -131,11 +126,9 @@ describe('::configureProgram', () => {
           () => null as unknown as typeof process.argv
         );
 
-        await expect((await universe.configureProgram()).execute()).rejects.toMatchObject(
-          {
-            message: expect.stringMatching(/typeof process\.argv/)
-          }
-        );
+        await expect((await bf.configureProgram()).execute()).rejects.toMatchObject({
+          message: expect.stringMatching(/typeof process\.argv/)
+        });
       });
     });
 
@@ -146,16 +139,14 @@ describe('::configureProgram', () => {
           async () => false as unknown as Arguments<Record<string, unknown>>
         );
 
-        await expect((await universe.configureProgram()).execute()).rejects.toMatchObject(
-          {
-            message: expect.stringMatching(/Arguments/)
-          }
-        );
+        await expect((await bf.configureProgram()).execute()).rejects.toMatchObject({
+          message: expect.stringMatching(/Arguments/)
+        });
       });
     });
   });
 
-  describe('command module auto-discovery', () => {
+  describe('<command module auto-discovery>', () => {
     it('supports different module types', async () => {
       expect.hasAssertions();
 
@@ -218,7 +209,7 @@ describe('::configureProgram', () => {
 
       mockCommandModulesRootPath = getFixturePath('nested-depth');
 
-      await withMocks(async ({ logSpy }) => {
+      await withMocks(async () => {
         await expect(
           runProgram('good1 good2 good3 command --command')
         ).resolves.toStrictEqual(
@@ -268,7 +259,15 @@ describe('::configureProgram', () => {
             handled_by: getFixturePath(['nested-depth', 'index.js'])
           })
         );
+      });
+    });
 
+    it('supports --help on deeply nested commands', async () => {
+      expect.hasAssertions();
+
+      mockCommandModulesRootPath = getFixturePath('nested-depth');
+
+      await withMocks(async ({ logSpy }) => {
         await runProgram('--help');
         await runProgram('good1 --help');
         await runProgram('good1 good2 --help');
@@ -297,6 +296,85 @@ describe('::configureProgram', () => {
       });
     });
 
-    it.todo('supports --help on deeply nested commands');
+    it('ensures parent commands and child commands of the same name do not interfere', async () => {
+      expect.hasAssertions();
+    });
+
+    it('disables yargs::argv magic getter (always returns undefined)', async () => {
+      expect.hasAssertions();
+    });
+
+    it('disables strictness constraints on parent commands', async () => {
+      expect.hasAssertions();
+    });
+
+    it('enables strictness constraints on (pure) child commands', async () => {
+      expect.hasAssertions();
+    });
+
+    it('reports non-cli errors as expected', async () => {
+      expect.hasAssertions();
+    });
+
+    it('reports cli errors (and descendants) as expected', async () => {
+      expect.hasAssertions();
+    });
+
+    it('reports causal chains for deep cli errors', async () => {
+      expect.hasAssertions();
+    });
+
+    it('gracefully sets exit code to 0 without fuss when handling a GracefulEarlyExitError', async () => {
+      expect.hasAssertions();
+    });
+  });
+});
+
+describe('::runProgram', () => {
+  it('executes program and sets exit code to 0 upon success', async () => {
+    expect.hasAssertions();
+
+    await withMocks(async () => {
+      await bf.runProgram();
+    });
+  });
+
+  it('exits with FrameworkExitCode.DEFAULT_ERROR upon string error type', async () => {
+    expect.hasAssertions();
+
+    mockedExecute.mockImplementationOnce(async () => {
+      throw 'problems!';
+    });
+
+    await protectedImport({ expectedExitCode: FrameworkExitCode.DEFAULT_ERROR });
+
+    expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+    expect(mockedExecute.mock.calls).toStrictEqual([[]]);
+  });
+
+  it('exits with FrameworkExitCode.DEFAULT_ERROR upon non-CliError error type', async () => {
+    expect.hasAssertions();
+
+    mockedExecute.mockImplementationOnce(async () => {
+      throw new Error('problems!');
+    });
+
+    await protectedImport({ expectedExitCode: FrameworkExitCode.DEFAULT_ERROR });
+
+    expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+    expect(mockedExecute.mock.calls).toStrictEqual([[]]);
+  });
+
+  it('exits with specified exit code upon CliError error type', async () => {
+    expect.hasAssertions();
+
+    mockedExecute.mockImplementationOnce(async () => {
+      throw new CliError('problems!', { suggestedExitCode: 5 });
+    });
+
+    await protectedImport({ expectedExitCode: 5 });
+
+    expect(mockedConfigureProgram.mock.calls).toStrictEqual([[]]);
+    expect(mockedExecute.mock.calls).toStrictEqual([[]]);
   });
 });

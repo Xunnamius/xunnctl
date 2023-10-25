@@ -1,90 +1,105 @@
 import assert from 'node:assert';
-import { isNativeError } from 'node:util/types';
 
 import alphaSort from 'alpha-sort';
-import { ListrErrorTypes } from 'listr2';
 import { name as pkgName } from 'package';
 import yargs from 'yargs/yargs';
 
-import {
-  createDebugLogger,
-  createGenericLogger,
-  createListrManager
-} from 'multiverse/rejoinder';
-
-import {
-  configureArguments,
-  configureErrorHandlingEpilogue,
-  configureExecutionContext,
-  configureExecutionEpilogue,
-  configureExecutionPrologue
-} from 'universe/configure';
+import { createDebugLogger } from 'multiverse/rejoinder';
 
 import {
   $executionContext,
-  CONFIG_MODULES_ROOT_PATH,
-  FrameworkExitCode,
-  LogTag,
-  MAX_LOG_ERROR_ENTRIES
-} from 'universe/constant';
-
-import { discoverCommands } from 'universe/discover';
-
-import {
   AssertionFailedError,
   CliError,
   ErrorMessage,
+  FrameworkExitCode,
   isCliError,
-  isGracefulEarlyExitError
-} from 'universe/error';
+  isGracefulEarlyExitError,
+  type ConfigureHooks,
+  type ExecutionContext,
+  type Executor,
+  type PreExecutionContext,
+  type Program
+} from 'multiverse/black-flag';
 
-import type {
-  ExecutionContext,
-  Executor,
-  PreExecutionContext,
-  Program
-} from 'types/global';
+import { discoverCommands } from 'multiverse/black-flag/src/discover';
 
-const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
+import type { EmptyObject } from 'type-fest';
+
 const rootDebugLogger = createDebugLogger({ namespace: pkgName });
-const rootGenericLogger = createGenericLogger({ namespace: pkgName });
-const log = rootGenericLogger;
 const debug = rootDebugLogger.extend('index');
 
 /**
- * Create and return a pre-configured Yargs instance (program) and argv parser.
- */
-export async function configureProgram(): Promise<PreExecutionContext>;
-/**
- * Configure an existing Yargs instance (program) and return an argv parser.
+ * Create and return a pre-configured yargs instance
+ * ({@link PreExecutionContext.program}) and argument parsing function
+ * ({@link PreExecutionContext.execute}) with default configuration hooks.
  *
- * @param program A Yargs instance to configure
+ * When called in this form, command auto-discovery is disabled.
  */
-export async function configureProgram(
-  program: Program<Record<string, unknown>>
-): Promise<PreExecutionContext>;
-export async function configureProgram(
-  program?: Program<Record<string, unknown>>
-): Promise<PreExecutionContext> {
+export async function configureProgram<
+  CustomContext extends ExecutionContext = ExecutionContext
+>(
+  configurationHooks?: ConfigureHooks<CustomContext>
+): Promise<PreExecutionContext<CustomContext>>;
+/**
+ * Create and return a pre-configured yargs instance
+ * ({@link PreExecutionContext.program}) and argument parsing function
+ * ({@link PreExecutionContext.execute}) with the provided configuration hooks.
+ *
+ * Command auto-discovery will occur at `commandModulePath` if defined.
+ */
+export async function configureProgram<
+  CustomContext extends ExecutionContext = ExecutionContext
+>(
+  commandModulePath?: string,
+  configurationHooks?: ConfigureHooks<CustomContext>
+): Promise<PreExecutionContext<CustomContext>>;
+export async function configureProgram<
+  CustomContext extends ExecutionContext = ExecutionContext
+>(
+  ...args:
+    | [configurationHooks?: ConfigureHooks<CustomContext>]
+    | [commandModulePath?: string, configurationHooks?: ConfigureHooks<CustomContext>]
+): Promise<PreExecutionContext<CustomContext>> {
   debug('configureProgram was invoked');
 
-  const taskManager = createListrManager();
-  const rootProgram = program || makeProgram<Record<string, unknown>>();
+  const rootProgram = makeProgram();
+
+  let commandModulePath: string;
+
+  const configurationHooks: Required<ConfigureHooks<CustomContext>> = {
+    configureArguments(rawArgv) {
+      return rawArgv;
+    },
+    configureExecutionContext(context) {
+      return context as CustomContext;
+    },
+    configureExecutionEpilogue(argv) {
+      return argv;
+    },
+    configureErrorHandlingEpilogue: noopConfigurationHook,
+    configureExecutionPrologue: noopConfigurationHook
+  };
+
+  if (typeof args[0] === 'string') {
+    commandModulePath = args[0];
+    Object.assign(configurationHooks, args[1]);
+  } else {
+    commandModulePath = '';
+    Object.assign(configurationHooks, args[0], args[1]);
+  }
+
+  debug('command module auto-discovery path: %O', commandModulePath);
+  debug('configuration hooks: %O', configurationHooks);
 
   debug('entering configureExecutionContext');
 
   // ? Redundancy for extra type safety (config fns could be redefined later)
   const context = asUnenumerable(
-    configureExecutionContext({
+    await configurationHooks.configureExecutionContext({
       commands: new Map(),
-      log: rootGenericLogger,
       debug: rootDebugLogger,
-      taskManager,
       state: {
         rawArgv: [],
-        isSilenced: false,
-        isQuieted: false,
-        isHushed: false,
         initialTerminalWidth: rootProgram.terminalWidth()
       }
     })
@@ -101,15 +116,18 @@ export async function configureProgram(
     'to save space, ExecutionContext will be unenumerable from this point on'
   );
 
-  const deepestParseResultWrapper = await discoverCommands(
-    CONFIG_MODULES_ROOT_PATH,
-    rootProgram,
-    context
-  );
+  const deepestParseResultWrapper: Awaited<ReturnType<typeof discoverCommands>> =
+    commandModulePath
+      ? await discoverCommands(commandModulePath, rootProgram, context)
+      : { result: undefined };
+
+  if (!commandModulePath) {
+    debug.warn('skipped command auto-discovery entirely due to call signature');
+  }
 
   debug('entering configureExecutionPrologue');
 
-  configureExecutionPrologue(rootProgram, context);
+  await configurationHooks.configureExecutionPrologue(rootProgram, context);
 
   debug('exited configureExecutionPrologue');
 
@@ -121,7 +139,7 @@ export async function configureProgram(
 
       debug('entering configureArguments');
 
-      const argv: typeof process.argv | undefined = configureArguments(
+      const argv = await configurationHooks.configureArguments(
         argv_?.length ? argv_ : process.argv,
         context
       );
@@ -137,6 +155,8 @@ export async function configureProgram(
       debug('configured argv (initialRawArgv): %O', argv);
 
       context.state.rawArgv = argv;
+
+      debug('calling ::parseAsync on root program', argv);
 
       const shallowestParseResult = await rootProgram.parseAsync(
         argv,
@@ -157,7 +177,10 @@ export async function configureProgram(
 
       debug('entering configureExecutionEpilogue');
 
-      const result = await configureExecutionEpilogue(finalArgv, context);
+      const result = await configurationHooks.configureExecutionEpilogue(
+        finalArgv,
+        context
+      );
 
       debug('exited configureExecutionEpilogue');
       debug('execution epilogue returned: %O', result);
@@ -174,7 +197,11 @@ export async function configureProgram(
 
       return result;
     } catch (error) {
-      let argv: Parameters<typeof configureErrorHandlingEpilogue>[1];
+      const debug_error = debug.extend('catch');
+
+      debug_error.error('caught fatal error (type %O): %O', typeof error, error);
+
+      let argv: Parameters<typeof configurationHooks.configureErrorHandlingEpilogue>[1];
 
       try {
         argv = (rootProgram.parsed || { argv: {} }).argv as unknown as typeof argv;
@@ -182,16 +209,17 @@ export async function configureProgram(
         argv = {} as typeof argv;
       }
 
+      debug_error(
+        'potentially-parsed argv (may be incomplete due to error state): %O',
+        argv
+      );
+
       if (isGracefulEarlyExitError(error)) {
         debug.message('caught graceful early exit "error"');
         debug.warn('error will be forwarded to top-level error handler');
-        debug('argv at point of termination: %O', argv);
-
-        throw error;
       } else {
-        const debug_error = debug.extend('catch');
-
-        debug_error.error('caught fatal error (type %O): %O', typeof error, error);
+        // ? Ensure [$executionContext] always exists
+        argv[$executionContext] ??= asUnenumerable(context);
 
         let message = ErrorMessage.Generic();
         let exitCode = FrameworkExitCode.DEFAULT_ERROR;
@@ -207,64 +235,23 @@ export async function configureProgram(
 
         debug_error('final error message: %O', message);
         debug_error('final exit code: %O', exitCode);
-        debug_error('semi-parsed argv (may be incomplete due to error state): %O', argv);
 
-        if (!context.state.isSilenced) {
-          log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);
-          if (
-            !context.state.isQuieted &&
-            isNativeError(error) &&
-            error.cause &&
-            // ? Don't repeat what has already been output
-            error.cause !== message
-          ) {
-            log.error([IF_NOT_QUIETED], '❌ Causal stack:');
+        debug_error('entering configureErrorHandlingPrologue');
 
-            for (
-              let count = 0, subError: Error | undefined = error;
-              subError?.cause && count < MAX_LOG_ERROR_ENTRIES;
-              count++
-            ) {
-              if (isNativeError(subError.cause)) {
-                log.error([IF_NOT_QUIETED], ` ⮕  ${subError.cause.message}`);
-                subError = subError.cause;
-              } else {
-                log.error([IF_NOT_QUIETED], ` ⮕  ${subError.cause}`);
-                subError = undefined;
-              }
-
-              if (count + 1 >= MAX_LOG_ERROR_ENTRIES) {
-                log.error([IF_NOT_QUIETED], `(remaining entries have been hidden)`);
-              }
-            }
-          }
-
-          if (!context.state.isHushed && taskManager.errors.length > 0) {
-            log.newline([IF_NOT_HUSHED]);
-            log.error([IF_NOT_HUSHED], '❌ Fatal task errors:');
-
-            for (const taskError of taskManager.errors) {
-              if (taskError.type !== ListrErrorTypes.HAS_FAILED_WITHOUT_ERROR) {
-                log.error([IF_NOT_HUSHED], `❗ ${taskError.message}`);
-              }
-            }
-          }
-        }
-
-        debug_error('entering configureErrorHandlingEpilogue');
-
-        // ? Ensure [$executionContext] always exists
-        argv[$executionContext] ??= asUnenumerable(context);
-
-        await configureErrorHandlingEpilogue(error, argv, context);
+        await configurationHooks.configureErrorHandlingEpilogue(
+          { message, error, exitCode },
+          argv,
+          context
+        );
 
         debug_error('exited configureErrorHandlingEpilogue');
+
         debug_error('final execution context: %O', asEnumerable);
         debug_error('error handling complete');
         debug_error.newline();
-
-        throw error;
       }
+
+      throw error;
     }
   };
 
@@ -295,13 +282,15 @@ export async function configureProgram(
  *
  * @internal
  */
-export function makeProgram<RawArgs extends Record<string, unknown>>() {
+export function makeProgram<
+  CustomCliArguments extends Record<string, unknown> = EmptyObject
+>() {
   const debug_ = debug.extend('make');
-  const deferredCommandArgs: Parameters<Program<RawArgs>['command']>[] = [];
+  const deferredCommandArgs: Parameters<Program<CustomCliArguments>['command']>[] = [];
 
   debug_('created new Program instance');
 
-  return new Proxy(yargs() as unknown as Program<RawArgs>, {
+  return new Proxy(yargs() as unknown as Program<CustomCliArguments>, {
     get(target, property) {
       if (property === 'argv') {
         debug_.warn(
@@ -332,7 +321,7 @@ export function makeProgram<RawArgs extends Record<string, unknown>>() {
       // ? function, that's an exercise left to the end developer :)
 
       if (property === 'command_deferred') {
-        return function (...args: Parameters<Program<RawArgs>['command']>) {
+        return function (...args: Parameters<Program<CustomCliArguments>['command']>) {
           debug_('::command call was deferred');
           deferredCommandArgs.push(args);
           return target;
@@ -347,8 +336,8 @@ export function makeProgram<RawArgs extends Record<string, unknown>>() {
           const sort = alphaSort({ natural: true });
 
           deferredCommandArgs.sort(([firstCommands], [secondCommands]) => {
-            const firstCommand = firstCommands[0];
-            const secondCommand = secondCommands[0];
+            const firstCommand = [firstCommands].flat()[0];
+            const secondCommand = [secondCommands].flat()[0];
 
             // ? If they do, then we accidentally called this on a child instead
             // ? of a parent...
@@ -379,13 +368,14 @@ export function makeProgram<RawArgs extends Record<string, unknown>>() {
           return value.apply(target, args);
         };
       }
+
       return value;
     }
   });
 }
 
 /**
- * Creates an object with a "hidden" `[$executionContext]`.
+ * Creates an object with a "hidden" `[$executionContext]` property.
  *
  * @internal
  */
@@ -397,10 +387,8 @@ export function wrapExecutionContext(context: ExecutionContext) {
  * Takes an object and rewrites its property descriptors so that its properties
  * are no longer enumerable. This leads to less needlessly-verbose object logs
  * in debug output.
- *
- * @internal
  */
-export function asUnenumerable<T extends object>(context: T) {
+function asUnenumerable<T extends object>(context: T) {
   if (!context) {
     return context;
   }
@@ -427,10 +415,8 @@ export function asUnenumerable<T extends object>(context: T) {
  * Takes an object and rewrites its property descriptors so that its properties
  * are guaranteed enumerable. This is used when we actually do want to show
  * verbose object logs in debug output.
- *
- * @internal
  */
-export function asEnumerable<T extends object>(context: T) {
+function asEnumerable<T extends object>(context: T) {
   if (!context) {
     return context;
   }
@@ -452,3 +438,5 @@ export function asEnumerable<T extends object>(context: T) {
 
   return enumerable;
 }
+
+function noopConfigurationHook() {}
