@@ -4,15 +4,14 @@
  * purely in TypeScript, but for testing purposes this will do.
  */
 
-namespace Type {
-  export type CliArgs = import('../../src/configure').CustomCliArguments;
+declare namespace Type {
   export type DummyArgs = { handled_by: string };
   export type ChildConfig =
-    import('../../types/global').ChildConfiguration<DummyArgs>;
+    import('../../types/module').ChildConfiguration<DummyArgs>;
   export type ParentConfig =
-    import('../../types/global').ParentConfiguration<DummyArgs>;
+    import('../../types/module').ParentConfiguration<DummyArgs>;
   export type RootConfig =
-    import('../../types/global').RootConfiguration<DummyArgs>;
+    import('../../types/module').RootConfiguration<DummyArgs>;
   export type ConfigModule =
-    import('../../types/global').ImportedConfigurationModule<DummyArgs>;
+    import('../../types/module').ImportedConfigurationModule<DummyArgs>;
 }

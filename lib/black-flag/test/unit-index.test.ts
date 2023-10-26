@@ -4,6 +4,7 @@
 // * These tests ensure index exports function as expected
 
 import { $executionContext, CliError, FrameworkExitCode } from 'multiverse/black-flag';
+import { makeRunner } from 'multiverse/black-flag/util';
 import { withMocks } from 'testverse/setup';
 
 import * as bf from 'multiverse/black-flag';
@@ -81,12 +82,11 @@ describe('::configureProgram', () => {
     });
   });
 
-  it('outputs explicit help text to stdout and implicit to stderr', async () => {
+  it('returns a non-strict yargs instance if command auto-discovery is disabled', async () => {
     expect.hasAssertions();
 
     await withMocks(async ({ logSpy, errorSpy }) => {
-      const { program, execute } = await bf.configureProgram();
-      program.strict(true);
+      const { execute } = await bf.configureProgram();
 
       await execute(['--help']);
 
@@ -96,11 +96,7 @@ describe('::configureProgram', () => {
       await execute(['--bad']);
 
       expect(logSpy.mock.calls).toHaveLength(1);
-      expect(errorSpy.mock.calls).toStrictEqual([
-        expect.arrayContaining([expect.stringContaining('--help')]),
-        [],
-        expect.arrayContaining([expect.stringContaining('bad')])
-      ]);
+      expect(errorSpy.mock.calls).toHaveLength(0);
     });
   });
 
@@ -136,6 +132,29 @@ describe('::configureProgram', () => {
         await expect((await bf.configureProgram()).execute()).resolves.toBe(
           expectedResult
         );
+      });
+    });
+
+    it('outputs explicit help text to stdout and implicit to stderr', async () => {
+      expect.hasAssertions();
+
+      await withMocks(async ({ logSpy, errorSpy }) => {
+        const run = makeRunner(getFixturePath('one-file-index'));
+        await run('--help');
+
+        expect(logSpy.mock.calls).toHaveLength(1);
+        expect(errorSpy.mock.calls).toHaveLength(0);
+
+        await expect(run('--bad')).rejects.toMatchObject({
+          message: expect.stringMatching(/^Unknown.*bad$/)
+        });
+
+        expect(logSpy.mock.calls).toHaveLength(1);
+        expect(errorSpy.mock.calls).toStrictEqual([
+          expect.arrayContaining([expect.stringContaining('--help')]),
+          [],
+          expect.arrayContaining([expect.stringContaining('bad')])
+        ]);
       });
     });
 

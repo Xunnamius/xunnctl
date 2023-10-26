@@ -28,6 +28,7 @@ export type {
 } from 'multiverse/black-flag/types/configure';
 
 export type {
+  AnyConfiguration,
   ChildConfiguration,
   Configuration,
   ImportedConfigurationModule,
@@ -36,6 +37,8 @@ export type {
 } from 'multiverse/black-flag/types/module';
 
 export type {
+  AnyArguments,
+  AnyProgram,
   Arguments,
   ExecutionContext,
   Executor,
