@@ -83,16 +83,36 @@ describe('::configureProgram', () => {
 
   it('outputs explicit help text to stdout and implicit to stderr', async () => {
     expect.hasAssertions();
+
+    await withMocks(async ({ logSpy, errorSpy }) => {
+      const { program, execute } = await bf.configureProgram();
+      program.strict(true);
+
+      await execute(['--help']);
+
+      expect(logSpy.mock.calls).toHaveLength(1);
+      expect(errorSpy.mock.calls).toHaveLength(0);
+
+      await execute(['--bad']);
+
+      expect(logSpy.mock.calls).toHaveLength(1);
+      expect(errorSpy.mock.calls).toStrictEqual([
+        expect.arrayContaining([expect.stringContaining('--help')]),
+        [],
+        expect.arrayContaining([expect.stringContaining('bad')])
+      ]);
+    });
   });
 
   it('throws when configureExecutionContext returns falsy', async () => {
     expect.hasAssertions();
-    await withMocks(async () => {
-      mockConfigureExecutionContext.mockImplementation(
-        () => undefined as unknown as ExecutionContext
-      );
 
-      await expect(bf.configureProgram()).rejects.toMatchObject({
+    await withMocks(async () => {
+      await expect(
+        bf.configureProgram(undefined, {
+          configureExecutionContext: () => undefined as any
+        })
+      ).rejects.toMatchObject({
         message: expect.stringMatching(/ExecutionContext/)
       });
     });
@@ -121,12 +141,15 @@ describe('::configureProgram', () => {
 
     it('throws if configureArguments returns falsy', async () => {
       expect.hasAssertions();
-      await withMocks(async () => {
-        mockConfigureArguments.mockImplementation(
-          () => null as unknown as typeof process.argv
-        );
 
-        await expect((await bf.configureProgram()).execute()).rejects.toMatchObject({
+      await withMocks(async () => {
+        await expect(
+          (
+            await bf.configureProgram(undefined, {
+              configureArguments: () => undefined as any
+            })
+          ).execute(['--help'])
+        ).rejects.toMatchObject({
           message: expect.stringMatching(/typeof process\.argv/)
         });
       });
@@ -134,12 +157,15 @@ describe('::configureProgram', () => {
 
     it('throws if configureExecutionEpilogue returns falsy', async () => {
       expect.hasAssertions();
-      await withMocks(async () => {
-        mockConfigureExecutionEpilogue.mockImplementation(
-          async () => false as unknown as Arguments<Record<string, unknown>>
-        );
 
-        await expect((await bf.configureProgram()).execute()).rejects.toMatchObject({
+      await withMocks(async () => {
+        await expect(
+          (
+            await bf.configureProgram(undefined, {
+              configureExecutionEpilogue: () => undefined as any
+            })
+          ).execute(['--vex'])
+        ).rejects.toMatchObject({
           message: expect.stringMatching(/Arguments/)
         });
       });
