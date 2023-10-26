@@ -1,3 +1,5 @@
+import type { Argv } from 'yargs';
+
 /**
  * A symbol allowing access to the `ExecutionContext` object "hidden" within
  * each `Arguments` instance.
@@ -9,6 +11,17 @@ export const $executionContext = Symbol('execution-context');
  * `.usage(...)`.
  */
 export const DEFAULT_USAGE_TEXT = 'Usage: $0';
+
+/**
+ * These are `Program` instance properties that will throw an
+ * `AssertionFailedError` upon invocation invoked if and only if said program is
+ * not a shadow clone.
+ */
+export const DISALLOWED_NON_SHADOW_PROGRAM_METHODS: readonly (keyof Argv)[] = [
+  'strict',
+  'strictCommands',
+  'strictOptions'
+];
 
 /**
  * Well-known exit codes shared across CLI implementations.

@@ -1,3 +1,4 @@
+import assert from 'node:assert';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -5,22 +6,32 @@ import { name as pkgName, version as pkgVersion } from 'package';
 
 import {
   AssertionFailedError,
+  CliError,
   CommandNotImplementedError,
   DEFAULT_USAGE_TEXT,
   ErrorMessage,
   GracefulEarlyExitError,
   makeProgram,
+  type AnyArguments,
+  type AnyConfiguration,
+  type AnyProgram,
   type Arguments,
   type Configuration,
   type ExecutionContext,
   type ImportedConfigurationModule,
-  type Program,
   type ProgramMetadata
 } from 'multiverse/black-flag';
 
 import { wrapExecutionContext } from 'multiverse/black-flag/src/index';
 
 const hasSpacesRegExp = /\s+/;
+
+/**
+ * An internal mapping between program instances and their shadow clones.
+ *
+ * @internal
+ */
+export const shadowPrograms = new WeakMap<AnyProgram, AnyProgram>();
 
 /**
  * Recursively scans the filesystem for _JavaScript_ index files starting at
@@ -60,7 +71,7 @@ const hasSpacesRegExp = /\s+/;
  */
 export async function discoverCommands(
   basePath: string,
-  rootProgram: Program<Record<string, unknown>>,
+  rootProgram: AnyProgram,
   context: ExecutionContext
 ): Promise<{
   /**
@@ -106,7 +117,7 @@ export async function discoverCommands(
   async function discover(
     configPath: string,
     lineage: string[] = [],
-    previousParentProgram: Program<Record<string, unknown>> | undefined = undefined
+    previousParentProgram: AnyProgram | undefined = undefined
   ): Promise<void> {
     const isRootProgram = !alreadyLoadedRootProgram;
     const parentType = isRootProgram ? 'root' : 'parent-child';
@@ -121,6 +132,7 @@ export async function discoverCommands(
       ['js', 'mjs', 'cjs'].map((extension) =>
         path.join(configPath, `index.${extension}`)
       ),
+      parentProgram,
       context
     );
 
@@ -158,15 +170,13 @@ export async function discoverCommands(
     );
 
     context.commands.set(parentConfigFullName, {
-      // ? Cast as superclass
-      program: parentProgram as Program<Record<string, unknown>>,
+      program: parentProgram as AnyProgram,
       metadata: parentMeta
     });
 
     debug(`added ${parentType} program to ExecutionContext::commands`);
 
     const configDir = await fs.opendir(configPath);
-    const originalCommandCardinality = context.commands.size;
 
     for await (const entry of configDir) {
       const isPotentialChildConfigOfCurrentParent = /.*(?<!index)\.(?:js|cjs|mjs)$/.test(
@@ -180,8 +190,10 @@ export async function discoverCommands(
         await discover(entry.path, lineage, parentProgram);
       } else if (isPotentialChildConfigOfCurrentParent) {
         debug('attempting to load file...');
+
+        const childProgram = makeProgram();
         const { configuration: childConfig, metadata: childMeta } =
-          await loadConfiguration(entry.path, context);
+          await loadConfiguration(entry.path, childProgram, context);
 
         if (!childConfig) {
           debug.error(
@@ -193,7 +205,6 @@ export async function discoverCommands(
           throw new AssertionFailedError(ErrorMessage.ConfigLoadFailure(entry.path));
         }
 
-        const childProgram = makeProgram();
         const childConfigFullName = `${parentConfigFullName} ${childConfig.name}`;
 
         debug('child full name (lineage): %O', childConfigFullName);
@@ -212,8 +223,7 @@ export async function discoverCommands(
         );
 
         context.commands.set(childConfigFullName, {
-          // ? Cast as superclass
-          program: childProgram as Program<Record<string, unknown>>,
+          program: childProgram as AnyProgram,
           metadata: childMeta
         });
 
@@ -224,14 +234,6 @@ export async function discoverCommands(
         );
       }
     }
-
-    if (context.commands.size === originalCommandCardinality) {
-      // ? If there were no child commands added in the last pass, making this
-      // ? parent program a leaf node on the tree (i.e. child-like), then
-      // ? tighten restrictions on this parent program.
-      parentProgram.strict(true);
-      debug('enabled strictness constraint on childless parent program');
-    }
   }
 
   /**
@@ -241,6 +243,7 @@ export async function discoverCommands(
    */
   async function loadConfiguration(
     configPath: string | string[],
+    program: AnyProgram,
     context: ExecutionContext
   ) {
     const isRootProgram = !alreadyLoadedRootProgram;
@@ -259,7 +262,13 @@ export async function discoverCommands(
     while (maybeConfigPaths.length) {
       try {
         const maybeConfigPath = maybeConfigPaths.shift()!;
-        const meta = {} as ProgramMetadata;
+        const meta = {
+          get shadow() {
+            const shadow = shadowPrograms.get(program);
+            assert(shadow !== undefined);
+            return shadow;
+          }
+        } as ProgramMetadata;
 
         meta.filename = path.basename(maybeConfigPath);
         meta.filenameWithoutExtension = meta.filename.split('.').slice(0, -1).join('.');
@@ -311,7 +320,7 @@ export async function discoverCommands(
             // ? This property is trimmed below
             description: rawConfig.description ?? '',
             handler(...args) {
-              debug_('entered actual handler function of %O', finalConfig.name);
+              debug_('triggered shadow (real) handler function of %O', finalConfig.name);
               return (rawConfig.handler || defaultHandler)(...args);
             },
             name: (rawConfig.name || isRootProgram
@@ -387,121 +396,69 @@ export async function discoverCommands(
   }
 
   /**
-   * Configures the root (or _pure_ parent) program. Currently, this function:
+   * Configures the root (or _pure_ parent) program. Specifically, this
+   * function:
    *
    * - Calls {@link configureParentProgram}
-   * - Enables built-in `--version` support unless `package.json::version` is not
-   *   available
+   * - Enables built-in `--version` support unless `package.json::version` is
+   *   not available
    */
   function configureRootProgram(
-    program: Program<Record<string, unknown>>,
-    config: Configuration<Record<string, unknown>>,
+    program: AnyProgram,
+    config: AnyConfiguration,
     fullName: string
   ): void {
     configureParentProgram(program, config, fullName);
 
+    const shadowProgram = shadowPrograms.get(program);
+    assert(shadowProgram !== undefined);
+
     // ? Only the root program should recognize the --version flag
 
     program.version(pkgVersion || false);
+    shadowProgram.version(pkgVersion || false);
 
     debug('%O was additionally configured as: %O', config.name, 'root (pure parent)');
   }
 
   /**
-   * Configures a parent (or parent-child) program. Currently, this function:
+   * Configures a parent (or parent-child) program. Specifically, this function:
    *
    * - Disables built-in `--help` magic and replaces it with a custom solution
-   * - Disables built-in `--version` support
-   * - Configures usage help text template
-   * - Configures script name
-   * - Registers a default command and its aliases to `program`
-   * - Disables strict mode as it's incompatible with programs with children
-   * - Disables built-in exit-on-error behavior (we handle errors ourselves)
-   * - Allow output to span entire terminal width
-   * - Disable built-in error/help reporting (we'll handle it ourselves)
+   * - Calls {@link configureProgram}
+   * - Calls {@link proxyParentToChild}
    *
    * And for parent-child programs (i.e. non-root parents) specifically:
    *
    * - Registers a proxy command (including aliases) to `parentProgram`
    */
   function configureParentProgram(
-    program: Program<Record<string, unknown>>,
-    config: Configuration<Record<string, unknown>>,
+    program: AnyProgram,
+    config: AnyConfiguration,
     fullName: string,
-    parentParentProgram?: Program<Record<string, unknown>>
+    parentParentProgram?: AnyProgram
   ): void {
+    const shadowProgram = makeProgram({ isShadowClone: true });
+
     // ? Swap out --help support for something that plays nice with the
     // ? existence of child programs
     program.help(false).option('help', { boolean: true });
+    shadowProgram.help(false).option('help', { boolean: true });
 
     const handler = config.handler;
-    config.handler = async (parsed) => {
-      if (parsed.help) {
-        // ? stdout for purposely showing help; stderr (the default) otherwise
+    config.handler = async (parsedArgv) => {
+      if (parsedArgv.help) {
         program.showHelp('log');
         throw new GracefulEarlyExitError();
       } else {
-        return handler?.(parsed);
+        return handler?.(parsedArgv);
       }
     };
 
-    // ? Only the root program should recognize the --version flag
+    configureProgram(program, config, fullName);
+    configureProgram(shadowProgram, config, fullName);
 
-    program.version(false);
-
-    // ? Configure usage help text
-
-    program.usage(config.usage ?? DEFAULT_USAGE_TEXT);
-
-    // ? Configure the script's name
-
-    program.scriptName(fullName);
-
-    // ? Register a default command
-
-    program.command(
-      [config.command, ...config.aliases],
-      config.description,
-      config.builder,
-      config.handler,
-      [],
-      config.deprecated
-    );
-
-    // ? Disable strict mode
-
-    program.strict(false);
-
-    // ? Disable exit-on-error functionality
-
-    program.exitProcess(false);
-
-    // ? Allow output text to span the entire screen
-
-    program.wrap(context.state.initialTerminalWidth);
-
-    // ? For parent-child programs, the same command with the parent, but use a
-    // ? proxy handler
-
-    parentParentProgram?.command_deferred(
-      [config.command.replace('$0', config.name), ...config.aliases],
-      config.description,
-      config.builder,
-      proxyHandler(program, config, fullName),
-      [],
-      config.deprecated
-    );
-
-    // ? We'll report on any errors manually
-
-    program.showHelpOnFail(false);
-
-    // ? Make yargs stop being so noisy when exceptional stuff happens
-
-    program.fail((message, error) => {
-      debug('entered custom yargs failure handler');
-      throw error || message;
-    });
+    proxyParentToChild(program, config, fullName, shadowProgram, parentParentProgram);
 
     debug(
       '%O was additionally configured as: %O',
@@ -511,29 +468,49 @@ export async function discoverCommands(
   }
 
   /**
-   * Configures a _pure_ child program. Currently, this function:
+   * Configures a _pure_ child program. Specifically, this function:
    *
+   * - Calls {@link configureProgram}
+   * - Calls {@link proxyParentToChild}
    * - Enables built-in `--help` magic
+   */
+  function configureChildProgram(
+    program: AnyProgram,
+    config: AnyConfiguration,
+    fullName: string,
+    parentProgram: AnyProgram
+  ): void {
+    const shadowProgram = makeProgram({ isShadowClone: true });
+
+    configureProgram(program, config, fullName);
+    configureProgram(shadowProgram, config, fullName);
+
+    proxyParentToChild(program, config, fullName, shadowProgram, parentProgram);
+
+    // ? Only child programs should use the built-in --help magic
+
+    program.help(true);
+    shadowProgram.help(true);
+
+    debug('%O was additionally configured as: %O', config.name, 'pure child');
+  }
+
+  /**
+   * Configures a program with settings universal to all program types.
+   * Specifically, this function:
+   *
    * - Disables built-in `--version` support
    * - Configures usage help text template
    * - Configures script name
-   * - Registers a default command and its aliases to `program`
-   * - Registers a proxy command (including aliases) to `parentProgram`
-   * - Disables strict mode since pure child commands don't have children
    * - Disables built-in exit-on-error behavior (we handle errors ourselves)
    * - Allow output to span entire terminal width
    * - Disable built-in error/help reporting (we'll handle it ourselves)
    */
-  function configureChildProgram(
-    program: Program<Record<string, unknown>>,
-    config: Configuration<Record<string, unknown>>,
-    fullName: string,
-    parentProgram: Program<Record<string, unknown>>
-  ): void {
-    // ? Only child programs should use the built-in --help magic
-
-    program.help(true);
-
+  function configureProgram(
+    program: AnyProgram,
+    config: AnyConfiguration,
+    fullName: string
+  ) {
     // ? Only the root program should recognize the --version flag
 
     program.version(false);
@@ -546,32 +523,6 @@ export async function discoverCommands(
 
     program.scriptName(fullName);
 
-    // ? Register a default command
-
-    program.command(
-      [config.command, ...config.aliases],
-      config.description,
-      config.builder,
-      config.handler,
-      [],
-      config.deprecated
-    );
-
-    // ? Register the same command with the parent, but use a proxy handler
-
-    parentProgram.command_deferred(
-      [config.command.replace('$0', config.name), ...config.aliases],
-      config.description,
-      config.builder,
-      proxyHandler(program, config, fullName),
-      [],
-      config.deprecated
-    );
-
-    // ? Enable strict mode
-
-    program.strict(true);
-
     // ? Disable exit-on-error functionality
 
     program.exitProcess(false);
@@ -582,16 +533,110 @@ export async function discoverCommands(
 
     // ? We'll report on any errors manually
 
+    let showHelpOnFail = true;
     program.showHelpOnFail(false);
+    program.showHelpOnFail = (enabled) => {
+      showHelpOnFail = enabled;
+      return program;
+    };
 
     // ? Make yargs stop being so noisy when exceptional stuff happens
 
     program.fail((message, error) => {
       debug('entered custom yargs failure handler');
-      throw error || message;
-    });
 
-    debug('%O was additionally configured as: %O', config.name, 'pure child');
+      if (!error && showHelpOnFail) {
+        // ? If there's no error object, it's probably a yargs-specific error
+        program.showHelp('error');
+        // eslint-disable-next-line no-console
+        console.error();
+      }
+
+      throw new CliError(error || message);
+    });
+  }
+
+  /**
+   * Adds a default command to `program` and a sub-command to `parentProgram`,
+   * if provided. Specifically, this function:
+   *
+   * - Registers a default command + aliases to `program`
+   * - Registering mapping between `program` <=> `shadowProgram`
+   * - Disables strict mode and strict commands/options on `program`
+   * - Registers a proxy command + aliases: `parentProgram` <=> `program`
+   */
+  function proxyParentToChild(
+    program: AnyProgram,
+    config: AnyConfiguration,
+    fullName: string,
+    shadowProgram: AnyProgram,
+    parentProgram?: AnyProgram
+  ) {
+    // ? Register a default command (and shadow-command)
+
+    let shadowArgv: AnyArguments | undefined = undefined;
+
+    program.command(
+      [config.command, ...config.aliases],
+      config.description,
+      config.builder,
+      async (parsedArgv) => {
+        debug('entered non-shadow handler function for %O', config.name);
+        assert(shadowArgv === undefined);
+
+        shadowArgv = parsedArgv;
+        await shadowProgram.parseAsync(
+          context.state.rawArgv,
+          wrapExecutionContext(context)
+        );
+
+        debug('exited non-shadow handler function for %O', config.name);
+      },
+      [],
+      config.deprecated
+    );
+
+    shadowProgram.command(
+      [config.command, ...config.aliases],
+      config.description,
+      (yargs_, helpOrVersionSet) => {
+        debug('entered shadow builder function for %O', config.name);
+        assert(shadowArgv !== undefined);
+
+        const yargs =
+          typeof config.builder === 'function'
+            ? config.builder(yargs_, helpOrVersionSet, shadowArgv)
+            : yargs_.options(config.builder);
+
+        shadowArgv = undefined;
+
+        debug('exited shadow builder function for %O', config.name);
+        return yargs;
+      },
+      config.handler,
+      [],
+      config.deprecated
+    );
+
+    shadowPrograms.set(program, shadowProgram);
+
+    // ? Disable strict, strictCommands, and strictOptions modes for
+    // ? non-shadow; enable for actual
+
+    program.strict_force(false);
+    shadowProgram.strict_force(true);
+
+    // ? For child programs, register the same command with the parent, but use
+    // ? a proxy handler
+
+    parentProgram?.command_deferred(
+      [config.command.replace('$0', config.name), ...config.aliases],
+      config.description,
+      config.builder,
+      proxyHandler(program, config, fullName),
+      [],
+      config.deprecated
+    );
   }
 
   /**
@@ -599,12 +644,10 @@ export async function discoverCommands(
    * yargs instances, similar in intent to a reverse-proxy in networking.
    */
   function proxyHandler(
-    childProgram: Program<Record<string, unknown>>,
-    childConfig: Configuration<Record<string, unknown>>,
+    childProgram: AnyProgram,
+    childConfig: AnyConfiguration,
     fullName: string
   ) {
-    // TODO: create variable here that facilitates double parsing (may need to
-    // TODO: factor this out into its own function, since root needs it too)
     return async function (_parsed: Arguments) {
       const debug_ = debug.extend('proxy');
       const givenName = context.state.rawArgv.shift();
@@ -648,19 +691,19 @@ export async function discoverCommands(
       );
     };
   }
+}
 
-  /**
-   * The default handler used when a {@link Configuration} is missing a `handler`
-   * export.
-   */
-  function defaultHandler() {
-    throw new CommandNotImplementedError();
-  }
+/**
+ * The default handler used when a {@link Configuration} is missing a
+ * `handler` export.
+ */
+function defaultHandler() {
+  throw new CommandNotImplementedError();
+}
 
-  /**
-   * Uppercase the first letter of a string.
-   */
-  function capitalize(str: string) {
-    return (str.at(0)?.toUpperCase() || '') + str.slice(1);
-  }
+/**
+ * Uppercase the first letter of a string.
+ */
+function capitalize(str: string) {
+  return (str.at(0)?.toUpperCase() || '') + str.slice(1);
 }

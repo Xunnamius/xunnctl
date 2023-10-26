@@ -19,6 +19,7 @@ import {
   type Program
 } from 'multiverse/black-flag';
 
+import { DISALLOWED_NON_SHADOW_PROGRAM_METHODS } from 'multiverse/black-flag/src/constant';
 import { discoverCommands } from 'multiverse/black-flag/src/discover';
 import { isCliError, isGracefulEarlyExitError } from 'multiverse/black-flag/util';
 
@@ -85,7 +86,9 @@ export async function configureProgram<
     configureExecutionEpilogue(argv) {
       return argv;
     },
-    configureErrorHandlingEpilogue: noopConfigurationHook,
+    configureErrorHandlingEpilogue({ message }) {
+      console.error(message);
+    },
     configureExecutionPrologue: noopConfigurationHook
   };
 
@@ -255,7 +258,7 @@ export async function configureProgram<
 
         debug_error('exited configureErrorHandlingEpilogue');
 
-        debug_error('final execution context: %O', asEnumerable);
+        debug_error('final execution context: %O', asEnumerable(context));
         debug_error('error handling complete');
         debug_error.newline();
       }
@@ -295,14 +298,14 @@ export async function configureProgram<
  */
 export function makeProgram<
   CustomCliArguments extends Record<string, unknown> = EmptyObject
->() {
+>({ isShadowClone = false } = {}) {
   const debug_ = debug.extend('make');
   const deferredCommandArgs: Parameters<Program<CustomCliArguments>['command']>[] = [];
 
   debug_('created new Program instance');
 
   return new Proxy(yargs() as unknown as Program<CustomCliArguments>, {
-    get(target, property) {
+    get(target, property: keyof Program<CustomCliArguments>) {
       if (property === 'argv') {
         debug_.warn(
           'trapped and killed attempted access to disabled ::argv magic property'
@@ -369,9 +372,22 @@ export function makeProgram<
         };
       }
 
-      const value: unknown =
-        // @ts-expect-error: TypeScript isn't smart enough to figure this out
-        target[property];
+      if (property === 'strict_force') {
+        return function (enabled = true) {
+          debug_('forced strict, strictCommands, and strictOptions on instance');
+          target.strict(enabled);
+          target.strictCommands(enabled);
+          target.strictOptions(enabled);
+        };
+      }
+
+      if (!isShadowClone && DISALLOWED_NON_SHADOW_PROGRAM_METHODS.includes(property)) {
+        throw new AssertionFailedError(
+          ErrorMessage.AssertionFailureInvocationNotAllowed(property.toString())
+        );
+      }
+
+      const value: unknown = target[property];
 
       if (value instanceof Function) {
         return function (...args: unknown[]) {

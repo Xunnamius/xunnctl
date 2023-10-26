@@ -187,5 +187,8 @@ export const ErrorMessage = {
   },
   InvalidCharacters(str: string, violation: string) {
     return `string "${str}" contains one or more illegal characters: ${violation}`;
+  },
+  AssertionFailureInvocationNotAllowed(name: string) {
+    return `method "${name}" can only be called on this program's shadow instance. See documentation for details`;
   }
 };

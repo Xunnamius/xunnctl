@@ -11,12 +11,22 @@ import type {
 } from 'multiverse/black-flag';
 
 /**
+ * The most generic form of {@link Arguments}.
+ */
+export type AnyArguments = Arguments<Record<string, unknown>>;
+
+/**
  * Represents the shape of the parsed CLI arguments, plus `_` and `$0`, any
  * (hidden) arguments/properties specific to Black Flag, and an indexer falling
  * back to `unknown` for unrecognized arguments.
  */
 export type Arguments<CustomCliArguments extends Record<string, unknown> = EmptyObject> =
   _Arguments<FrameworkArguments & CustomCliArguments>;
+
+/**
+ * The most generic form of {@link Program}.
+ */
+export type AnyProgram = Program<Record<string, unknown>>;
 
 /**
  * Represents a pre-configured yargs instance ready for argument parsing and
@@ -26,10 +36,16 @@ export type Arguments<CustomCliArguments extends Record<string, unknown> = Empty
  * by yargs but with several differences and should be preferred.
  */
 export type Program<CustomCliArguments extends Record<string, unknown> = EmptyObject> =
-  Omit<_Program<FrameworkArguments & CustomCliArguments>, 'command'> & {
+  Omit<
+    _Program<FrameworkArguments & CustomCliArguments>,
+    'command' | 'showHelpOnFail' | 'version'
+  > & {
     // ? Adds custom overload signatures that fixes the lack of implementation
     // ? signature exposure in the Argv type exposed by yargs
 
+    /**
+     * @see `yargs::command`
+     */
     command: _Program<CustomCliArguments>['command'] & {
       (
         command: string | string[],
@@ -42,11 +58,23 @@ export type Program<CustomCliArguments extends Record<string, unknown> = EmptyOb
       ): Program<CustomCliArguments>;
     };
 
+    /**
+     * Like `yargs::showHelpOnFail`, but with no second `message` parameter. If
+     * you want to output some specific error message, use a configuration hook.
+     *
+     * @see `yargs::showHelpOnFail`
+     */
+    showHelpOnFail: (enabled: boolean) => Program<CustomCliArguments>;
+
+    /**
+     * @see `yargs::version`
+     */
     version: _Program<CustomCliArguments>['version'] & {
       (version: string | false): Program<CustomCliArguments>;
     };
 
     /**
+     * @see `yargs::command`
      * @internal
      */
     command_deferred: Program<CustomCliArguments>['command'];
@@ -55,6 +83,12 @@ export type Program<CustomCliArguments extends Record<string, unknown> = EmptyOb
      * @internal
      */
     command_finalize_deferred: () => void;
+
+    /**
+     * @default true
+     * @internal
+     */
+    strict_force: (enabled: boolean) => void;
   };
 
 /**
@@ -94,6 +128,31 @@ export type ProgramMetadata = {
    * The basename of the direct parent directory containing `filepath`.
    */
   parentDirName: string;
+  /**
+   * Each individual program is represented in memory as two distinct
+   * {@link Program} instances: the "actual" command instance and a clone of
+   * this instance, i.e. its "shadow". The actual command and its shadow clone
+   * are identical except the actual command is never set to strict mode while
+   * the shadow is set to strict mode by default.
+   *
+   * This facilitates the double-parsing necessary for both _dynamic options_
+   * and _dynamic strictness_.
+   *
+   * Therefore: if you want to configure the instance responsible for proxying
+   * control to child programs, operate on the actual instance. On the other
+   * hand, if you want to configure the instance responsible for running a
+   * program's actual `handler` function, you should operate on `shadow`.
+   *
+   * With dynamic options, Black Flag can accurately parse the given arguments
+   * with the actual instance and then invoke the shadow clone afterwards,
+   * feeding its `builder` function a proper `argv` parameter.
+   *
+   * With dynamic strictness, Black Flag can set both parent and child (shadow)
+   * programs to strict mode while still facilitating the actual command
+   * hierarchy where ancestor commands are not aware of the syntax of their
+   * descendants, which vanilla yargs strict mode definitely does not support.
+   */
+  shadow: AnyProgram;
 };
 
 /**
@@ -146,10 +205,7 @@ export type ExecutionContext = {
    * implying the first pair in the Map, if there are any pairs, will always be
    * the root program.
    */
-  commands: Map<
-    string,
-    { program: Program<Record<string, unknown>>; metadata: ProgramMetadata }
-  >;
+  commands: Map<string, { program: AnyProgram; metadata: ProgramMetadata }>;
   /**
    * The {@link ExtendedDebugger} for the current runtime level.
    */

@@ -68,7 +68,7 @@ export const $exitedGracefully = Symbol.for('black-flag:was-graceful-exit');
  * This is useful when unit/integration testing your CLI, which will likely
  * require multiple calls to `runProgram(...)`.
  */
-export async function makeRunner<
+export function makeRunner<
   CustomCliArguments extends Record<string, unknown> = EmptyObject
 >(commandModulePath: string | undefined) {
   return <

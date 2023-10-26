@@ -4,6 +4,11 @@ import type { Options as _Options, Argv as _Program } from 'yargs';
 import type { Arguments, ExecutionContext, Program } from 'multiverse/black-flag';
 
 /**
+ * The most generic form of {@link Configuration}.
+ */
+export type AnyConfiguration = Configuration<Record<string, unknown>>;
+
+/**
  * A replacement for the `CommandModule` type that comes with yargs.
  * Auto-discovered configuration modules must implement this interface or a
  * subtype of this interface.
@@ -27,14 +32,18 @@ export type Configuration<
    *
    * **If `builder` is a function, it cannot be async or return a promise** due
    * to a yargs bug present at time of writing. However, a {@link Configuration}
-   * module can export an async function, so hoist any async logic to work
-   * around this bug for now.
+   * module can export an async function, so hoist any async logic out of the
+   * builder function to work around this bug for now.
    *
    * @default {}
    */
   builder:
     | { [key: string]: _Options }
-    | ((yargs: Program<CustomCliArguments>) => Program<CustomCliArguments> | _Program);
+    | ((
+        yargs: Program<CustomCliArguments>,
+        helpOrVersionSet: boolean,
+        argv?: Arguments<CustomCliArguments>
+      ) => Program<CustomCliArguments> | _Program);
   /**
    * The command as interpreted by yargs. May contain positional arguments.
    *
