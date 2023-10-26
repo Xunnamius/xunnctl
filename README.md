@@ -91,8 +91,6 @@ There are many individual commands available, each with their own accepted
 parameters and help text. These commands also share several standard parameters
 which can be found in the following table:
 
-<!-- TODO: move common flags/options to one single usage section -->
-
 |                     |      Name       |  Type   |           Default           | Description                                                                                                    |
 | :-----------------: | :-------------: | :-----: | :-------------------------: | :------------------------------------------------------------------------------------------------------------- |
 | <sub>optional</sub> | `--config-path` | string  | OS-dependent (XDG on linux) | Path to the `xunnctl` configuration file.                                                                      |
