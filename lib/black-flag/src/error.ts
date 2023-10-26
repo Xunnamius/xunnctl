@@ -153,7 +153,7 @@ export class AssertionFailedError extends CliError {
 makeNamedError(AssertionFailedError, 'AssertionFailedError');
 
 /**
- * A collection of possible error and warning messages.
+ * A collection of possible error and warning messages emitted by Black Flag.
  */
 /* istanbul ignore next */
 export const ErrorMessage = {

@@ -2,7 +2,6 @@ import { isNativeError } from 'node:util/types';
 
 import { ListrErrorTypes } from 'listr2';
 import { name as pkgName } from 'package';
-import { hideBin } from 'yargs/helpers';
 
 import {
   createGenericLogger,
@@ -11,6 +10,7 @@ import {
   type ListrManager
 } from 'multiverse/rejoinder';
 
+import { hideBin } from 'multiverse/black-flag/util';
 import { LogTag, MAX_LOG_ERROR_ENTRIES } from 'universe/constant';
 
 import type {
@@ -73,6 +73,7 @@ export const configureArguments: ConfigureArguments = (rawArgv) => {
 export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
   CustomExecutionContext
 > = async ({ error, message }, _argv, context) => {
+  // ? Pretty print error output depending on how silent we're supposed to be
   if (!context.state.isSilenced) {
     context.log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);
     if (

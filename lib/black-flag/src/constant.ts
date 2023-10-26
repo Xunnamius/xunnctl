@@ -1,6 +1,6 @@
 /**
- * A symbol allowing access to the `ExecutionContext` object hidden within
- * resultant `Arguments` objects returned by yargs instances.
+ * A symbol allowing access to the `ExecutionContext` object "hidden" within
+ * each `Arguments` instance.
  */
 export const $executionContext = Symbol('execution-context');
 

@@ -1,7 +1,46 @@
-export * from 'multiverse/black-flag/src/constant';
-export * from 'multiverse/black-flag/src/error';
-export * from 'multiverse/black-flag/src/index';
-export * from 'multiverse/black-flag/src/util';
-export * from 'multiverse/black-flag/types/configure';
-export * from 'multiverse/black-flag/types/module';
-export * from 'multiverse/black-flag/types/program';
+// TODO: replace with appropriate exports entries in package.json
+
+export { configureProgram, makeProgram } from 'multiverse/black-flag/src/index';
+export { runProgram } from 'multiverse/black-flag/src/util';
+
+export {
+  $executionContext,
+  DEFAULT_USAGE_TEXT,
+  FrameworkExitCode
+} from 'multiverse/black-flag/src/constant';
+
+export {
+  AssertionFailedError,
+  CliError,
+  CommandNotImplementedError,
+  ErrorMessage,
+  GracefulEarlyExitError,
+  type CliErrorOptions
+} from 'multiverse/black-flag/src/error';
+
+export type {
+  ConfigureArguments,
+  ConfigureErrorHandlingEpilogue,
+  ConfigureExecutionContext,
+  ConfigureExecutionEpilogue,
+  ConfigureExecutionPrologue,
+  ConfigureHooks
+} from 'multiverse/black-flag/types/configure';
+
+export type {
+  ChildConfiguration,
+  Configuration,
+  ImportedConfigurationModule,
+  ParentConfiguration,
+  RootConfiguration
+} from 'multiverse/black-flag/types/module';
+
+export type {
+  Arguments,
+  ExecutionContext,
+  Executor,
+  FrameworkArguments,
+  PreExecutionContext,
+  Program,
+  ProgramMetadata
+} from 'multiverse/black-flag/types/program';

@@ -12,8 +12,6 @@ import {
   CliError,
   ErrorMessage,
   FrameworkExitCode,
-  isCliError,
-  isGracefulEarlyExitError,
   type ConfigureHooks,
   type ExecutionContext,
   type Executor,
@@ -22,6 +20,7 @@ import {
 } from 'multiverse/black-flag';
 
 import { discoverCommands } from 'multiverse/black-flag/src/discover';
+import { isCliError, isGracefulEarlyExitError } from 'multiverse/black-flag/util';
 
 import type { EmptyObject } from 'type-fest';
 
@@ -29,28 +28,38 @@ const rootDebugLogger = createDebugLogger({ namespace: pkgName });
 const debug = rootDebugLogger.extend('index');
 
 /**
- * Create and return a pre-configured yargs instance
- * ({@link PreExecutionContext.program}) and argument parsing function
- * ({@link PreExecutionContext.execute}) with default configuration hooks.
+ * Create and return a {@link PreExecutionContext} containing a fully-configured
+ * {@link Program} instance with the provided configuration hooks and an
+ * {@link Executor} function.
  *
- * When called in this form, command auto-discovery is disabled.
- */
-export async function configureProgram<
-  CustomContext extends ExecutionContext = ExecutionContext
->(
-  configurationHooks?: ConfigureHooks<CustomContext>
-): Promise<PreExecutionContext<CustomContext>>;
-/**
- * Create and return a pre-configured yargs instance
- * ({@link PreExecutionContext.program}) and argument parsing function
- * ({@link PreExecutionContext.execute}) with the provided configuration hooks.
+ * Command auto-discovery will occur at `commandModulePath`, if defined.
  *
- * Command auto-discovery will occur at `commandModulePath` if defined.
+ * **This function throws whenever an exception occurs** (including exceptions
+ * representing a graceful exit), making it not ideal as an entry point for a
+ * CLI. See `runProgram` for a wrapper function that handles exceptions and sets
+ * the exit code for you.
  */
 export async function configureProgram<
   CustomContext extends ExecutionContext = ExecutionContext
 >(
   commandModulePath?: string,
+  configurationHooks?: ConfigureHooks<CustomContext>
+): Promise<PreExecutionContext<CustomContext>>;
+/**
+ * Create and return a {@link PreExecutionContext} containing a fully-configured
+ * {@link Program} instance with default configuration hooks and an
+ * {@link Executor} function.
+ *
+ * When called in this form, command auto-discovery is disabled.
+ *
+ * **This function throws whenever an exception occurs** (including exceptions
+ * representing a graceful exit), making it not ideal as an entry point for a
+ * CLI. See `runProgram` for a wrapper function that handles exceptions and sets
+ * the exit code for you.
+ */
+export async function configureProgram<
+  CustomContext extends ExecutionContext = ExecutionContext
+>(
   configurationHooks?: ConfigureHooks<CustomContext>
 ): Promise<PreExecutionContext<CustomContext>>;
 export async function configureProgram<
@@ -269,18 +278,20 @@ export async function configureProgram<
 }
 
 /**
- * Returns a {@link Program} instance.
+ * Returns an non-configured {@link Program} instance, which is just a
+ * lightly-decorated yargs instance.
+ *
+ * **If you want to make a new `Program` instance with auto-discovered commands,
+ * configuration hooks, metadata tracking, and support for other Black Flag
+ * features, you probably want `runProgram` or `configureProgram`, both of which
+ * call `makeProgram` internally.**
  *
  * Among other things, this function is sugar for `return (await
- * import('yargs/yargs')).default()`.
- *
- * The returned yargs instance has its magical `::argv` property disabled via a
- * [this-recovering
- * proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#no_private_property_forwarding)
- * object. The instance also exposes two new methods: `command_deferred` and
+ * import('yargs/yargs')).default()`. Note that the returned yargs instance has
+ * its magical `::argv` property disabled via a [this-recovering `Proxy`
+ * object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#no_private_property_forwarding).
+ * The instance also exposes two new methods: `command_deferred` and
  * `command_finalize_deferred`.
- *
- * @internal
  */
 export function makeProgram<
   CustomCliArguments extends Record<string, unknown> = EmptyObject

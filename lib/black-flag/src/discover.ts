@@ -10,7 +10,6 @@ import {
   ErrorMessage,
   GracefulEarlyExitError,
   makeProgram,
-  wrapExecutionContext,
   type Arguments,
   type Configuration,
   type ExecutionContext,
@@ -18,6 +17,8 @@ import {
   type Program,
   type ProgramMetadata
 } from 'multiverse/black-flag';
+
+import { wrapExecutionContext } from 'multiverse/black-flag/src/index';
 
 const hasSpacesRegExp = /\s+/;
 

@@ -9,8 +9,8 @@ import type { Promisable } from 'type-fest';
 
 /**
  * This function is called once towards the beginning of the execution of
- * `configureProgram` and should return a global "base" context object from
- * which to shallow copy.
+ * `configureProgram` and should return what will become the global
+ * {@link ExecutionContext} singleton.
  */
 export type ConfigureExecutionContext<
   CustomContext extends ExecutionContext = ExecutionContext
@@ -65,8 +65,9 @@ export type ConfigureExecutionEpilogue<
  *
  * Note that this function is _always_ called whenever there is an error,
  * regardless of which other functions have already been called. The only
- * exception to this is if the error occurs within
- * `configureErrorHandlingEpilogue` itself.
+ * exceptions to this are if (1) the error occurs within
+ * `configureErrorHandlingEpilogue` itself or (2) the error is an instance of
+ * `GracefulEarlyExitError`.
  */
 export type ConfigureErrorHandlingEpilogue<
   CustomContext extends ExecutionContext = ExecutionContext

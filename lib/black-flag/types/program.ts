@@ -12,8 +12,8 @@ import type {
 
 /**
  * Represents the shape of the parsed CLI arguments, plus `_` and `$0`, any
- * framework arguments, and an indexer falling back to `unknown` for
- * unrecognized arguments.
+ * (hidden) arguments/properties specific to Black Flag, and an indexer falling
+ * back to `unknown` for unrecognized arguments.
  */
 export type Arguments<CustomCliArguments extends Record<string, unknown> = EmptyObject> =
   _Arguments<FrameworkArguments & CustomCliArguments>;
@@ -97,9 +97,12 @@ export type ProgramMetadata = {
 };
 
 /**
- * Represents the CLI arguments added by the current framework rather than the
- * end user. Your project's custom `Arguments`-style type (e.g.
- * `ProgramArguments`) should extend from this one.
+ * Represents the CLI arguments/properties added by Black Flag rather than the
+ * end developer.
+ *
+ * Instead of using this type directly, your project's custom arguments (e.g.
+ * `MyCustomArgs`) should be wrapped with the `Arguments` generic type (e.g.
+ * `Arguments<MyCustomArgs>`), which will extend `FrameworkArguments` for you.
  */
 export type FrameworkArguments = {
   [$executionContext]: ExecutionContext;
@@ -115,8 +118,7 @@ export type Executor = (
 ) => Promise<Awaited<ReturnType<ConfigureExecutionEpilogue>>>;
 
 /**
- * The pre-execution context that is the result of calling
- * {@link configureProgram}.
+ * The pre-execution context that is the result of calling `configureProgram`.
  */
 export type PreExecutionContext<
   CustomContext extends ExecutionContext = ExecutionContext
@@ -133,7 +135,7 @@ export type PreExecutionContext<
 };
 
 /**
- * The shared context available to yargs, Listr tasks, Inquirer, etc execute.
+ * The globally-accessible shared context object.
  */
 export type ExecutionContext = {
   /**

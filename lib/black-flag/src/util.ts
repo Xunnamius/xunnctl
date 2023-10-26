@@ -1,12 +1,12 @@
 import {
   FrameworkExitCode,
-  isCliError,
-  isGracefulEarlyExitError,
   type Arguments,
   type ConfigureHooks,
   type ExecutionContext,
   type PreExecutionContext
 } from 'multiverse/black-flag';
+
+import { isCliError, isGracefulEarlyExitError } from 'multiverse/black-flag/util';
 
 import type { EmptyObject, Promisable } from 'type-fest';
 

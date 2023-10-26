@@ -5,8 +5,8 @@ import type { Arguments, ExecutionContext, Program } from 'multiverse/black-flag
 
 /**
  * A replacement for the `CommandModule` type that comes with yargs.
- * Auto-discovered configuration modules must implement this interface or its
- * descendant.
+ * Auto-discovered configuration modules must implement this interface or a
+ * subtype of this interface.
  */
 export type Configuration<
   CustomCliArguments extends Record<string, unknown> = EmptyObject
