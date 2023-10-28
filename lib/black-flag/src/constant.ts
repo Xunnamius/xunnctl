@@ -30,17 +30,17 @@ export enum FrameworkExitCode {
   /**
    * The exit code used when execution succeeds and exits gracefully.
    */
-  OK = 0,
+  Ok = 0,
   /**
    * Hard-coded default fallback exit code when fatal errors occur.
    */
-  DEFAULT_ERROR = 1,
+  DefaultError = 1,
   /**
    * The exit code used when executing an unimplemented child program.
    */
-  NOT_IMPLEMENTED = 2,
+  NotImplemented = 2,
   /**
    * The exit code used when a sanity check fails.
    */
-  ASSERTION_FAILED = 3
+  AssertionFailed = 3
 }

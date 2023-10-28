@@ -77,19 +77,20 @@ export async function configureProgram<
   let commandModulePath: string;
 
   const configurationHooks: Required<ConfigureHooks<CustomContext>> = {
-    configureArguments(rawArgv) {
-      return rawArgv;
-    },
     configureExecutionContext(context) {
       return context as CustomContext;
     },
+    configureArguments(rawArgv) {
+      return rawArgv;
+    },
+    configureExecutionPrologue: noopConfigurationHook,
     configureExecutionEpilogue(argv) {
       return argv;
     },
     configureErrorHandlingEpilogue({ message }) {
+      // eslint-disable-next-line no-console
       console.error(message);
-    },
-    configureExecutionPrologue: noopConfigurationHook
+    }
   };
 
   if (typeof args[0] === 'string') {
@@ -168,7 +169,7 @@ export async function configureProgram<
 
       context.state.rawArgv = argv;
 
-      debug('calling ::parseAsync on root program', argv);
+      debug('calling ::parseAsync on root program');
 
       const shallowestParseResult = await rootProgram.parseAsync(
         argv,
@@ -213,13 +214,9 @@ export async function configureProgram<
 
       debug_error.error('caught fatal error (type %O): %O', typeof error, error);
 
-      let argv: Parameters<typeof configurationHooks.configureErrorHandlingEpilogue>[1];
-
-      try {
-        argv = (rootProgram.parsed || { argv: {} }).argv as unknown as typeof argv;
-      } catch {
-        argv = {} as typeof argv;
-      }
+      const argv = (rootProgram.parsed || { argv: {} }).argv as Parameters<
+        typeof configurationHooks.configureErrorHandlingEpilogue
+      >[1];
 
       debug_error(
         'potentially-parsed argv (may be incomplete due to error state): %O',
@@ -234,7 +231,7 @@ export async function configureProgram<
         argv[$executionContext] ??= asUnenumerable(context);
 
         let message = ErrorMessage.Generic();
-        let exitCode = FrameworkExitCode.DEFAULT_ERROR;
+        let exitCode = FrameworkExitCode.DefaultError;
 
         if (typeof error === 'string') {
           message = error;
@@ -248,7 +245,7 @@ export async function configureProgram<
         debug_error('final error message: %O', message);
         debug_error('final exit code: %O', exitCode);
 
-        debug_error('entering configureErrorHandlingPrologue');
+        debug_error('entering configureErrorHandlingEpilogue');
 
         await configurationHooks.configureErrorHandlingEpilogue(
           { message, error, exitCode },
@@ -300,28 +297,14 @@ export function makeProgram<
   CustomCliArguments extends Record<string, unknown> = EmptyObject
 >({ isShadowClone = false } = {}) {
   const debug_ = debug.extend('make');
+  const descriptor = isShadowClone ? 'SHADOW' : 'non-shadow';
   const deferredCommandArgs: Parameters<Program<CustomCliArguments>['command']>[] = [];
 
-  debug_('created new Program instance');
+  debug_('created new %O Program instance', descriptor);
 
   return new Proxy(yargs() as unknown as Program<CustomCliArguments>, {
     get(target, property: keyof Program<CustomCliArguments>) {
-      if (property === 'argv') {
-        debug_.warn(
-          'trapped and killed attempted access to disabled ::argv magic property'
-        );
-
-        // ? Why go through all this trouble? Because, Jest likes to make "deep
-        // ? cyclical copies" of objects from time to time, especially WHEN
-        // ? ERRORS ARE THROWN. These deep copies necessarily require
-        // ? recursively accessing every property of the object... including
-        // ? magic properties like ::argv, which causes ::parse to be called
-        // ? multiple times AFTER AN ERROR ALREADY OCCURRED, which leads to
-        // ? undefined behavior and heisenbugs. Yuck.
-        return undefined;
-      }
-
-      // ? And what are command_deferred and command_finalize_deferred? Well,
+      // ? What are command_deferred and command_finalize_deferred? Well,
       // ? when generating help text, yargs will enumerate commands and options
       // ? in the order that they were added to the instance. Unfortunately,
       // ? since we're relying on the filesystem to asynchronously reveal its
@@ -336,7 +319,7 @@ export function makeProgram<
 
       if (property === 'command_deferred') {
         return function (...args: Parameters<Program<CustomCliArguments>['command']>) {
-          debug_('::command call was deferred');
+          debug_('::command call was deferred for %O Program instance', descriptor);
           deferredCommandArgs.push(args);
           return target;
         };
@@ -344,7 +327,10 @@ export function makeProgram<
 
       if (property === 'command_finalize_deferred') {
         return function () {
-          debug_('began alpha-sorting deferred command calls');
+          debug_(
+            'began alpha-sorting deferred command calls for %O Program instance',
+            descriptor
+          );
 
           // ? Sort in alphabetical order with naturally sorted numbers
           const sort = alphaSort({ natural: true });
@@ -362,8 +348,9 @@ export function makeProgram<
           });
 
           debug_(
-            'calling ::command with %O deferred argument tuples...',
-            deferredCommandArgs.length
+            'calling ::command with %O deferred argument tuples for %O Program instance...',
+            deferredCommandArgs.length,
+            descriptor
           );
 
           for (const args of deferredCommandArgs) {
@@ -374,17 +361,34 @@ export function makeProgram<
 
       if (property === 'strict_force') {
         return function (enabled = true) {
-          debug_('forced strict, strictCommands, and strictOptions on instance');
+          debug_(
+            'forced strict, strictCommands, and strictOptions for %O Program instance',
+            descriptor
+          );
           target.strict(enabled);
           target.strictCommands(enabled);
           target.strictOptions(enabled);
         };
       }
 
-      if (!isShadowClone && DISALLOWED_NON_SHADOW_PROGRAM_METHODS.includes(property)) {
-        throw new AssertionFailedError(
-          ErrorMessage.AssertionFailureInvocationNotAllowed(property.toString())
+      if (
+        property === 'argv' ||
+        (!isShadowClone && DISALLOWED_NON_SHADOW_PROGRAM_METHODS.includes(property))
+      ) {
+        debug_.warn(
+          `trapped attempted access to disabled %O::${property} property`,
+          descriptor
         );
+
+        // ? Why go through all this trouble? Because, Jest likes to make "deep
+        // ? cyclical copies" of objects from time to time, especially WHEN
+        // ? ERRORS ARE THROWN. These deep copies necessarily require
+        // ? recursively accessing every property of the object... including
+        // ? disabled properties on non-shadow instances like ::strict, or magic
+        // ? properties like ::argv, which causes ::parse to be called multiple
+        // ? times AFTER AN ERROR ALREADY OCCURRED, which leads to undefined
+        // ? behavior and heisenbugs. Yuck.
+        return property === 'argv' ? undefined : () => undefined;
       }
 
       const value: unknown = target[property];

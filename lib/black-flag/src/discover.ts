@@ -23,6 +23,7 @@ import {
 } from 'multiverse/black-flag';
 
 import { wrapExecutionContext } from 'multiverse/black-flag/src/index';
+import { isCliError } from 'multiverse/black-flag/util';
 
 const hasSpacesRegExp = /\s+/;
 
@@ -448,6 +449,14 @@ export async function discoverCommands(
     const handler = config.handler;
     config.handler = async (parsedArgv) => {
       if (parsedArgv.help) {
+        debug(
+          '%O %O Program %O selected for special handling of %O command',
+          'non-shadow',
+          !!parentParentProgram ? 'parent-child' : 'pure parent (root)',
+          config.name,
+          'help'
+        );
+
         program.showHelp('log');
         throw new GracefulEarlyExitError();
       } else {
@@ -542,17 +551,28 @@ export async function discoverCommands(
 
     // ? Make yargs stop being so noisy when exceptional stuff happens
 
-    program.fail((message, error) => {
-      debug('entered custom yargs failure handler');
+    program.fail((message: string | null, error) => {
+      const debug_ = debug.extend('fail');
+      debug_.message('entered failure handler for %O', fullName);
+
+      debug_('message: %O', message);
+      debug_('error.message (instanceof Error): %O', error?.message);
 
       if (!error && showHelpOnFail) {
+        debug_('showing help text via console.error...');
         // ? If there's no error object, it's probably a yargs-specific error
         program.showHelp('error');
         // eslint-disable-next-line no-console
         console.error();
       }
 
-      throw new CliError(error || message);
+      if (isCliError(error)) {
+        debug_('re-throwing error as-is');
+        throw error;
+      } else {
+        debug_('re-throwing error/message wrapped with CliError');
+        throw new CliError(error || message);
+      }
     });
   }
 
@@ -561,9 +581,10 @@ export async function discoverCommands(
    * if provided. Specifically, this function:
    *
    * - Registers a default command + aliases to `program`
-   * - Registering mapping between `program` <=> `shadowProgram`
+   * - Registering a mapping between `program` <=> `shadowProgram`
    * - Disables strict mode and strict commands/options on `program`
-   * - Registers a proxy command + aliases: `parentProgram` <=> `program`
+   * - Enables strict mode and strict commands/options on `shadowProgram`
+   * - Registers a proxy command + aliases linking `parentProgram` <=> `program`
    */
   function proxyParentToChild(
     program: AnyProgram,
@@ -575,6 +596,7 @@ export async function discoverCommands(
     // ? Register a default command (and shadow-command)
 
     let shadowArgv: AnyArguments | undefined = undefined;
+    const debug_ = debug.extend('proxy:deep');
 
     program.command(
       [config.command, ...config.aliases],
@@ -585,9 +607,21 @@ export async function discoverCommands(
         assert(shadowArgv === undefined);
 
         shadowArgv = parsedArgv;
-        await shadowProgram.parseAsync(
+        const localArgv = await shadowProgram.parseAsync(
           context.state.rawArgv,
           wrapExecutionContext(context)
+        );
+
+        const isDeepestParseResult = !deepestParseResult.result;
+        deepestParseResult.result ??= localArgv;
+
+        debug_('is deepest parse result: %O', isDeepestParseResult);
+        debug_(
+          `%O Program::parseAsync result${
+            !isDeepestParseResult ? ' (discarded)' : ''
+          }: %O`,
+          'SHADOW',
+          localArgv
         );
 
         debug('exited non-shadow handler function for %O', config.name);
@@ -676,19 +710,7 @@ export async function discoverCommands(
       debug_('invariant satisfied');
       debug_('calling ::parseAsync on child program');
 
-      const localArgv = await childProgram.parseAsync(
-        context.state.rawArgv,
-        wrapExecutionContext(context)
-      );
-
-      const isDeepestParseResult = !deepestParseResult.result;
-      deepestParseResult.result ??= localArgv;
-
-      debug_('is deepest parse result: %O', isDeepestParseResult);
-      debug_(
-        `::parseAsync result${!isDeepestParseResult ? ' (discarded)' : ''}: %O`,
-        localArgv
-      );
+      await childProgram.parseAsync(context.state.rawArgv, wrapExecutionContext(context));
     };
   }
 }

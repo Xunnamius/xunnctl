@@ -198,8 +198,9 @@ export type PreExecutionContext<
  */
 export type ExecutionContext = {
   /**
-   * A Map consisting of auto-discovered {@link Program} instance values with
-   * their respective _full names_ as keys.
+   * A Map consisting of auto-discovered {@link Program} instances and their
+   * associated {@link ProgramMetadata} (including shadow {@link Program}
+   * instances) as values with their respective _full names_ as keys.
    *
    * Note that key-value pairs will always be iterated in insertion order,
    * implying the first pair in the Map, if there are any pairs, will always be

@@ -50,7 +50,7 @@ export type CliErrorOptions = {
    * The exit code that will be returned when the program exits, given nothing
    * else goes wrong in the interim.
    *
-   * @default FrameworkExitCode.DEFAULT_ERROR
+   * @default FrameworkExitCode.DefaultError
    */
   suggestedExitCode?: number;
 };
@@ -63,7 +63,7 @@ export type CliErrorOptions = {
 // TODO: this should use the new type of more-generic error from the new version
 // TODO: of the X-app-errors pages
 export class CliError extends AppError implements NonNullable<CliErrorOptions> {
-  suggestedExitCode = FrameworkExitCode.DEFAULT_ERROR;
+  suggestedExitCode = FrameworkExitCode.DefaultError;
   // TODO: this prop should be added by makeNamedError or whatever other fn
   [$type] = ['CliError'];
   /**
@@ -111,7 +111,7 @@ export class CommandNotImplementedError extends CliError {
    */
   constructor() {
     super(ErrorMessage.NotImplemented(), {
-      suggestedExitCode: FrameworkExitCode.NOT_IMPLEMENTED
+      suggestedExitCode: FrameworkExitCode.NotImplemented
     });
   }
 }
@@ -129,7 +129,7 @@ export class GracefulEarlyExitError extends CliError {
    * Represents trying to execute a CLI command that has not yet been implemented.
    */
   constructor() {
-    super(ErrorMessage.GracefulEarlyExit(), { suggestedExitCode: FrameworkExitCode.OK });
+    super(ErrorMessage.GracefulEarlyExit(), { suggestedExitCode: FrameworkExitCode.Ok });
   }
 }
 makeNamedError(GracefulEarlyExitError, 'GracefulEarlyExitError');
@@ -146,7 +146,7 @@ export class AssertionFailedError extends CliError {
    */
   constructor(message: string) {
     super(message, {
-      suggestedExitCode: FrameworkExitCode.ASSERTION_FAILED
+      suggestedExitCode: FrameworkExitCode.AssertionFailed
     });
   }
 }
