@@ -355,7 +355,7 @@ export function isolatedImportFactory<T = unknown>(args: {
 export async function withMockedExit(
   fn: (spies: {
     exitSpy: jest.SpyInstance;
-    exitCode: typeof process.exitCode;
+    getExitCode: () => typeof process.exitCode;
   }) => Promisable<void>
 ) {
   const exitSpy = jest
@@ -367,7 +367,7 @@ export async function withMockedExit(
   try {
     await fn({
       exitSpy,
-      get exitCode() {
+      getExitCode() {
         return process.exitCode;
       }
     });
@@ -504,7 +504,10 @@ export async function withMockedOutput(
         assert(typeof wasAccessed === 'boolean');
 
         if (!wasAccessed) {
-          expect(spy.mock.calls).toBeEmpty();
+          expect({
+            'failing-spy': name,
+            'unexpected-output': spy.mock.calls
+          }).toStrictEqual({ 'failing-spy': name, 'unexpected-output': [] });
         }
       }
     }
