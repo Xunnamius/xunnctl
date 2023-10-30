@@ -382,14 +382,14 @@ export function protectedImportFactory(path: string) {
   return async (factoryOptions?: { expectedExitCode?: number }) => {
     let pkg: unknown = undefined;
 
-    await withMockedExit(async ({ exitSpy, exitCode }) => {
+    await withMockedExit(async ({ exitSpy, getExitCode }) => {
       pkg = await isolatedImport({ path });
 
       if (expect && factoryOptions?.expectedExitCode !== undefined) {
-        if (exitCode === undefined) {
+        if (getExitCode() === undefined) {
           expect(exitSpy).toBeCalledWith(factoryOptions.expectedExitCode);
         } else {
-          expect(exitCode).toBe(factoryOptions.expectedExitCode);
+          expect(getExitCode()).toBe(factoryOptions.expectedExitCode);
         }
       } else if (!expect) {
         globalDebug.extend('protected-import-factory')(

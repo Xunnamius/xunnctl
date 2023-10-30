@@ -4,6 +4,8 @@ import overwriteDescriptors from 'merge-descriptors';
 
 import type { Merge } from 'type-fest';
 
+// ! SPLIT OFF LISTER2 FEATURES AS SEPARATE PACKAGE
+
 type _InternalDebuggerNoExtends = Omit<InternalDebugger, 'extend'>;
 
 /**
