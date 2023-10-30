@@ -70,10 +70,9 @@
   },
   "dependencies": {
     "@listr2/manager": "^1.0.2",
-    "alpha-sort": "^4.0.0",
+    "black-flag": "^1.0.0",
     "listr2": "^7.0.2",
-    "merge-descriptors": "^1.0.1",
-    "named-app-errors": "^4.0.1"
+    "merge-descriptors": "^1.0.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.23.0",
