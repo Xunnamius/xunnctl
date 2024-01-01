@@ -15,8 +15,7 @@
 This is a highly-opinionated personal tool for interacting with various
 disparate networks, systems, and other resources of interest to me.
 
-As a README-driven developer, I start all my projects by writing up
-documentation, even if I'm the only one who will ever read it!
+These used to be several CLIs, but the time has come to bring them together!
 
 ---
 
@@ -589,7 +588,9 @@ Further documentation can be found under [`docs/`][x-repo-docs].
 ### Published Package Details
 
 This is a [CJS2 package][x-pkg-cjs-mojito] with statically-analyzable exports
-built by Babel for Node.js versions that are not end-of-life.
+built by Babel for Node.js versions that are not end-of-life. For TypeScript
+users, this package supports both `"Node10"` and `"Node16"` module resolution
+strategies.
 
 <details><summary>Expand details</summary>
 
@@ -598,7 +599,8 @@ or `await import(...)`) source will load this package from the same entry points
 when using Node. This has several benefits, the foremost being: less code
 shipped/smaller package size, avoiding [dual package
 hazard][x-pkg-dual-package-hazard] entirely, distributables are not
-packed/bundled/uglified, and a less complex build process.
+packed/bundled/uglified, a drastically less complex build process, and CJS
+consumers aren't shafted.
 
 Each entry point (i.e. `ENTRY`) in [`package.json`'s
 `exports[ENTRY]`][x-repo-package-json] object includes one or more [export
@@ -617,7 +619,7 @@ Though [`package.json`][x-repo-package-json] includes
 [`{ "type": "commonjs" }`][x-pkg-type], note that any ESM-only entry points will
 be ES module (`.mjs`) files. Finally, [`package.json`][x-repo-package-json] also
 includes the [`sideEffects`][x-pkg-side-effects-key] key, which is `false` for
-optimal [tree shaking][x-pkg-tree-shaking].
+optimal [tree shaking][x-pkg-tree-shaking] where appropriate.
 
 </details>
 
@@ -629,8 +631,8 @@ See [LICENSE][x-repo-license].
 
 **[New issues][x-repo-choose-new-issue] and [pull requests][x-repo-pr-compare]
 are always welcome and greatly appreciated! 🤩** Just as well, you can [star 🌟
-this project][x-badge-repo-link] to let me know you found it useful! ✊🏿 Thank
-you!
+this project][x-badge-repo-link] to let me know you found it useful! ✊🏿 Or you
+could [buy me a beer][x-repo-sponsor] 🥺Thank you!
 
 See [CONTRIBUTING.md][x-repo-contributing] and [SUPPORT.md][x-repo-support] for
 more information.
@@ -728,6 +730,7 @@ specification. Contributions of any kind welcome!
 [x-repo-license]: ./LICENSE
 [x-repo-package-json]: package.json
 [x-repo-pr-compare]: https://github.com/xunnamius/xunnctl/compare
+[x-repo-sponsor]: https://github.com/sponsors/Xunnamius
 [x-repo-support]: /.github/SUPPORT.md
 [1]: https://developers.cloudflare.com/fundamentals/api/reference/limits
 [2]: https://github.com/sindresorhus/env-paths

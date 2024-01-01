@@ -1,4 +1,4 @@
-import { ErrorMessage as UpstreamErrorMessage } from 'multiverse/black-flag';
+import { ErrorMessage as UpstreamErrorMessage } from '@black-flag/core/util';
 
 /**
  * A collection of possible error and warning messages.

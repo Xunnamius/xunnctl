@@ -3,7 +3,7 @@
  * to `globalThis.process`. This filter quietly swallows any warning events
  * matching `name` while letting others pass through like normal.
  *
- * **IMPORTANT: Imports that might generate warnings  must occur _AFTER_ this
+ * **IMPORTANT: Imports that might generate warnings must occur _AFTER_ this
  * function is executed. If warning suppression isn't working for you, it means
  * you must use _dynamic imports_, and they must occur _AFTER_ this function is
  * executed.**

@@ -10,15 +10,14 @@ import {
   type ListrManager
 } from 'multiverse/rejoinder';
 
-import { hideBin } from 'multiverse/black-flag/util';
 import { LogTag, MAX_LOG_ERROR_ENTRIES } from 'universe/constant';
 
 import type {
-  ConfigureArguments,
   ConfigureErrorHandlingEpilogue,
-  ConfigureExecutionContext,
-  ExecutionContext
-} from 'multiverse/black-flag';
+  ConfigureExecutionContext
+} from '@black-flag/core';
+
+import type { ExecutionContext } from '@black-flag/core/util';
 
 const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
 const rootGenericLogger = createGenericLogger({ namespace: pkgName });
@@ -50,9 +49,7 @@ export type CustomExecutionContext = ExecutionContext & {
   };
 };
 
-export const configureExecutionContext: ConfigureExecutionContext<
-  CustomExecutionContext
-> = (context) => {
+export const configureExecutionContext: ConfigureExecutionContext = (context) => {
   return {
     ...context,
     log: rootGenericLogger,
@@ -66,16 +63,21 @@ export const configureExecutionContext: ConfigureExecutionContext<
   };
 };
 
-export const configureArguments: ConfigureArguments = (rawArgv) => {
-  return hideBin(rawArgv);
-};
-
 export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
   CustomExecutionContext
-> = async ({ error, message }, _argv, context) => {
+> = async (
+  ...[{ message, error }, _argv, context]: Parameters<
+    ConfigureErrorHandlingEpilogue<CustomExecutionContext>
+  >
+) => {
   // ? Pretty print error output depending on how silent we're supposed to be
   if (!context.state.isSilenced) {
+    if (context.state.didOutputHelpOrVersionText) {
+      context.log.newline([IF_NOT_SILENCED]);
+    }
+
     context.log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);
+
     if (
       !context.state.isQuieted &&
       isNativeError(error) &&

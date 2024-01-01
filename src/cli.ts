@@ -1,6 +1,8 @@
+#!/usr/bin/env node
+
 import { join } from 'node:path';
 
-import { runProgram } from 'multiverse/black-flag';
+import { runProgram } from '@black-flag/core';
 import { suppressNodeWarnings } from 'multiverse/suppress-warnings';
 
 import type { CustomExecutionContext } from 'universe/configure';
@@ -8,10 +10,9 @@ import type { CustomExecutionContext } from 'universe/configure';
 suppressNodeWarnings('ExperimentalWarning');
 
 /**
- * This is the simple CLI entry point executed directly by node. When built with
- * babel, the file containing this function may get a shebang and `chmod +x`-ed.
+ * This is the simple CLI entry point executed directly by node.
  */
 export default runProgram<CustomExecutionContext>(
-  join(__dirname, 'command'),
-  import('universe/configure')
+  join(__dirname, 'commands'),
+  require('universe/configure')
 );
