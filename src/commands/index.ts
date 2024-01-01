@@ -1,1 +1,3 @@
-export const usage = "Usage: $000\n\nXunnamius's personal switchblade CLI tool.";
+import { makeUsageString } from 'universe/util';
+
+export const usage = makeUsageString("Xunnamius's personal switchblade CLI tool");
