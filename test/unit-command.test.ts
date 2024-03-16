@@ -2,3 +2,5 @@
 
 // * These tests ensure automatically-discovered commands from universe/command
 // * function as expected
+
+export {};

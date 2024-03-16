@@ -9,6 +9,11 @@ import type { ExtendedLogger } from 'multiverse/rejoinder';
 export const MAX_LOG_ERROR_ENTRIES = 10;
 
 /**
+ * The CLI-wide namespace that appears in logger output.
+ */
+export const loggerNamespace = 'xctl';
+
+/**
  * Well-known {@link ExtendedLogger} tags for filtering output automatically
  * depending on program state.
  */

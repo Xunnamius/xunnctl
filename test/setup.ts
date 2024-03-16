@@ -1,13 +1,13 @@
-import assert from 'node:assert';
+/* eslint-disable unicorn/prevent-abbreviations */
+/* eslint-disable unicorn/no-keyword-prefix */
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join as joinPath, resolve as resolvePath } from 'node:path';
-import { name as pkgName, version as pkgVersion } from '../package.json';
+import { name as pkgName, version as pkgVersion } from 'package';
 
 import debugFactory from 'debug';
 import execa from 'execa';
-import { globSync } from 'glob';
-import deepMerge from 'lodash.mergewith';
+import glob from 'glob';
 import uniqueFilename from 'unique-filename';
 //import gitFactory from 'simple-git';
 // ? https://github.com/jest-community/jest-extended#typescript
@@ -16,19 +16,8 @@ import 'jest-extended/all';
 
 import type { Debugger } from 'debug';
 import type { ExecaReturnValue } from 'execa';
-import type { EmptyObject, Merge, PartialDeep, Promisable } from 'type-fest';
+import type { Promisable } from 'type-fest';
 //import type { SimpleGit } from 'simple-git';
-
-// ! Note that these notes are relics of a copy-paste and are not recent. Most
-// ! recent TODO notes for all of this stuff is in msft-todo-backup.
-
-// ! HOWEVER
-
-// ! The versions of the functions here are fixed in various ways compared to
-// ! older versions of this file. A great merging will have to occur soon...
-
-// TODO: for all the withMockedX functions, they should throw an error if the
-// TODO: thing they're trying to mock is already mocked!
 
 // TODO: automated tests against both Windows and Linux (and for all tooling)
 
@@ -50,35 +39,24 @@ globalDebug(`pkgName: "${pkgName}"`);
 globalDebug(`pkgVersion: "${pkgVersion}"`);
 
 // TODO: XXX: make this into a separate (mock-argv) package (along w/ the below)
-export type MockedArgvOptions = {
+export type MockArgvOptions = {
   /**
    * By default, the first two elements in `process.argv` are preserved. Setting
-   * `replaceEntireArgv` to `true` will cause the entire `process.argv` array to
-   * be replaced.
-   *
+   * `replace` to `true` will cause the entire process.argv array to be replaced
    * @default false
    */
-  replaceEntireArgv?: boolean;
+  replace?: boolean;
 };
 
 // TODO: XXX: make this into a separate (mock-env) package (along w/ the below)
-export type MockedEnvOptions = {
+export type MockEnvOptions = {
   /**
    * By default, the `process.env` object is emptied and re-hydrated with
-   * `newEnv`. Setting `replaceEntireEnv` to `false` will cause `newEnv` to be
-   * appended instead.
-   *
+   * `newEnv`. Setting `replace` to `false` will cause `newEnv` to be appended
+   * instead
    * @default true
    */
-  replaceEntireEnv?: boolean;
-  /**
-   * If `true`, whenever `process.env.DEBUG` is present, it will be forwarded
-   * as-is to the underlying environment mock even when `replaceEntireEnv` is
-   * `true`. This allows debug output to make it to the screen.
-   *
-   * @default true
-   */
-  passthroughDebugEnv?: boolean;
+  replace?: boolean;
 };
 
 // TODO: make these fs-style functions accessible from the context object
@@ -148,7 +126,7 @@ async function symlink({
   return fs.symlink(
     actualPath,
     linkPath,
-    process.platform == 'win32' ? (isDir ? 'junction' : 'file') : undefined
+    process.platform === 'win32' ? (isDir ? 'junction' : 'file') : undefined
   );
 }
 
@@ -209,17 +187,17 @@ async function copy({
 
 async function rename({
   oldPath,
-  updatedPath,
+  newPath,
   context: { debug },
   noDebugOutput = false
 }: {
   oldPath: string;
-  updatedPath: string;
+  newPath: string;
   context: FixtureContext;
   noDebugOutput?: boolean;
 }) {
-  !noDebugOutput && debug(`renaming (moving) item: ${oldPath} => ${updatedPath}`);
-  return fs.rename(oldPath, updatedPath);
+  !noDebugOutput && debug(`renaming (moving) item: ${oldPath} => ${newPath}`);
+  return fs.rename(oldPath, newPath);
 }
 
 // TODO: XXX: make this into a separate (mock-argv) package
@@ -227,18 +205,15 @@ export async function withMockedArgv(
   fn: () => Promisable<void>,
   simulatedArgv: string[],
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  { replaceEntireArgv = false }: MockedArgvOptions = {}
+  options: MockArgvOptions = { replace: false }
 ) {
   // ? Take care to preserve the original argv array reference in memory
-  const previousArgv = process.argv.splice(
-    replaceEntireArgv ? 0 : 2,
-    process.argv.length
-  );
+  const previousArgv = process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
   process.argv.push(...simulatedArgv);
 
   await fn();
 
-  process.argv.splice(replaceEntireArgv ? 0 : 2, process.argv.length);
+  process.argv.splice(options?.replace ? 0 : 2, process.argv.length);
   process.argv.push(...previousArgv);
 }
 
@@ -246,17 +221,17 @@ export async function withMockedArgv(
 export function mockArgvFactory(
   factorySimulatedArgv: typeof process.argv,
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  factoryOptions: MockedArgvOptions = {}
+  factoryOptions: MockArgvOptions = { replace: false }
 ) {
   return (
     fn: () => Promisable<void>,
     simulatedArgv?: string[],
-    localOptions?: MockedArgvOptions
+    options?: MockArgvOptions
   ) => {
     return withMockedArgv(
       fn,
       [...factorySimulatedArgv, ...(simulatedArgv || [])],
-      Object.assign({}, factoryOptions, localOptions)
+      options || factoryOptions
     );
   };
 }
@@ -266,7 +241,7 @@ export async function withMockedEnv(
   fn: () => Promisable<void>,
   simulatedEnv: Record<string, string>,
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  { passthroughDebugEnv = true, replaceEntireEnv = true }: MockedEnvOptions = {}
+  options: MockEnvOptions = { replace: true }
 ) {
   const previousEnv = { ...process.env };
   const clearEnv = () =>
@@ -275,13 +250,8 @@ export async function withMockedEnv(
     );
 
   // ? Take care to preserve the original env object reference in memory
-  if (replaceEntireEnv) clearEnv();
-
-  Object.assign(
-    process.env,
-    simulatedEnv,
-    passthroughDebugEnv && previousEnv.DEBUG ? { DEBUG: previousEnv.DEBUG } : {}
-  );
+  if (options.replace) clearEnv();
+  Object.assign(process.env, simulatedEnv);
 
   await fn();
 
@@ -293,17 +263,17 @@ export async function withMockedEnv(
 export function mockEnvFactory(
   factorySimulatedEnv: Record<string, string>,
   // eslint-disable-next-line unicorn/no-object-as-default-parameter
-  factoryOptions: MockedEnvOptions = {}
+  factoryOptions: MockEnvOptions = { replace: true }
 ) {
   return (
     fn: () => Promisable<void>,
     simulatedEnv: Record<string, string> = {},
-    localOptions?: MockedEnvOptions
+    options?: MockEnvOptions
   ) => {
     return withMockedEnv(
       fn,
       { ...factorySimulatedEnv, ...simulatedEnv },
-      Object.assign({}, factoryOptions, localOptions)
+      options || factoryOptions
     );
   };
 }
@@ -343,7 +313,7 @@ export function isolatedImport<T = unknown>(args: {
 
       return r.default &&
         (args.useDefault === true ||
-          (args.useDefault !== false && r.__esModule && Object.keys(r).length == 1))
+          (args.useDefault !== false && r.__esModule && Object.keys(r).length === 1))
         ? r.default
         : r;
     })(require(args.path));
@@ -362,123 +332,37 @@ export function isolatedImportFactory<T = unknown>(args: {
 
 // TODO: XXX: make this into a separate (mock-exit) package
 export async function withMockedExit(
-  fn: (spies: {
-    exitSpy: jest.SpyInstance;
-    getExitCode: () => typeof process.exitCode;
-  }) => Promisable<void>
+  fn: (spies: { exitSpy: jest.SpyInstance }) => Promisable<void>
 ) {
-  const _exitSpy = jest.spyOn(process, 'exit').mockImplementation((code) => {
-    throw new Error(
-      `process.exit(${
-        code ?? ''
-      }) was just called, but it was suppressed via withMockedExit`
-    );
-  });
-
-  const oldProcessExitCode = process.exitCode;
-
-  // ? Sometimes the program is trying to crash but the attempt is swallowed
-  // ? when all we really wanted was to track changes to process.exitCode. To
-  // ? prevent this, we expect that our spy has not been called at all UNLESS
-  // ? the caller of withMockedExit used the spy (accessed a property).
-  let exitSpyWasAccessed = false;
-  let getExitCodeWasUsed = false;
-
-  const exitSpyProxy = new Proxy(_exitSpy, {
-    get(target, property) {
-      exitSpyWasAccessed = true;
-
-      const value: unknown =
-        // @ts-expect-error: TypeScript isn't smart enough to figure this out
-        target[property];
-
-      if (value instanceof Function) {
-        return function (...args: unknown[]) {
-          // ? This is "this-recovering" code.
-          return value.apply(target, args);
-        };
-      }
-
-      return value;
-    }
-  });
+  const exitSpy = jest
+    .spyOn(process, 'exit')
+    .mockImplementation(() => undefined as never);
 
   try {
-    await fn({
-      exitSpy: exitSpyProxy,
-      getExitCode() {
-        getExitCodeWasUsed = true;
-        return process.exitCode;
-      }
-    });
-
-    if (!exitSpyWasAccessed && !getExitCodeWasUsed) {
-      expect({
-        'expected process.exit calls': exitSpyProxy.mock.calls,
-        'expected process.exitCode value': process.exitCode || '0 or undefined'
-      }).toStrictEqual({
-        'expected process.exit calls': [],
-        'expected process.exitCode value': '0 or undefined'
-      });
-    } else if (!exitSpyWasAccessed) {
-      expect({
-        'expected process.exit calls': exitSpyProxy.mock.calls
-      }).toStrictEqual({
-        'expected process.exit calls': []
-      });
-    } else if (!getExitCodeWasUsed) {
-      expect({
-        'expected process.exitCode value': process.exitCode || '0 or undefined'
-      }).toStrictEqual({
-        'expected process.exitCode value': '0 or undefined'
-      });
-    }
+    await fn({ exitSpy });
   } finally {
-    exitSpyProxy.mockRestore();
-    process.exitCode = oldProcessExitCode;
+    exitSpy.mockRestore();
   }
 }
 
 // TODO: XXX: make this into a separate package (along with the above)
 export function protectedImportFactory(path: string) {
-  return async (factoryOptions?: { expectedExitCode?: number }) => {
+  return async (parameters?: { expectedExitCode?: number }) => {
     let pkg: unknown = undefined;
 
-    await withMockedExit(async ({ exitSpy, getExitCode }) => {
+    await withMockedExit(async ({ exitSpy }) => {
       pkg = await isolatedImport({ path });
-
-      if (expect && factoryOptions?.expectedExitCode !== undefined) {
-        if (getExitCode() === undefined) {
-          expect(exitSpy).toHaveBeenCalledWith(factoryOptions.expectedExitCode);
-        } else {
-          expect(getExitCode()).toBe(factoryOptions.expectedExitCode);
-        }
-      } else if (!expect) {
+      if (expect && parameters?.expectedExitCode)
+        expect(exitSpy).toHaveBeenCalledWith(parameters.expectedExitCode);
+      else if (!expect)
         globalDebug.extend('protected-import-factory')(
           'WARNING: "expect" object not found, so exit check was skipped'
         );
-      }
     });
 
     return pkg;
   };
 }
-
-export type MockedOutputOptions = {
-  /**
-   * If `true`, whenever `process.env.DEBUG` is present, output functions will
-   * still be spied on but their implementations will not be mocked, allowing
-   * debug output to make it to the screen.
-   *
-   * @default true
-   */
-  passthroughOutputIfDebugging?: boolean;
-  /**
-   * Call `::mockRestore` on one or more output functions currently being spied
-   * upon.
-   */
-  passthrough?: ('log' | 'warn' | 'error' | 'info' | 'stdout' | 'stderr')[];
-};
 
 // TODO: XXX: make this into a separate (mock-output) package
 export async function withMockedOutput(
@@ -488,140 +372,33 @@ export async function withMockedOutput(
     errorSpy: jest.SpyInstance;
     infoSpy: jest.SpyInstance;
     stdoutSpy: jest.SpyInstance;
-    stderrSpy: jest.SpyInstance;
-  }) => unknown,
-  { passthrough = [], passthroughOutputIfDebugging = true }: MockedOutputOptions = {}
+    stdErrSpy: jest.SpyInstance;
+  }) => unknown
 ) {
-  const spies = {
-    logSpy: jest.spyOn(console, 'log'),
-    warnSpy: jest.spyOn(console, 'warn'),
-    errorSpy: jest.spyOn(console, 'error'),
-    infoSpy: jest.spyOn(console, 'info'),
-    stdoutSpy: jest.spyOn(process.stdout, 'write'),
-    stderrSpy: jest.spyOn(process.stderr, 'write')
-  };
-
-  const $wasAccessed = Symbol('was-accessed');
-  const noDebugPassthrough = !process.env.DEBUG || !passthroughOutputIfDebugging;
-
-  for (const [name, spy] of Object.entries(spies)) {
-    // ? If we're debugging, show all outputs instead of swallowing them
-    if (
-      noDebugPassthrough &&
-      !passthrough.includes(name as (typeof passthrough)[number])
-    ) {
-      if (name.startsWith('std')) {
-        spy.mockImplementation(() => true);
-      } else {
-        // @ts-expect-error: TypeScript isn't smart enough to figure this out
-        spy.mockImplementation(() => undefined);
-      }
-    }
-
-    // ? Sometimes useful warnings/errors and what not are swallowed when all we
-    // ? really wanted was to track log/stdout calls, or vice-versa. To prevent
-    // ? this, we expect that our spies have not been called at all UNLESS the
-    // ? caller of withMockedOutput uses the spy (accesses a property).
-    let wasAccessed = false;
-    // @ts-expect-error: TypeScript isn't smart enough to figure this out
-    spies[name as keyof typeof spies] =
-      //
-      new Proxy(spy, {
-        get(target, property) {
-          if (property === $wasAccessed) {
-            return wasAccessed;
-          }
-
-          wasAccessed = true;
-
-          const value: unknown =
-            // @ts-expect-error: TypeScript isn't smart enough to figure this out
-            target[property];
-
-          if (value instanceof Function) {
-            return function (...args: unknown[]) {
-              // ? "this-recovering" code
-              return value.apply(target, args);
-            };
-          }
-
-          return value;
-        }
-      });
-  }
+  const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+  const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  const stdErrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
   try {
-    await fn(spies);
-
-    // ? Let us know when output was swallowed unexpectedly
-    for (const [name, spy] of Object.entries(spies)) {
-      if (
-        noDebugPassthrough &&
-        !passthrough.includes(name as (typeof passthrough)[number])
-      ) {
-        const wasAccessed = (spy as typeof spy & { [$wasAccessed]: boolean })[
-          $wasAccessed
-        ];
-
-        assert(typeof wasAccessed === 'boolean');
-
-        if (!wasAccessed) {
-          expect({
-            'failing-spy': name,
-            'unexpected-output': spy.mock.calls
-          }).toStrictEqual({ 'failing-spy': name, 'unexpected-output': [] });
-        }
-      }
-    }
+    await fn({
+      logSpy,
+      warnSpy,
+      errorSpy,
+      infoSpy,
+      stdoutSpy,
+      stdErrSpy
+    });
   } finally {
-    spies.logSpy.mockRestore();
-    spies.warnSpy.mockRestore();
-    spies.errorSpy.mockRestore();
-    spies.infoSpy.mockRestore();
-    spies.stdoutSpy.mockRestore();
-    spies.stderrSpy.mockRestore();
+    logSpy.mockRestore();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
+    stdoutSpy.mockRestore();
+    stdErrSpy.mockRestore();
   }
-}
-
-/**
- * Wraps {@link withMockedExit} + {@link withMockedOutput} with
- * {@link withMockedArgv} + {@link withMockedEnv}.
- */
-export async function withMocks(
-  fn: (
-    spies: Merge<
-      Parameters<Parameters<typeof withMockedOutput>[0]>[0],
-      Parameters<Parameters<typeof withMockedExit>[0]>[0]
-    >
-  ) => Promise<void>,
-  {
-    simulatedEnv = {},
-    simulatedArgv = [],
-    options = undefined
-  }: {
-    simulatedEnv?: Record<string, string>;
-    simulatedArgv?: string[];
-    options?: Merge<Merge<MockedArgvOptions, MockedEnvOptions>, MockedOutputOptions>;
-  } = {}
-) {
-  return withMockedArgv(
-    () => {
-      return withMockedEnv(
-        () => {
-          return withMockedExit((exitSpies) =>
-            withMockedOutput(
-              (outputSpies) => fn(Object.assign({}, exitSpies, outputSpies)),
-              options
-            )
-          );
-        },
-        simulatedEnv,
-        options
-      );
-    },
-    simulatedArgv,
-    options
-  );
 }
 
 // TODO: XXX: make this into a separate (run) package (along w/ below)
@@ -636,10 +413,9 @@ export interface RunOptions extends execa.Options {
 // TODO: XXX: make this into a separate (run) package
 // ! By default, does NOT reject on bad exit code (set reject: true to override)
 export async function run(file: string, args?: string[], options?: RunOptions) {
-  const result = (await execa(file, args, {
-    reject: false,
-    ...options
-  })) as ExecaReturnValue & { code: ExecaReturnValue['exitCode'] };
+  let result: ExecaReturnValue & { code: ExecaReturnValue['exitCode'] };
+  // eslint-disable-next-line prefer-const
+  result = (await execa(file, args, { reject: false, ...options })) as typeof result;
 
   result.code = result.exitCode;
   globalDebug.extend('run')('executed command result: %O', result);
@@ -697,9 +473,9 @@ export interface NodeImportTestFixtureOptions {
 }
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
-export interface FixtureContext<
-  CustomOptions extends Record<string, unknown> = EmptyObject
-> extends Partial<TestResultProvider>,
+// eslint-disable-next-line @typescript-eslint/ban-types
+export interface FixtureContext<CustomOptions extends Record<string, unknown> = {}>
+  extends Partial<TestResultProvider>,
     Partial<TreeOutputProvider> /*,
     Partial<GitProvider>*/ {
   root: string;
@@ -726,6 +502,7 @@ export interface TreeOutputProvider {
 } */
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
+// eslint-disable-next-line @typescript-eslint/ban-types
 export type FixtureAction<Context = FixtureContext> = (
   context: Context
 ) => Promise<unknown>;
@@ -822,10 +599,12 @@ export function npmCopySelfFixture(): MockFixture {
     setup: async (context) => {
       const root = resolvePath(__dirname, '..');
 
-      const { files: patterns } = (await import('../package.json')).default;
-      assert(patterns !== undefined);
+      // @ts-expect-error: CJS<=>ESM dark magic (may not be working actually!)
+      const { files: patterns } = await (await import('package')).default;
 
-      const sourcePaths = patterns.flatMap((p) => globSync(p, { cwd: root, root }));
+      const sourcePaths = patterns.flatMap((p: string) =>
+        glob.sync(p, { cwd: root, root })
+      );
       const destinationPath = resolvePath(
         context.root,
         joinPath('node_modules', pkgName)
@@ -840,7 +619,7 @@ export function npmCopySelfFixture(): MockFixture {
       }
 
       // TODO: only optionally remove peer dependencies from the install loop
-      // TODO: (and by default they should NOT? be removed, unlike below).
+      // TODO: (and by default they should NOT be removed, unlike below).
       // TODO: Same deal with dev dependencies (except removed by default).
       const {
         peerDependencies: _,
@@ -875,7 +654,7 @@ export function npmCopySelfFixture(): MockFixture {
           'install',
           '--no-save',
           ...(context.options.runInstallScripts ? [] : ['--ignore-scripts']),
-          '--production',
+          '--omit=dev',
           '--force'
         ],
         {
@@ -885,35 +664,21 @@ export function npmCopySelfFixture(): MockFixture {
         }
       );
 
-      // ! Notes for when we merge all of these these versions of this file
-      // ! together and publish as packages: we fixed an error with namespaced
-      // ! packages here!
-
       await rename({
         oldPath: `${context.root}/node_modules`,
-        updatedPath: `${context.root}/node_modules_old`,
+        newPath: `${context.root}/node_modules_old`,
         context
       });
 
       await rename({
         oldPath: `${context.root}/node_modules_old/${pkgName}/node_modules`,
-        updatedPath: `${context.root}/node_modules`,
+        newPath: `${context.root}/node_modules`,
         context
       });
 
-      if (pkgName.startsWith('@')) {
-        const pkgNameParts = pkgName.split('/');
-        assert(pkgNameParts.length === 2);
-
-        await mkdir({
-          paths: [`${context.root}/node_modules/${pkgNameParts[0]}`],
-          context
-        });
-      }
-
       await rename({
         oldPath: `${context.root}/node_modules_old/${pkgName}`,
-        updatedPath: `${context.root}/node_modules/${pkgName}`,
+        newPath: `${context.root}/node_modules/${pkgName}`,
         context
       });
 
@@ -926,7 +691,7 @@ export function npmCopySelfFixture(): MockFixture {
 export function webpackTestFixture(): MockFixture {
   return {
     name: 'webpack-test',
-    description: 'setting up webpack integration test',
+    description: 'setting up webpack jest integration test',
     setup: async (context) => {
       if (typeof context.options.webpackVersion != 'string') {
         throw new TypeError('invalid or missing options.webpackVersion, expected string');
@@ -976,6 +741,7 @@ export function webpackTestFixture(): MockFixture {
       await run('npx', ['webpack'], { cwd: context.root, reject: true });
 
       const { code, stdout, stderr } = await run('node', [
+        '--no-warnings',
         `${context.root}/dist/index.js`
       ]);
 
@@ -989,7 +755,7 @@ export function webpackTestFixture(): MockFixture {
 }
 
 async function getTreeOutput(context: FixtureContext) {
-  if (process.platform == 'win32') {
+  if (process.platform === 'win32') {
     return '(this platform does not support the `tree` command)';
   } else {
     const { stdout } = await execa('tree', ['-a', '-L', '2'], {
@@ -1001,62 +767,37 @@ async function getTreeOutput(context: FixtureContext) {
 }
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
-export function nodeImportAndRunTestFixture(): MockFixture {
+export function nodeImportTestFixture(): MockFixture {
   return {
-    name: 'node-import-and-run-test',
-    description: 'setting up node import and runtime integration test',
+    name: 'node-import-test',
+    description: 'setting up node import jest integration test',
     setup: async (context) => {
-      const targetPath = Object.keys(context.fileContents).find((path) =>
+      const indexPath = Object.keys(context.fileContents).find((path) =>
         /^src\/index(\.test)?\.(((c|m)?js)|ts)x?$/.test(path)
       );
 
-      if (!targetPath) {
+      if (!indexPath) {
         throw new Error('could not find initial contents for src/index test file');
       }
 
       await writeFile({
-        path: `${context.root}/${targetPath}`,
-        data: context.fileContents[targetPath],
+        path: `${context.root}/${indexPath}`,
+        data: context.fileContents[indexPath],
         context
       });
 
+      // TODO: also test all current/active/maintenance versions of node too
+      // TODO: and enable that functionality
       const bin = context.options.runWith?.binary || 'node';
-      const args = context.options.runWith?.args || [];
+      const args = context.options.runWith?.args || [
+        '--no-warnings',
+        '--experimental-json-modules'
+      ];
       const options = context.options.runWith?.opts || {};
 
       context.treeOutput = await getTreeOutput(context);
 
-      const { code, stdout, stderr } = await run(bin, [...args, targetPath], {
-        cwd: context.root,
-        ...options
-      });
-
-      context.testResult = {
-        code,
-        stdout,
-        stderr
-      };
-    }
-  };
-}
-
-// TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
-export function nodeRunTestFixture(): MockFixture {
-  return {
-    name: 'node-run-test',
-    description: 'setting up runtime integration test',
-    setup: async (context) => {
-      const bin = context.options.runWith?.binary;
-      const args = context.options.runWith?.args || [];
-      const options = context.options.runWith?.opts || {};
-
-      context.treeOutput = await getTreeOutput(context);
-
-      if (!bin) {
-        throw new Error('missing `runWith` binary');
-      }
-
-      const { code, stdout, stderr } = await run(bin, args, {
+      const { code, stdout, stderr } = await run(bin, [...args, indexPath], {
         cwd: context.root,
         ...options
       });
@@ -1114,7 +855,6 @@ export function dummyDirectoriesFixture(): MockFixture {
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ below)
 export function dummyFilesFixture(): MockFixture {
-  // TODO: assets/ directory support
   return {
     name: 'dummy-files',
     description: 'creating dummy files under fixture root',
@@ -1161,8 +901,10 @@ export function describeRootFixture(): MockFixture {
 
 // TODO: XXX: make this into a separate (mock-fixture) package
 export async function withMockedFixture<
-  CustomOptions extends Record<string, unknown> = EmptyObject,
-  CustomContext extends Record<string, unknown> = EmptyObject
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  CustomOptions extends Record<string, unknown> = {},
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  CustomContext extends Record<string, unknown> = {}
 >({
   fn,
   testIdentifier,
@@ -1203,7 +945,7 @@ export async function withMockedFixture<
     context.using = [...context.using, ...finalOptions.use];
     // ? `describe-root` fixture doesn't have to be the last one, but a fixture
     // ? with that name must be included at least once
-    if (!finalOptions.use.some((f) => f.name == 'describe-root'))
+    if (!finalOptions.use.some((f) => f.name === 'describe-root'))
       context.using.push(describeRootFixture());
   } else context.using = [rootFixture(), describeRootFixture()];
 
@@ -1221,7 +963,7 @@ export async function withMockedFixture<
       p: CustomizedMockFixture['name'] | CustomizedMockFixture['description']
       // TODO: replace with toss
     ) =>
-      typeof p == 'function' ? p(context) : typeof p == 'string' ? p : ':impossible:';
+      typeof p === 'function' ? p(context) : typeof p === 'string' ? p : ':impossible:';
     const name = await toString(fixture.name.toString());
     const desc = await toString(fixture.description);
     const dbg = globalDebug.extend(error ? `${name}:<error>` : name);
@@ -1232,7 +974,7 @@ export async function withMockedFixture<
   /*eslint-disable no-await-in-loop */
   try {
     for (const mockFixture of context.using) {
-      if (mockFixture.name == testSymbol) {
+      if (mockFixture.name === testSymbol) {
         context.debug = globalDebug;
         globalDebug('executing test callback');
       } else {
@@ -1244,7 +986,7 @@ export async function withMockedFixture<
         ? await mockFixture.setup(context)
         : context.debug('(warning: mock fixture has no setup function)');
 
-      if (mockFixture.name == 'describe-root') ranDescribe = true;
+      if (mockFixture.name === 'describe-root') ranDescribe = true;
     }
   } catch (error) {
     context.debug.extend('<error>')('exception occurred: %O', error);
@@ -1273,20 +1015,15 @@ export async function withMockedFixture<
 
 // TODO: XXX: make this into a separate (mock-fixture) package (along w/ above)
 export function mockFixtureFactory<
-  CustomOptions extends Record<string, unknown> = EmptyObject,
-  CustomContext extends Record<string, unknown> = EmptyObject
->(testIdentifier: string, options?: PartialDeep<FixtureOptions & CustomOptions>) {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  CustomOptions extends Record<string, unknown> = {},
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  CustomContext extends Record<string, unknown> = {}
+>(testIdentifier: string, options?: Partial<FixtureOptions & CustomOptions>) {
   return (
     fn: FixtureAction<
       FixtureContext<FixtureOptions & Partial<Record<string, unknown> & CustomOptions>> &
         CustomContext
-    >,
-    options_?: typeof options
-  ) => {
-    return withMockedFixture<CustomOptions, CustomContext>({
-      fn,
-      testIdentifier,
-      options: deepMerge({}, options, options_)
-    });
-  };
+    >
+  ) => withMockedFixture<CustomOptions, CustomContext>({ fn, testIdentifier, options });
 }

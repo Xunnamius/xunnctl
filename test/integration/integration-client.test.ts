@@ -5,3 +5,5 @@
 // * as advertised in help text and other documentation.
 
 // TODO: good fable candidate here
+
+export {};

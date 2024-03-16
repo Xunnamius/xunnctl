@@ -1,40 +1,30 @@
-import debugFactory from 'debug';
-
-import { API_TOKEN, API_URI_BASE } from './env.mjs';
-import { createLogger } from './rejoinder.mjs';
-
-// TODO: replace debug with debug-extended
-const debug = debugFactory('ergo-cf:lib:fetch:debug');
-const { message: logMessage, error: logError } = createLogger('ergo-cf:lib:fetch');
+import { ExtendedDebugger } from 'multiverse/debug-extended';
+import { JsonValue } from 'type-fest';
 
 /**
- * - https://developers.cloudflare.com/api
- *
- * @param {string} uri
- * @param {string} method
- * @param {Record<string, unknown>} body
- * @param {RequestInit} [additionalOptions]
- * @returns {Promise<[result: unknown, rawResponseJson: Record<string, unknown>]>}
+ * Generic fetch wrapper for making API calls.
  */
-export async function makeApiCall(uri, method, body, additionalOptions) {
+export async function makeApiCall({
+  debug: debug_,
+  uri,
+  method,
+  body,
+  ...additionalOptions
+}: { debug: ExtendedDebugger; uri: string; body?: JsonValue } & Omit<
+  RequestInit,
+  'body'
+> & {
+    [additionalOption: string]: unknown;
+  }): Promise<[response: Response, responseBody: string]> {
+  const debug = debug_.extend('makeApiCall');
+
   debug('request uri: %O', uri);
   debug('request method: %O', method);
   debug('request body: %O', body);
   debug('request additionalOptions: %O', additionalOptions);
 
-  /**
-   * @type {RequestInit}
-   */
-  const baseOptions = {
+  const res = await fetch(uri, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `bearer ${API_TOKEN}`
-    }
-  };
-
-  const res = await fetch(`${API_URI_BASE}/${uri}`, {
-    ...baseOptions,
     ...additionalOptions,
     body: JSON.stringify(body)
   });
@@ -46,24 +36,7 @@ export async function makeApiCall(uri, method, body, additionalOptions) {
 
   const responseBody = await res.text();
 
-  debug('response body (expecting JSON): %O', responseBody);
+  debug('response body: %O', responseBody);
 
-  const responseJson = JSON.parse(responseBody);
-  const { success, errors, result, messages } = responseJson;
-
-  if (messages.length) {
-    messages.forEach((message) => logMessage(message));
-  }
-
-  if (!success) {
-    if (errors?.length) {
-      errors.forEach(({ code, message }) => logError(`[${code}]: ${message}\n`));
-    } else {
-      logError('(request failed but no error message was returned)');
-    }
-
-    throw new Error('terminated due to reported API error');
-  }
-
-  return [result, responseJson];
+  return [res, responseBody];
 }

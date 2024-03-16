@@ -29,12 +29,12 @@
  */
 export function suppressNodeWarnings(name: string | string[]) {
   const originalWarningListeners = process.listeners('warning');
-  const suppressionTargets = [name].flat();
+  const suppressionTargets = new Set([name].flat());
 
   if (originalWarningListeners.length) {
     process.removeAllListeners('warning');
     process.prependListener('warning', (warning) => {
-      if (!suppressionTargets.includes(warning.name)) {
+      if (!suppressionTargets.has(warning.name)) {
         originalWarningListeners.forEach((listener) => listener(warning));
       }
     });

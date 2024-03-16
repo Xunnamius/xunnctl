@@ -1,7 +1,6 @@
 import { isNativeError } from 'node:util/types';
 
 import { ListrErrorTypes } from 'listr2';
-import { name as pkgName } from 'package';
 
 import {
   createGenericLogger,
@@ -10,7 +9,7 @@ import {
   type ListrManager
 } from 'multiverse/rejoinder';
 
-import { LogTag, MAX_LOG_ERROR_ENTRIES } from 'universe/constant';
+import { loggerNamespace, LogTag, MAX_LOG_ERROR_ENTRIES } from 'universe/constant';
 
 import type {
   ConfigureErrorHandlingEpilogue,
@@ -20,7 +19,7 @@ import type {
 import type { ExecutionContext } from '@black-flag/core/util';
 
 const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
-const rootGenericLogger = createGenericLogger({ namespace: pkgName });
+const rootGenericLogger = createGenericLogger({ namespace: loggerNamespace });
 
 export type CustomExecutionContext = ExecutionContext & {
   /**
@@ -85,18 +84,24 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
       // ? Don't repeat what has already been output
       error.cause !== message
     ) {
-      context.log.error([IF_NOT_QUIETED], '❌ Causal stack:');
-
       for (
         let count = 0, subError: Error | undefined = error;
         subError?.cause && count < MAX_LOG_ERROR_ENTRIES;
         count++
       ) {
         if (isNativeError(subError.cause)) {
-          context.log.error([IF_NOT_QUIETED], ` ⮕  ${subError.cause.message}`);
+          if (count === 0) {
+            if (!subError.cause.cause) {
+              break;
+            }
+
+            context.log.error([IF_NOT_QUIETED], '❌ Causal stack:');
+          }
+
+          context.log.error([IF_NOT_QUIETED], `   ⮕  ${subError.cause.message}`);
           subError = subError.cause;
         } else {
-          context.log.error([IF_NOT_QUIETED], ` ⮕  ${subError.cause}`);
+          context.log.error([IF_NOT_QUIETED], `   ⮕  ${subError.cause}`);
           subError = undefined;
         }
 
@@ -112,7 +117,7 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
 
       for (const taskError of context.taskManager.errors) {
         if (taskError.type !== ListrErrorTypes.HAS_FAILED_WITHOUT_ERROR) {
-          context.log.error([IF_NOT_HUSHED], `❗ ${taskError.message}`);
+          context.log.error([IF_NOT_HUSHED], `   ❗ ${taskError.message}`);
         }
       }
     }

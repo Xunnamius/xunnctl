@@ -3,3 +3,5 @@
 
 // * These tests verify that each of this tool's exports can be imported into
 // * Node.js in both an ESM and CJS context without incident.
+
+export {};

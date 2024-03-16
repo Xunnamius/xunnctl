@@ -1,16 +1,35 @@
-import debugFactory from 'debug';
+import { makeCloudflareApiCall } from 'universe/api/cloudflare';
 
-import { ACCOUNT_ID, CF_FIREWALL_PHASE_NAME } from '../env.mjs';
-import { makeApiCall } from '../call-api.mjs';
+import type { ExtendedDebugger } from 'multiverse/debug-extended';
+import { ExtendedLogger } from 'multiverse/rejoinder';
 
-// TODO: replace debug with debug-extended
-const debug = debugFactory('ergo-cf:lib:dns:debug');
+/**
+ * @internal
+ */
+export type RulesetRule = { id: string; description: string; phase: string };
+
+/**
+ * @internal
+ */
+type Zone = { id: string; name: string };
 
 /**
  * - https://developers.cloudflare.com/api/operations/zones-get
+ *
+ * @returns A list of DNS zone objects.
  */
-export async function getAllDnsZones() {
-  const zones = [];
+export async function getAllDnsZones({
+  debug: debug_,
+  log,
+  configPath
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+}): Promise<Zone[]> {
+  const debug = debug_.extend('getAllDnsZones');
+
+  const zones: Zone[] = [];
   let currentPage = 0;
   let countRemaining = 0;
 
@@ -20,7 +39,14 @@ export async function getAllDnsZones() {
       {
         result_info: { count, page, per_page, total_count }
       }
-    ] = await makeApiCall(`zones?page=${++currentPage}`, 'GET');
+      // eslint-disable-next-line no-await-in-loop
+    ] = await makeCloudflareApiCall({
+      debug,
+      log,
+      configPath,
+      uri: `zones?page=${++currentPage}`,
+      method: 'GET'
+    });
 
     zones.push(...zones_);
     countRemaining = total_count - (count + (page - 1) * per_page);
@@ -36,14 +62,34 @@ export async function getAllDnsZones() {
  * - https://developers.cloudflare.com/api/operations/zones-post
  * - https://developers.cloudflare.com/api/operations/zone-settings-edit-zone-settings-info
  *
- * @param {string} domainName
- * @returns {Promise<string>} zoneId
+ * @return The ID of the newly created DNS zone.
  */
-export async function createDnsZone(domainName) {
-  const [{ id: zoneId }] = await makeApiCall('zones', 'POST', {
-    account: { id: ACCOUNT_ID },
-    name: domainName,
-    type: 'full'
+export async function createDnsZone({
+  debug: debug_,
+  log,
+  configPath,
+  domainName,
+  accountId
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  domainName: string;
+  accountId: string;
+}): Promise<string> {
+  const debug = debug_.extend('createDnsZone');
+
+  const [{ id: zoneId }] = await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: 'zones',
+    method: 'POST',
+    body: {
+      account: { id: accountId },
+      name: domainName,
+      type: 'full'
+    }
   });
 
   await reinitializeDnsZone(zoneId);
@@ -53,14 +99,31 @@ export async function createDnsZone(domainName) {
 /**
  * - https://developers.cloudflare.com/api/operations/zones-get
  *
- * @param {string} domainName
- * @returns {Promise<string | null>} `zoneId` or `null` if not found
+ * @return The ID of the DNS zone.
  */
-export async function getDnsZoneId(domainName) {
-  const zoneId = await makeApiCall(`zones?name=${domainName}`, 'GET').then(([zones]) => {
+export async function getDnsZoneId({
+  debug: debug_,
+  log,
+  configPath,
+  domainName
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  domainName: string;
+}): Promise<string | undefined> {
+  const debug = debug_.extend('getDnsZoneId');
+
+  const zoneId = await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: `zones?name=${domainName}`,
+    method: 'GET'
+  }).then(([zones]) => {
     debug('searching for %O', domainName);
 
-    const zone = zones.find(({ name }) => {
+    const zone = zones.find(({ name }: { name: string }) => {
       debug('saw %O', name);
       return name === domainName;
     });
@@ -77,53 +140,131 @@ export async function getDnsZoneId(domainName) {
 /**
  * - https://developers.cloudflare.com/api/operations/zones-patch
  *
- * @param {string} zoneId
- * @returns {Promise<void>}
+ * Updates/overwrites the settings of the specified zone.
  */
-export async function reinitializeDnsZone(zoneId) {
-  await makeApiCall(`zones/${zoneId}/settings`, 'PATCH', {
-    items: [
-      { id: 'always_use_https', value: 'on' },
-      { id: 'ipv6', value: 'on' },
-      { id: 'ssl', value: 'strict' },
-      { id: 'min_tls_version', value: '1.2' }
-    ]
+export async function reinitializeDnsZone({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+}): Promise<void> {
+  const debug = debug_.extend('reinitializeDnsZone');
+
+  await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: `zones/${zoneId}/settings`,
+    method: 'PATCH',
+    body: {
+      items: [
+        { id: 'always_use_https', value: 'on' },
+        { id: 'ipv6', value: 'on' },
+        { id: 'ssl', value: 'strict' },
+        { id: 'min_tls_version', value: '1.2' }
+      ]
+    }
+  });
+}
+
+/**
+ * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
+ */
+export async function createDnsARecord({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId,
+  domainName,
+  ipv4,
+  proxied = false
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  domainName: string;
+  ipv4: string;
+  proxied: boolean;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsARecord');
+
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'A',
+    domainName,
+    content: ipv4,
+    proxied
+  });
+}
+
+/**
+ * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
+ */
+export async function createDnsAaaaRecord({
+  debug: debug_,
+  log,
+  configPath,
+  domainName,
+  ipv6: content,
+  zoneId,
+  proxied = false
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  domainName: string;
+  ipv6: string;
+  proxied: boolean;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsAaaaRecord');
+
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'AAAA',
+    domainName,
+    content,
+    proxied
   });
 }
 
 /**
  * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
  *
- * @param {string} zoneId
- * @param {string} domainName DNS record name (or @ for the zone apex) in Punycode.
- * @param {string} ipv4 A valid IPv4 address.
- * @param {boolean} [proxied=false] Whether the record is receiving the performance and security benefits of Cloudflare.
- */
-export async function createDnsARecord(zoneId, domainName, ipv4, proxied = false) {
-  await createDnsRecord(zoneId, 'A', domainName, { content: ipv4, proxied });
-}
-
-/**
- * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
- *
- * @param {string} zoneId
- * @param {string} domainName DNS record name (or @ for the zone apex) in Punycode.
- * @param {string} ipv6 A valid IPv6 address.
- * @param {boolean} [proxied=false] Whether the record is receiving the performance and security benefits of Cloudflare.
- */
-export async function createDnsAaaaRecord(zoneId, domainName, ipv6, proxied = false) {
-  await createDnsRecord(zoneId, 'AAAA', domainName, { content: ipv6, proxied });
-}
-
-/**
- * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
- *
  * Creates pre-configured "issue" and "iodef" records.
- *
- * @param {string} zoneId
  */
-export async function createDnsCaaRecords(zoneId) {
-  await createDnsRecord(zoneId, 'CAA', '@', {
+export async function createDnsCaaRecords({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsCaaRecords');
+
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'CAA',
+    domainName: '@',
     data: {
       flags: 128,
       tag: 'issue',
@@ -131,7 +272,13 @@ export async function createDnsCaaRecords(zoneId) {
     }
   });
 
-  await createDnsRecord(zoneId, 'CAA', '@', {
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'CAA',
+    domainName: '@',
     data: {
       flags: 128,
       tag: 'iodef',
@@ -142,19 +289,33 @@ export async function createDnsCaaRecords(zoneId) {
 
 /**
  * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
- *
- * @param {string} zoneId
- * @param {string} domainName DNS record name (or @ for the zone apex) in Punycode.
- * @param {string} redirectToHostname A valid hostname. Must not match the record's name.
- * @param {boolean} [proxied=false] Whether the record is receiving the performance and security benefits of Cloudflare.
  */
-export async function createDnsCnameRecord(
-  zoneId,
+export async function createDnsCnameRecord({
+  debug: debug_,
+  log,
+  configPath,
   domainName,
   redirectToHostname,
+  zoneId,
   proxied = false
-) {
-  await createDnsRecord(zoneId, 'CNAME', domainName, {
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  domainName: string;
+  redirectToHostname: string;
+  proxied: boolean;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsCnameRecord');
+
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'CNAME',
+    domainName,
     content: redirectToHostname,
     proxied
   });
@@ -162,13 +323,31 @@ export async function createDnsCnameRecord(
 
 /**
  * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
- *
- * @param {string} zoneId
- * @param {string} domainName DNS record name (or @ for the zone apex) in Punycode.
- * @param {string} mailHostname A valid mail server hostname.
  */
-export async function createDnsMxRecord(zoneId, domainName, mailHostname) {
-  await createDnsRecord(zoneId, 'MX', domainName, {
+export async function createDnsMxRecord({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId,
+  domainName,
+  mailHostname
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  domainName: string;
+  mailHostname: string;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsMxRecord');
+
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'MX',
+    domainName,
     content: mailHostname,
     priority: 1
   });
@@ -176,72 +355,155 @@ export async function createDnsMxRecord(zoneId, domainName, mailHostname) {
 
 /**
  * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
- *
- * @param {string} zoneId
- * @param {string} domainName DNS record name (or @ for the zone apex) in Punycode.
- * @param {string} content Text content for the record.
  */
-export async function createDnsTxtRecord(zoneId, domainName, content) {
-  await createDnsRecord(zoneId, 'TXT', domainName, { content });
+export async function createDnsTxtRecord({
+  debug: debug_,
+  log,
+  configPath,
+  content,
+  domainName,
+  zoneId
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  domainName: string;
+  content: string;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsTxtRecord');
+
+  await createDnsRecord({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    type: 'TXT',
+    domainName,
+    content
+  });
 }
 
 /**
  * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
- *
- * @param {string} zoneId
- * @param {string} type Record type.
- * @param {string} domainName DNS record name (or @ for the zone apex) in Punycode.
- * @param {Record<string, unknown>} [additionalOptions]
  */
-export async function createDnsRecord(zoneId, type, domainName, additionalOptions) {
-  await makeApiCall(`zones/${zoneId}/dns_records`, 'POST', {
-    name: domainName,
-    type,
-    ttl: 1,
-    ...additionalOptions
+export async function createDnsRecord({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId,
+  type,
+  domainName,
+  ...additionalOptions
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  type: string;
+  domainName: string;
+  [additionalOption: string]: unknown;
+}): Promise<void> {
+  const debug = debug_.extend('createDnsRecord');
+
+  await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: `zones/${zoneId}/dns_records`,
+    method: 'POST',
+    body: {
+      name: domainName,
+      type,
+      ttl: 1,
+      ...additionalOptions
+    }
   });
 }
 
 /**
  * - https://developers.cloudflare.com/api/operations/cloudflare-i-ps-cloudflare-ip-details
+ *
+ * @returns An object containing Cloudflare's public IPv4 and IPv6 addresses.
  */
-export async function getCloudflareIps() {
-  const [{ ipv4_cidrs: ipv4, ipv6_cidrs: ipv6 }] = await makeApiCall('ips', 'GET');
+export async function getCloudflareIps({
+  debug: debug_,
+  log,
+  configPath
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+}): Promise<{ ipv4: string[]; ipv6: string[] }> {
+  const debug = debug_.extend('getCloudflareIps');
+
+  const [{ ipv4_cidrs: ipv4, ipv6_cidrs: ipv6 }] = await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: 'ips',
+    method: 'GET'
+  });
 
   return { ipv4, ipv6 };
 }
 
 /**
- * - https://developers.cloudflare.com/api/operations/createZoneRuleset
+ * https://developers.cloudflare.com/api/operations/createZoneRuleset
  *
- * Note that the custom firewall ruleset is created if it does not already
- * exist. If it already exists, it will simply be returned instead.
+ * Gets (or creates if it does not already exist) a custom firewall ruleset and
+ * returns its ID. Note that the ruleset is created if it does not already exist.
+ * If it already exists, it will simply be returned instead.
  *
- * @param {string} zoneId
- * @returns {Promise<string>} rulesetId
+ * @returns The ID of the ruleset.
  */
-export async function getDnsZoneCustomFirewallRulesetId(zoneId) {
-  const rulesetId = await getDnsZoneCustomFirewallRuleset(zoneId).then(
-    async (ruleset) => {
-      if (ruleset?.id) {
-        debug('using existing custom firewall ruleset: %O', ruleset.id);
-        return ruleset.id;
-      } else {
-        debug('creating new custom firewall ruleset...');
+export async function getDnsZoneCustomFirewallRulesetId({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId,
+  phaseName
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  phaseName: string;
+}): Promise<string> {
+  const debug = debug_.extend('getDnsZoneCustomFirewallRulesetId');
 
-        const [newRuleset] = await makeApiCall(`zones/${zoneId}/rulesets`, 'POST', {
+  const rulesetId = await getDnsZoneCustomFirewallRuleset({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    phaseName
+  }).then(async (ruleset) => {
+    if (ruleset?.id) {
+      debug('using existing custom firewall ruleset: %O', ruleset.id);
+      return ruleset.id;
+    } else {
+      debug('creating new custom firewall ruleset...');
+
+      const [createdRuleset] = await makeCloudflareApiCall({
+        debug,
+        log,
+        configPath,
+        uri: `zones/${zoneId}/rulesets`,
+        method: 'POST',
+        body: {
           description: '',
           kind: 'zone',
           name: 'default',
-          phase: CF_FIREWALL_PHASE_NAME,
+          phase: phaseName,
           rules: []
-        });
+        }
+      });
 
-        debug('new ruleset: %O', newRuleset);
-        return newRuleset.id;
-      }
+      debug('new ruleset: %O', createdRuleset);
+      return createdRuleset.id;
     }
-  );
+  });
 
   return rulesetId;
 }
@@ -249,17 +511,32 @@ export async function getDnsZoneCustomFirewallRulesetId(zoneId) {
 /**
  * - https://developers.cloudflare.com/api/operations/listZoneRulesets
  *
- * @param {string} zoneId
- * @returns {Promise<Record<string, unknown> | undefined>} the zone's custom firewall
- * ruleset or `undefined` if it does not exist
+ * @returns The zone's custom firewall ruleset or `undefined` if it does not
+ * exist.
  */
-export async function getDnsZoneCustomFirewallRuleset(zoneId) {
-  debug('searching for %O', CF_FIREWALL_PHASE_NAME);
+export async function getDnsZoneCustomFirewallRuleset({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId,
+  phaseName
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  phaseName: string;
+}): Promise<RulesetRule | undefined> {
+  const debug = debug_.extend('getDnsZoneCustomFirewallRuleset');
 
-  const ruleset = (await getDnsZoneRulesets(zoneId)).find((ruleset) => {
-    debug('saw ruleset phase %O', ruleset.phase);
-    return ruleset.phase === CF_FIREWALL_PHASE_NAME;
-  });
+  debug('searching for %O', phaseName);
+
+  const ruleset = (await getDnsZoneRulesets({ debug, log, configPath, zoneId })).find(
+    (ruleset) => {
+      debug('saw ruleset phase %O', ruleset.phase);
+      return ruleset.phase === phaseName;
+    }
+  );
 
   debug('selected ruleset: %O', ruleset);
   debug('selected ruleset.id: %O', ruleset?.id);
@@ -270,11 +547,28 @@ export async function getDnsZoneCustomFirewallRuleset(zoneId) {
 /**
  * - https://developers.cloudflare.com/api/operations/listZoneRulesets
  *
- * @param {string} zoneId
- * @returns {Promise<Record<string, unknown>[]>} list of the zone's rulesets
+ * @returns A list of the zone's rulesets.
  */
-export async function getDnsZoneRulesets(zoneId) {
-  const [rulesets] = await makeApiCall(`zones/${zoneId}/rulesets`, 'GET');
+export async function getDnsZoneRulesets({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+}): Promise<RulesetRule[]> {
+  const debug = debug_.extend('getDnsZoneRulesets');
+
+  const [rulesets] = await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: `zones/${zoneId}/rulesets`,
+    method: 'GET'
+  });
   return rulesets;
 }
 
@@ -282,51 +576,77 @@ export async function getDnsZoneRulesets(zoneId) {
  * - https://developers.cloudflare.com/api/operations/createZoneRulesetRule
  *
  * This function will not allow rules with duplicate descriptions by default.
- * This can be overridden by providing `{ allowDuplicate: true }` via
- * `additionalOptions`.
+ * This can be overridden by providing `{ allowDuplicate: true }`.
  *
- * @param {string} zoneId
- * @param {string} action
- * @param {string} expression
- * @param {string} description
- * @param {Record<string, unknown>} [additionalOptions]
+ * @return The newly created ruleset rule's ID.
  */
-export async function createDnsZoneCustomFirewallRulesetRule(
+export async function createDnsZoneCustomFirewallRulesetRule({
+  debug: debug_,
+  log,
+  configPath,
   zoneId,
   action,
   expression,
   description,
-  additionalOptions
-) {
-  const rulesetRuleId = await getDnsZoneCustomFirewallRulesetId(zoneId)
-    .then(async (rulesetId) => {
-      if (!additionalOptions?.allowDuplicates) {
-        const existingRules = await getDnsZoneRulesetRules(zoneId, rulesetId);
-        const matchesDescription = (rule) => {
-          debug(
-            `error check: rule.description === description ("${rule.description}" === "${description}")`
-          );
+  allowDuplicate,
+  phaseName,
+  ...additionalOptions
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  action: string;
+  expression: string;
+  description: string;
+  allowDuplicate?: boolean;
+  phaseName: string;
+  [additionalOption: string]: unknown;
+}): Promise<string> {
+  const debug = debug_.extend('createDnsZoneCustomFirewallRulesetRule');
 
-          return rule.description === description;
-        };
-
-        if (existingRules.some(matchesDescription)) {
-          throw new Error(
-            `cannot create dns zone custom firewall ruleset rule with duplicate description "${description}"`
-          );
-        }
-      }
-
-      return createDnsZoneRulesetRule(
+  const rulesetRuleId = await getDnsZoneCustomFirewallRulesetId({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    phaseName
+  }).then(async (rulesetId) => {
+    if (!allowDuplicate) {
+      const existingRules = await getDnsZoneRulesetRules({
+        debug,
+        log,
+        configPath,
         zoneId,
-        rulesetId,
-        action,
-        expression,
-        description,
-        additionalOptions
-      );
-    })
-    .then(({ id }) => id);
+        rulesetId
+      });
+      const matchesDescription = (rule: RulesetRule) => {
+        debug(
+          `error check: rule.description === description ("${rule.description}" === "${description}")`
+        );
+
+        return rule.description === description;
+      };
+
+      if (existingRules.some((rule) => matchesDescription(rule))) {
+        throw new Error(
+          `cannot create dns zone custom firewall ruleset rule with duplicate description "${description}"`
+        );
+      }
+    }
+
+    return createDnsZoneRulesetRule({
+      debug,
+      log,
+      configPath,
+      zoneId,
+      rulesetId,
+      action,
+      expression,
+      description,
+      ...additionalOptions
+    });
+  });
 
   return rulesetRuleId;
 }
@@ -334,12 +654,31 @@ export async function createDnsZoneCustomFirewallRulesetRule(
 /**
  * - https://developers.cloudflare.com/api/operations/getZoneRuleset
  *
- * @param {string} zoneId
- * @returns {Promise<Record<string, unknown>[]>} list of the ruleset's rules
+ * @returns A list of ruleset rules.
  */
-export async function getDnsZoneCustomFirewallRulesetRules(zoneId) {
-  const rules = await getDnsZoneCustomFirewallRulesetId(zoneId).then((rulesetId) => {
-    return getDnsZoneRulesetRules(zoneId, rulesetId);
+export async function getDnsZoneCustomFirewallRulesetRules({
+  debug: debug_,
+  log,
+  configPath,
+  zoneId,
+  phaseName
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  phaseName: string;
+}): Promise<RulesetRule[]> {
+  const debug = debug_.extend('getDnsZoneCustomFirewallRulesetRules');
+
+  const rules = await getDnsZoneCustomFirewallRulesetId({
+    debug,
+    log,
+    configPath,
+    zoneId,
+    phaseName
+  }).then((rulesetId) => {
+    return getDnsZoneRulesetRules({ debug, log, configPath, zoneId, rulesetId });
   });
 
   return rules;
@@ -348,34 +687,45 @@ export async function getDnsZoneCustomFirewallRulesetRules(zoneId) {
 /**
  * - https://developers.cloudflare.com/api/operations/createZoneRulesetRule
  *
- * Note that,
- *
- * @param {string} zoneId
- * @param {string} rulesetId
- * @param {string} action
- * @param {string} expression
- * @param {string} description
- * @param {Record<string, unknown>} [additionalOptions]
+ * @return The newly created ruleset rule's ID.
  */
-export async function createDnsZoneRulesetRule(
+export async function createDnsZoneRulesetRule({
+  debug: debug_,
+  log,
+  configPath,
   zoneId,
   rulesetId,
   action,
   expression,
   description,
-  additionalOptions
-) {
-  const [{ id: rulesetRuleId }] = await makeApiCall(
-    `zones/${zoneId}/rulesets/${rulesetId}/rules`,
-    'POST',
-    {
+  ...additionalOptions
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  rulesetId: string;
+  action: string;
+  expression: string;
+  description: string;
+  [additionalOption: string]: unknown;
+}): Promise<string> {
+  const debug = debug_.extend('createDnsZoneRulesetRule');
+
+  const [{ id: rulesetRuleId }] = await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: `zones/${zoneId}/rulesets/${rulesetId}/rules`,
+    method: 'POST',
+    body: {
       action,
       expression,
       description,
       enabled: true,
       ...additionalOptions
     }
-  );
+  });
 
   return rulesetRuleId;
 }
@@ -383,12 +733,29 @@ export async function createDnsZoneRulesetRule(
 /**
  * - https://developers.cloudflare.com/api/operations/getZoneRuleset
  *
- * @param {string} zoneId
- * @param {string} rulesetId
- * @returns {Promise<Record<string, unknown>[]>} list of the ruleset's rules
+ * @returns A list of ruleset rules.
  */
-export async function getDnsZoneRulesetRules(zoneId, rulesetId) {
-  const [{ rules }] = await makeApiCall(`zones/${zoneId}/rulesets/${rulesetId}`, 'GET');
+export async function getDnsZoneRulesetRules({
+  debug: debug_,
+  log,
+  configPath,
+  rulesetId,
+  zoneId
+}: {
+  debug: ExtendedDebugger;
+  log: ExtendedLogger;
+  configPath: string;
+  zoneId: string;
+  rulesetId: string;
+}): Promise<RulesetRule[]> {
+  const debug = debug_.extend('getDnsZoneRulesetRules');
 
+  const [{ rules }] = await makeCloudflareApiCall({
+    debug,
+    log,
+    configPath,
+    uri: `zones/${zoneId}/rulesets/${rulesetId}`,
+    method: 'GET'
+  });
   return rules || [];
 }

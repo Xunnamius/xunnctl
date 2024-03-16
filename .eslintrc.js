@@ -1,6 +1,9 @@
 'use strict';
 
-const plugins = ['unicorn', '@typescript-eslint', 'import'];
+const debug = require('debug')(`${require('./package.json').name}:eslint-config`);
+const restrictedGlobals = require('confusing-browser-globals');
+
+const plugins = ['unicorn', '@typescript-eslint', 'import', 'module-resolver'];
 
 const xtends = [
   'eslint:recommended',
@@ -23,12 +26,20 @@ const rules = {
   'no-return-await': 'warn',
   'no-await-in-loop': 'warn',
   'import/no-unresolved': ['error', { commonjs: true }],
+  'module-resolver/use-alias': [
+    'error',
+    {
+      extensions: ['.ts', '.tsx', '.jsx']
+    }
+  ],
+  'no-restricted-globals': ['warn', ...restrictedGlobals],
   'no-extra-boolean-cast': 'off',
   'no-empty': 'off',
   '@typescript-eslint/camelcase': 'off',
   '@typescript-eslint/explicit-function-return-type': 'off',
   '@typescript-eslint/explicit-module-boundary-types': 'off',
   '@typescript-eslint/prefer-ts-expect-error': 'warn',
+  '@typescript-eslint/no-misused-promises': ['error'],
   '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
   '@typescript-eslint/ban-ts-comment': [
     'warn',
@@ -51,14 +62,6 @@ const rules = {
   '@typescript-eslint/no-var-requires': 'off',
   // ? I'll be good, I promise
   '@typescript-eslint/no-non-null-assertion': 'off',
-  '@typescript-eslint/consistent-type-imports': [
-    'error',
-    { disallowTypeAnnotations: false, fixStyle: 'inline-type-imports' }
-  ],
-  '@typescript-eslint/consistent-type-exports': [
-    'error',
-    { fixMixedExportsWithInlineTypeSpecifier: true }
-  ],
   'no-unused-vars': 'off',
   'unicorn/no-keyword-prefix': 'warn',
   'unicorn/prefer-string-replace-all': 'warn',
@@ -86,8 +89,8 @@ const rules = {
         dest: false,
         obj: false,
         val: false,
-        env: false,
-        temp: false
+        req: false,
+        res: false
       },
       ignore: [/stderr/i]
     }
@@ -111,13 +114,7 @@ const rules = {
   // ? Lol, no
   'unicorn/explicit-length-check': 'off',
   // ? I don't think so
-  'unicorn/no-negated-condition': 'off',
-  // ? This is not it, chief (Prettier prevails)
-  'unicorn/number-literal-case': 'off',
-  // ? I'll decide when I want switch cases for fallthrough or not, thanks
-  'unicorn/prefer-switch': 'off',
-  // ? No, thanks
-  'unicorn/prefer-set-has': 'off'
+  'unicorn/no-negated-condition': 'off'
 };
 
 module.exports = {
@@ -159,8 +156,7 @@ module.exports = {
         'jest/prefer-mock-promise-shorthand': 'off',
         'jest/no-conditional-in-test': 'off',
         'jest/no-conditional-expect': 'off',
-        'jest/prefer-each': 'off',
-        'jest/prefer-snapshot-hint': 'off'
+        'jest/prefer-each': 'off'
       }
     }
   ],
@@ -175,8 +171,22 @@ module.exports = {
       '@babel/eslint-parser': ['.js', '.jsx', '.cjs', '.mjs']
     },
     'import/resolver': {
-      node: {},
-      typescript: {}
+      alias: {
+        map: [
+          // ! If changed, also update these aliases in tsconfig.json,
+          // ! webpack.config.js, next.config.ts, babel.config.js, and
+          // ! jest.config.js
+          ['universe', './src'],
+          ['multiverse', './lib'],
+          ['testverse', './test'],
+          ['externals', './external-scripts'],
+          ['types', './types'],
+          ['package', './package.json']
+        ],
+        extensions: ['.js', '.jsx', '.ts', '.tsx', '.json']
+      },
+      typescript: {},
+      'babel-module': {}
     },
     'import/ignore': [
       // ? Don't go complaining about anything that we don't own
@@ -184,12 +194,7 @@ module.exports = {
       '.*/bin/.*'
     ]
   },
-  ignorePatterns: [
-    'coverage',
-    'dist',
-    'fixtures',
-    '__fixtures__',
-    '__snapshots__',
-    'test/integration/assets'
-  ]
+  ignorePatterns: ['coverage', 'dist', 'bin', 'build', '/next.config.js']
 };
+
+debug('exports: %O', module.exports);
