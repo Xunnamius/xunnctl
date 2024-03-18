@@ -6,25 +6,24 @@
 import {
   $instances,
   debugFactory,
-  type InstanceKey,
   type DebuggerExtension,
   type ExtendedDebugger,
+  type InstanceKey,
   type UnextendableInternalDebugger
 } from 'multiverse/debug-extended';
 
 import {
   PRESET_TIMER,
-  type ListrTaskWrapper,
+  type ListrBaseClassOptions,
   type ListrContext,
   type ListrRenderer,
-  type ListrBaseClassOptions
+  type ListrTaskWrapper
 } from 'listr2';
 
 import { Manager } from '@listr2/manager';
 import overwriteDescriptors from 'merge-descriptors';
 
-export { debugFactory as extendedDebugFactory };
-export { type ExtendedDebugger };
+export { debugFactory as extendedDebugFactory, type ExtendedDebugger };
 
 /**
  * A pre-customized Listr {@link Manager} instance.
@@ -118,11 +117,19 @@ export function createGenericLogger({
    */
   namespace: string;
 }) {
-  const logger = makeExtendedLogger(debugFactory(namespace), {
-    log(...args) {
-      console.log(...args);
+  const logger = makeExtendedLogger(
+    debugFactory(namespace),
+    {
+      log(...args) {
+        console.log(...args);
+      }
+    },
+    {
+      log(...args) {
+        console.error(...args);
+      }
     }
-  });
+  );
 
   metadata.stdout.push(logger);
   return logger;
@@ -335,7 +342,8 @@ export function disableLoggingByTag({
   tags
 }: {
   /**
-   * The tags of messages that will no longer be sent to output.
+   * The tags of messages that will no longer be sent to output. If `tags` is
+   * empty`, calling this function is effectively a noop.
    */
   tags: string[];
 }) {
@@ -349,7 +357,8 @@ export function enableLoggingByTag({
   tags
 }: {
   /**
-   * The tags of messages that will resume being sent to output.
+   * The tags of messages that will resume being sent to output. If `tags` is
+   * empty`, calling this function is effectively a noop.
    */
   tags: string[];
 }) {
@@ -374,10 +383,19 @@ function makeExtendedLogger(
   extendedDebugger: ExtendedDebugger,
   /**
    * The property descriptors of `overrides` will overwrite matching properties
-   * in `extendedDebugger`. Note that function overrides should try to avoid
-   * using `this`.
+   * in `extendedDebugger` generally. Note that function overrides should try to
+   * avoid using `this`.
    */
-  overrides: Partial<UnextendableInternalDebugger> = {}
+  standardOverrides: Partial<UnextendableInternalDebugger> = {},
+  /**
+   * The property descriptors of `specialOverrides` will overwrite matching
+   * properties in `extendedDebugger.message`, `extendedDebugger.warn`, and
+   * `extendedDebugger.error` specifically. Note that function overrides should
+   * try to avoid using `this`.
+   *
+   * @default standardOverrides
+   */
+  specialOverrides: Partial<UnextendableInternalDebugger> = standardOverrides
 ): ExtendedLogger {
   const extendedLogger = patchInstance('$log', extendedDebugger);
   // TODO: fork merge-descriptors to make @xunnamius/merge-descriptors that
@@ -386,7 +404,8 @@ function makeExtendedLogger(
   extendedLogger[$instances] = extendedDebugger[$instances];
 
   const extend = extendedDebugger.extend.bind(extendedDebugger);
-  extendedLogger.extend = (...args) => makeExtendedLogger(extend(...args), overrides);
+  extendedLogger.extend = (...args) =>
+    makeExtendedLogger(extend(...args), standardOverrides);
 
   extendedLogger.newline = decorateWithTagSupport(extendedDebugger.newline, 1);
 
@@ -402,7 +421,10 @@ function makeExtendedLogger(
     instance: T
   ) {
     instance.enabled = true;
-    overwriteDescriptors(instance, overrides);
+    overwriteDescriptors(
+      instance,
+      ['error', 'message', 'warn'].includes(key) ? specialOverrides : standardOverrides
+    );
 
     // @ts-expect-error: TS isn't smart enough to figure this out just yet
     const patchedInstance = ((extendedDebugger as ExtendedLogger)[$instances][key] =

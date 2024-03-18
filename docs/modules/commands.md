@@ -17,7 +17,7 @@
 
 #### Defined in
 
-[xunnctl/src/commands/index.ts:3](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/commands/index.ts#L3)
+[src/commands/index.ts:3](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/commands/index.ts#L3)
 
 ___
 
@@ -27,4 +27,4 @@ ___
 
 #### Defined in
 
-[xunnctl/src/commands/index.ts:5](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/commands/index.ts#L5)
+[src/commands/index.ts:5](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/commands/index.ts#L5)

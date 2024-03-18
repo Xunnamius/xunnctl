@@ -1,39 +1,99 @@
 import assert from 'node:assert';
 
-import { $executionContext, ParentConfiguration } from '@black-flag/core';
+import { ParentConfiguration } from '@black-flag/core';
 
+import { makeCloudflareApiCaller } from 'universe/api/cloudflare';
 import { CustomExecutionContext } from 'universe/configure';
+import { nginxConfigBottomMatter, nginxConfigTopMatter } from 'universe/constant';
+import { ErrorMessage } from 'universe/error';
 
-const choices = {
+import {
+  GlobalCliArguments,
+  makeUsageString,
+  withGlobalOptions,
+  withGlobalOptionsHandling
+} from 'universe/util';
+
+export type CustomCliArguments = GlobalCliArguments & {
+  id: (typeof validIdChoices)[keyof typeof validIdChoices];
+};
+
+export const validIdChoices = {
   confNginxAllowOnlyCloudflare: 'conf.nginx.allowOnlyCloudflare'
 } as const;
 
-const configuration: ParentConfiguration<
-  { id: (typeof choices)[keyof typeof choices] },
-  CustomExecutionContext
-> = {
-  aliases: ['r'],
-  builder: {
-    id: {
-      demandOption: true,
-      string: true,
-      description: 'The identifier associated with the target data',
-      choices: Object.values(choices)
-    }
-  },
-  description: 'Dump freeform data into stdout',
-  handler({ id, [$executionContext]: { log } }) {
-    switch (id) {
-      case choices.confNginxAllowOnlyCloudflare: {
-        log('output goes here!');
-        break;
+export default async function ({ log, debug_ }: CustomExecutionContext) {
+  return {
+    aliases: ['r'],
+    builder: await withGlobalOptions<CustomCliArguments>({
+      id: {
+        demandOption: true,
+        string: true,
+        description: 'The identifier associated with the target data',
+        choices: Object.values(validIdChoices)
+      }
+    }),
+    description: 'Dump freeform data into stdout',
+    usage: makeUsageString(),
+    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function ({
+      id,
+      configPath
+    }) {
+      const debug = debug_.extend('handler');
+      debug('entered handler');
+
+      switch (id) {
+        case validIdChoices.confNginxAllowOnlyCloudflare: {
+          await regenerateNginxConfig();
+          break;
+        }
+
+        default: {
+          assert.fail(ErrorMessage.GuruMeditation());
+        }
       }
 
-      default: {
-        assert.fail(`unrecognized id "${id}"`);
-      }
-    }
-  }
-};
+      async function regenerateNginxConfig() {
+        const configString = await (await import('get-stdin')).default();
+        const rawStartIndex = configString.indexOf(nginxConfigTopMatter);
+        const rawEndIndex = configString.indexOf(nginxConfigBottomMatter);
 
-export default configuration;
+        debug('rawStartIndex: %O', rawStartIndex);
+        debug('rawEndIndex: %O', rawEndIndex);
+
+        const startIndex = rawStartIndex === -1 ? 0 : rawStartIndex;
+
+        const endIndex =
+          rawEndIndex === -1 ? 0 : rawEndIndex + nginxConfigBottomMatter.length;
+
+        debug('startIndex: %O', startIndex);
+        debug('endIndex: %O', endIndex);
+
+        const dns = await makeCloudflareApiCaller({
+          configPath,
+          debug: debug_,
+          log
+        });
+
+        const ips = await (async () => {
+          try {
+            return Object.values(await dns.getCloudflareIps()).flat();
+          } catch (error) {
+            throw new Error(ErrorMessage.FailedCloudflareIpFetch(), { cause: error });
+          }
+        })();
+
+        // eslint-disable-next-line no-console
+        console.log(
+          `${configString.slice(0, startIndex)}${nginxConfigTopMatter}
+
+# Last regenerated: ${new Date().toLocaleString()}
+
+${ips.map((ip) => `allow ${ip};`).join('\n')}
+
+${nginxConfigBottomMatter}\n${configString.slice(endIndex)}`.trimEnd()
+        );
+      }
+    })
+  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+}

@@ -17,11 +17,11 @@
 
 ### CustomExecutionContext
 
-Ƭ **CustomExecutionContext**: `ExecutionContext` & \{ `log`: `ExtendedLogger` ; `state`: \{ `isHushed`: `boolean` ; `isQuieted`: `boolean` ; `isSilenced`: `boolean`  } ; `taskManager`: `ListrManager`  }
+Ƭ **CustomExecutionContext**: `ExecutionContext` & \{ `debug_`: `ExtendedDebugger` ; `log`: `ExtendedLogger` ; `state`: \{ `isHushed`: `boolean` ; `isQuieted`: `boolean` ; `isSilenced`: `boolean` ; `startTime`: `Date`  } ; `taskManager`: `ListrManager`  }
 
 #### Defined in
 
-[xunnctl/src/configure.ts:24](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/configure.ts#L24)
+[src/configure.ts:32](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/configure.ts#L32)
 
 ## Functions
 
@@ -46,7 +46,7 @@
 
 #### Defined in
 
-[xunnctl/src/configure.ts:65](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/configure.ts#L65)
+[src/configure.ts:83](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/configure.ts#L83)
 
 ___
 
@@ -66,4 +66,4 @@ ___
 
 #### Defined in
 
-[xunnctl/src/configure.ts:51](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/configure.ts#L51)
+[src/configure.ts:67](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/configure.ts#L67)

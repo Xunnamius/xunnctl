@@ -50,6 +50,8 @@ A collection of possible error and warning messages.
 | `AssertionFailureUseParseAsyncInstead` | () => `string` |
 | `CommandNotImplemented` | () => `string` |
 | `ConfigLoadFailure` | (`path`: `string`) => `string` |
+| `ConfigSaveFailure` | () => `string` |
+| `FailedCloudflareIpFetch` | () => `string` |
 | `FrameworkError` | (`error`: `unknown`) => `string` |
 | `Generic` | () => `string` |
 | `GracefulEarlyExit` | () => `string` |
@@ -57,7 +59,8 @@ A collection of possible error and warning messages.
 | `InvalidCommandInvocation` | () => `string` |
 | `InvalidConfigureArgumentsReturnType` | () => `string` |
 | `InvalidConfigureExecutionContextReturnType` | () => `string` |
+| `MissingConfigurationKey` | (`key`: `string`) => `string` |
 
 #### Defined in
 
-[xunnctl/src/error.ts:7](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/error.ts#L7)
+[src/error.ts:7](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/error.ts#L7)

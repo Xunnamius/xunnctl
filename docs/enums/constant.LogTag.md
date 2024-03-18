@@ -23,7 +23,7 @@ depending on program state.
 
 #### Defined in
 
-[xunnctl/src/constant.ts:23](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/constant.ts#L23)
+[src/constant.ts:38](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/constant.ts#L38)
 
 ___
 
@@ -33,7 +33,7 @@ ___
 
 #### Defined in
 
-[xunnctl/src/constant.ts:22](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/constant.ts#L22)
+[src/constant.ts:37](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/constant.ts#L37)
 
 ___
 
@@ -43,4 +43,4 @@ ___
 
 #### Defined in
 
-[xunnctl/src/constant.ts:21](https://github.com/Xunnamius/xunnctl/blob/e4e7e93/src/constant.ts#L21)
+[src/constant.ts:36](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/constant.ts#L36)

@@ -5,5 +5,18 @@ import { ErrorMessage as UpstreamErrorMessage } from '@black-flag/core/util';
  */
 /* istanbul ignore next */
 export const ErrorMessage = {
-  ...UpstreamErrorMessage
+  ...UpstreamErrorMessage,
+  MissingConfigurationKey(key: string) {
+    return `missing configuration key "${key}". Use the 'xunnctl config set' command to add it`;
+  },
+  ConfigSaveFailure() {
+    return 'failed to commit configuration changes to filesystem';
+  },
+  FailedCloudflareIpFetch() {
+    return 'failed to fetch Cloudflare IPs';
+  },
+  MissingOneOfSeveralOptions(givenOptions: Record<string, unknown>) {
+    const possibleOptions = Object.keys(givenOptions);
+    return `one of the following options must be provided: ${possibleOptions.join(', ')}`;
+  }
 };

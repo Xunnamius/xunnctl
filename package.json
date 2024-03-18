@@ -77,11 +77,13 @@
     }
   },
   "dependencies": {
-    "@black-flag/core": "^1.1.4",
+    "@black-flag/core": "^1.2.0",
     "@listr2/manager": "^2.0.2",
     "@types/debug": "^4.1.12",
     "core-js": "3.36.0",
     "debug": "^4.3.4",
+    "env-paths": "^3.0.0",
+    "get-stdin": "^9.0.0",
     "listr2": "^8.0.2",
     "merge-descriptors": "^2.0.0"
   },

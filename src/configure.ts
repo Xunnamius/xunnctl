@@ -3,13 +3,20 @@ import { isNativeError } from 'node:util/types';
 import { ListrErrorTypes } from 'listr2';
 
 import {
+  createDebugLogger,
   createGenericLogger,
   createListrManager,
+  ExtendedDebugger,
   type ExtendedLogger,
   type ListrManager
 } from 'multiverse/rejoinder';
 
-import { loggerNamespace, LogTag, MAX_LOG_ERROR_ENTRIES } from 'universe/constant';
+import {
+  debuggerNamespace,
+  loggerNamespace,
+  LogTag,
+  MAX_LOG_ERROR_ENTRIES
+} from 'universe/constant';
 
 import type {
   ConfigureErrorHandlingEpilogue,
@@ -20,12 +27,17 @@ import type { ExecutionContext } from '@black-flag/core/util';
 
 const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
 const rootGenericLogger = createGenericLogger({ namespace: loggerNamespace });
+const rootDebugLogger = createDebugLogger({ namespace: debuggerNamespace });
 
 export type CustomExecutionContext = ExecutionContext & {
   /**
-   * The {@link ExtendedLogger} for the current runtime level.
+   * The {@link ExtendedLogger} for the CLI.
    */
   log: ExtendedLogger;
+  /**
+   * The {@link ExtendedDebugger} for the CLI.
+   */
+  debug_: ExtendedDebugger;
   /**
    * The global Listr task manager singleton.
    */
@@ -45,6 +57,10 @@ export type CustomExecutionContext = ExecutionContext & {
      * If `true`, the program should output only the most pertinent information.
      */
     isHushed: boolean;
+    /**
+     * A `Date` object representing the start time of execution.
+     */
+    startTime: Date;
   };
 };
 
@@ -52,12 +68,14 @@ export const configureExecutionContext: ConfigureExecutionContext = (context) =>
   return {
     ...context,
     log: rootGenericLogger,
+    debug_: rootDebugLogger,
     taskManager: createListrManager(),
     state: {
       ...context.state,
       isSilenced: false,
       isQuieted: false,
-      isHushed: false
+      isHushed: false,
+      startTime: new Date()
     }
   };
 };
@@ -72,7 +90,9 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
   // ? Pretty print error output depending on how silent we're supposed to be
   if (!context.state.isSilenced) {
     if (context.state.didOutputHelpOrVersionText) {
-      context.log.newline([IF_NOT_SILENCED]);
+      // ? We use this over log.newline because we want to output to stderr
+      // eslint-disable-next-line no-console
+      console.error();
     }
 
     context.log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);

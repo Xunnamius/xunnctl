@@ -1,10 +1,13 @@
 import { ParentConfiguration } from '@black-flag/core';
-import { loadFromCliConfig } from 'universe/config-manager';
+import { loadFromCliConfig, saveToCliConfig } from 'universe/config-manager';
 
 import { CustomExecutionContext } from 'universe/configure';
+import { standardSuccessMessage } from 'universe/constant';
 
 import {
   GlobalCliArguments,
+  ensureAtLeastOneOptionWasGiven,
+  logStartTime,
   makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
@@ -15,22 +18,26 @@ export type CustomCliArguments = GlobalCliArguments & {
   name?: string[];
 };
 
-export default async function ({ debug_ }: CustomExecutionContext) {
+export default async function ({
+  debug_,
+  log,
+  state: { startTime }
+}: CustomExecutionContext) {
   return {
-    aliases: ['g'],
+    aliases: ['u'],
     builder: await withGlobalOptions<CustomCliArguments>({
       all: {
         boolean: true,
-        description: 'Dump the current value of all configuration options',
+        description: 'Delete all stored options',
         conflicts: ['name']
       },
       name: {
         array: true,
-        description: 'The names of one or more options to retrieve',
+        description: 'The names of one or more options to delete',
         conflicts: ['all']
       }
     }),
-    description: 'Dump the value of one or more configuration options into stdout',
+    description: 'Remove entirely one or more configuration options',
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(async function ({
       configPath,
@@ -43,29 +50,23 @@ export default async function ({ debug_ }: CustomExecutionContext) {
       debug('names (name): %O', names);
       debug('all: %O', all);
 
+      ensureAtLeastOneOptionWasGiven({ all, name: names });
+      logStartTime({ log, startTime });
+
+      if (all) {
+        names = Object.keys(await loadFromCliConfig({ configPath }));
+      }
+
       if (names?.length) {
         await Promise.all(
           names.map(async (name) => {
-            const value = JSON.stringify(
-              await loadFromCliConfig({ configPath, key: name })
-            );
-
-            // eslint-disable-next-line no-console
-            console.log(`${name}=${value}`);
+            return saveToCliConfig({ configPath, key: name, value: undefined });
           })
         );
-      } else {
-        const configEntries = Object.entries(await loadFromCliConfig({ configPath }));
-
-        if (configEntries.length) {
-          for (const [name, value] of configEntries) {
-            // eslint-disable-next-line no-console
-            console.log(`${name}=${value}`);
-          }
-        } else {
-          debug('no config entries to output');
-        }
       }
+
+      log(standardSuccessMessage);
+      log(`Ensured ${names?.length || 0} configuration option(s) were removed`);
     })
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

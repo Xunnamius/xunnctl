@@ -29,6 +29,7 @@ These used to be several CLIs, but the time has come to bring them together!
   - [`xunnctl config`](#xunnctl-config)
   - [`xunnctl config get`](#xunnctl-config-get)
   - [`xunnctl config set`](#xunnctl-config-set)
+  - [`xunnctl config unset`](#xunnctl-config-unset)
   - [`xunnctl dns record`](#xunnctl-dns-record)
   - [`xunnctl dns record create A`](#xunnctl-dns-record-create-a)
   - [`xunnctl dns record create AAAA`](#xunnctl-dns-record-create-aaaa)
@@ -144,8 +145,15 @@ See [`xunnctl config get`][4].
 
 > Alias: `x c g`
 
-This command outputs the value of one or more `xunnctl` configuration options.
-These values are stored [locally][2] and protected with `0660` permissions.
+This command dumps the value of one or more `xunnctl` configuration options
+straight to stdout without additional outputs, making it suitable for use in
+scripts. These values are stored [locally][2] and protected with `0660`
+permissions.
+
+See [here][5] for a list of available configuration options.
+
+When called without any arguments, this command is an alias for
+`xunnctl config get --all`.
 
 #### Examples
 
@@ -170,8 +178,14 @@ x c g
 > Alias: `x c s`
 
 This command updates the value of the `--name` configuration option to
-`--content`. This value is stored [locally][2] and protected with `0660`
-permissions.
+`--content`, which is a valid JSON value. This includes double quotes if it's a
+string.
+
+This value is stored [locally][2] and protected with `0660` permissions.
+
+Note that `--content` can be any value JSON value, and that **updating an option
+with the wrong value or type of value will cause undefined behavior**. See
+[here][5] for a list of available configuration options and their valid values.
 
 #### Examples
 
@@ -182,17 +196,38 @@ x c s --name cloudflare.apiToken --content AbCd1234
 
 #### Parameters
 
-|                         |    Name     |                       Type                        |  Default  | Description                            |
-| :---------------------: | :---------: | :-----------------------------------------------: | :-------: | :------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--content` | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | The new value of the option to update. |
-| **<sub>REQUIRED</sub>** |  `--name`   |                      string                       | undefined | The name of the option to update.      |
+|                         |    Name     |                       Type                        |  Default  | Description                                                             |
+| :---------------------: | :---------: | :-----------------------------------------------: | :-------: | :---------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--content` | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | The new value of the option to update. This must be a valid JSON value. |
+| **<sub>REQUIRED</sub>** |  `--name`   |                      string                       | undefined | The name of the option to update.                                       |
+
+### `xunnctl config unset`
+
+> Alias: `x c u`
+
+This command deletes the configuration entry (name and content) associated with
+the `--name` configuration option and commits the change to the filesystem.
+
+#### Examples
+
+```bash
+xunnctl config unset --name cloudflare.apiToken
+x c u --name cloudflare.apiToken
+```
+
+#### Parameters
+
+|                     |   Name   |   Type    |  Default  | Description                                                                               |
+| :-----------------: | :------: | :-------: | :-------: | :---------------------------------------------------------------------------------------- |
+| <sub>optional</sub> | `--all`  |  boolean  | undefined | Delete all options in the configuration file. Cannot be used with the `--name` parameter. |
+| <sub>optional</sub> | `--name` | string\[] | undefined | The names of one or more options to delete. Cannot be used with the `--all` parameter.    |
 
 ### `xunnctl dns record`
 
 > Alias: `x d r`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns record retrieve --apex-api`][5].
+[`xunnctl dns record retrieve --apex-api`][6].
 
 #### Examples
 
@@ -203,7 +238,7 @@ x d r
 
 #### Parameters
 
-See [`xunnctl dns record retrieve`][5].
+See [`xunnctl dns record retrieve`][6].
 
 ### `xunnctl dns record create A`
 
@@ -355,7 +390,7 @@ x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...
 This command retrieves the resource record `--name` of type `--type` from the
 `--apex` DNS zone.
 
-The result can be queried via `--query`, which accepts a [JMESPath][6] value.
+The result can be queried via `--query`, which accepts a [JMESPath][7] value.
 Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping (e.g. `--query { id: id }` and
 `--query '{ id: id }'` are identical).
@@ -377,14 +412,14 @@ x d r r --apex xunn.io --apex xunn.at --name mail --type cname --query id
 | **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |                      string                       | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
 |        **<sub>REQUIRED</sub>**         |   `--name`    |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
 |        **<sub>REQUIRED</sub>**         |   `--type`    |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
-|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI.                                                       |
+|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI.                                                       |
 
 ### `xunnctl dns zone`
 
 > Alias: `x d z`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns zone retrieve --apex-api`][7].
+[`xunnctl dns zone retrieve --apex-api`][8].
 
 #### Examples
 
@@ -395,7 +430,7 @@ x d z
 
 #### Parameters
 
-See [`xunnctl dns zone retrieve`][7].
+See [`xunnctl dns zone retrieve`][8].
 
 ### `xunnctl dns zone create`
 
@@ -404,7 +439,7 @@ See [`xunnctl dns zone retrieve`][7].
 This command creates and initializes a new DNS `--apex` zone. If a conflicting
 apex zone already exists, this command will fail. If you're trying to bring an
 existing zone up to current configuration standards, see
-[`xunnctl dns zone update`][8] instead.
+[`xunnctl dns zone update`][9] instead.
 
 #### Examples
 
@@ -427,7 +462,7 @@ x d z c --apex xunn.at
 
 This command returns information about one or more `--apex` zones.
 
-The result can be queried via `--query`, which accepts a [JMESPath][6] value.
+The result can be queried via `--query`, which accepts a [JMESPath][7] value.
 Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping (e.g. `--query { id: id }` and
 `--query '{ id: id }'` are identical).
@@ -447,13 +482,13 @@ x d z r --apex xunn.io --apex xunn.at --query { id: id, cdnOnly: meta.cdn_only }
 | **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
 | **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |                      boolean                      | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
 | **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |                      string                       | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI.                                                       |
+|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI.                                                       |
 
 ### `xunnctl dns zone update`
 
 > Alias: `x d z u`
 
-This command is equivalent to [`xunnctl dns zone create`][9] but for zones that
+This command is equivalent to [`xunnctl dns zone create`][10] but for zones that
 already exist. It will attempt to bring one or more zones up to date with the
 latest best practices with respect to zone configuration; any failures thrown
 when attempting to create records, while reported, are ignored.
@@ -479,7 +514,7 @@ x d z u --apex xunn.at
 > Alias: `x f`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl firewall status`][10].
+[`xunnctl firewall status`][11].
 
 #### Examples
 
@@ -490,14 +525,14 @@ x f
 
 #### Parameters
 
-See [`xunnctl firewall status`][10].
+See [`xunnctl firewall status`][11].
 
 ### `xunnctl firewall ban`
 
 > Alias: `x f b`
 
 This command adds an ip address to the global hostile ip list, which is a
-[Cloudflare WAF List][11]. No managed system will accept packets coming from an
+[Cloudflare WAF List][12]. No managed system will accept packets coming from an
 IP on this list. Both ipv4 and ipv6 addresses are supported, as is CIDR
 notation.
 
@@ -512,14 +547,14 @@ x f b --ip 1.2.3.4
 
 |                         |  Name  |  Type  |  Default  | Description                                                                                                                |
 | :---------------------: | :----: | :----: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
+| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to ban. All IP formats supported by [Cloudflare WAF Lists][12] are supported here, including ipv4 and ipv6. |
 
 ### `xunnctl firewall status`
 
 > Alias: `x f s`
 
 This command returns the contents of the global hostile ip list, which is a
-[Cloudflare WAF List][11]. No managed system will accept packets coming from an
+[Cloudflare WAF List][12]. No managed system will accept packets coming from an
 IP on this list.
 
 #### Examples
@@ -538,7 +573,7 @@ This command does not accept additional parameters.
 > Alias: `x f u`
 
 This command removes an ip address from the global hostile ip list, which is a
-[Cloudflare WAF List][11]. No managed system will accept packets coming from an
+[Cloudflare WAF List][12]. No managed system will accept packets coming from an
 IP on this list.
 
 #### Examples
@@ -552,21 +587,45 @@ x f u --ip 1.2.3.4
 
 |                         |  Name  |  Type  |  Default  | Description                                                                                                                  |
 | :---------------------: | :----: | :----: | :-------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
+| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to unban. All IP formats supported by [Cloudflare WAF Lists][12] are supported here, including ipv4 and ipv6. |
 
 ### `xunnctl raw`
 
 > Alias: `x r`
 
-This command will dump freeform data into stdout conditioned on the value of
-`--id`.
+This command will dump freeform data into stdout depending on `--id` and without
+additional outputs, making it suitable for use in scripts.
 
 The following values for `--id` are supported:
 
-- `conf.nginx.allowOnlyCloudflare` - An nginx configuration file consisting of
-  directives that, when included in an server context, will cause nginx to
-  reject all connection attempts from IP addresses that do not belong to
-  Cloudflare.
+#### `conf.nginx.allowOnlyCloudflare`
+
+This is an nginx configuration file consisting of directives that, when included
+in an server context, will cause nginx to reject all connection attempts from IP
+addresses that do not belong to Cloudflare.
+
+When using this ID, you can also pipe in the contents of an nginx configuration
+file and it will be included in the output with respect for the lines consisting
+of `### START AUTOGENERATED RULES` and `### END AUTOGENERATED RULES`. For
+example:
+
+```
+echo 'before\n### START AUTOGENERATED RULES\n\nx\ny\nz\n\n### END AUTOGENERATED RULES\nafter\n' | npx x r --id conf.nginx.allowOnlyCloudflare
+```
+
+Note that `deny all;` should be included in your Nginx configuration for it to
+be meaningful. This tool will not add it for you. For example:
+
+```
+...
+### START AUTOGENERATED RULES
+...
+### END AUTOGENERATED RULES
+
+allow 127.0.0.0/8;
+allow ::1/128;
+deny all;
+```
 
 #### Examples
 
@@ -736,10 +795,11 @@ specification. Contributions of any kind welcome!
 [2]: https://github.com/sindresorhus/env-paths
 [3]: #xunnctl-config-set
 [4]: #xunnctl-config-get
-[5]: #xunnctl-dns-record-retrieve
-[6]: https://jmespath.org/tutorial.html
-[7]: #xunnctl-dns-zone-retrieve
-[8]: #xunnctl-dns-zone-update
-[9]: #xunnctl-dns-zone-create
-[10]: #xunnctl-firewall-status
-[11]: https://developers.cloudflare.com/waf/tools/lists
+[5]: ./docs/modules/config_manager.md#config
+[6]: #xunnctl-dns-record-retrieve
+[7]: https://jmespath.org/tutorial.html
+[8]: #xunnctl-dns-zone-retrieve
+[9]: #xunnctl-dns-zone-update
+[10]: #xunnctl-dns-zone-create
+[11]: #xunnctl-firewall-status
+[12]: https://developers.cloudflare.com/waf/tools/lists
