@@ -2,7 +2,12 @@ import { mkdir } from 'node:fs/promises';
 
 import { $executionContext, CliError, type Configuration } from '@black-flag/core';
 
-import { ExtendedLogger, disableLoggingByTag } from 'multiverse/rejoinder';
+import {
+  ExtendedLogger,
+  createListrManager,
+  disableLoggingByTag
+} from 'multiverse/rejoinder';
+
 import { CustomExecutionContext } from 'universe/configure';
 import { LogTag } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
@@ -49,6 +54,7 @@ export function logStartTime({
   startTime: Date;
 }) {
   log(
+    [LogTag.IF_NOT_HUSHED],
     'Execution began on',
     startTime.toLocaleDateString(),
     'at',
@@ -112,11 +118,11 @@ export async function withGlobalOptionsHandling<
       quiet,
       silent,
       configPath,
-      [$executionContext]: { debug_ }
+      [$executionContext]: executionContext
     } = argv;
 
     const tags = new Set<LogTag>();
-    const debug = debug_.extend('globalOptionsHandling');
+    const debug = executionContext.debug_.extend('globalOptionsHandling');
 
     debug('entered global options wrapper (handler)');
     debug('hush: %O', hush);
@@ -126,17 +132,31 @@ export async function withGlobalOptionsHandling<
 
     if (silent) {
       tags.add(LogTag.IF_NOT_SILENCED);
+      executionContext.state.isSilenced = true;
       tags.add(LogTag.IF_NOT_QUIETED);
+      executionContext.state.isQuieted = true;
       tags.add(LogTag.IF_NOT_HUSHED);
+      executionContext.state.isHushed = true;
+
+      // ? Redefine taskManager with a silent renderer
+      executionContext.taskManager = createListrManager({
+        overrides: {
+          silentRendererCondition: () =>
+            executionContext.taskManager.options?.renderer === 'default'
+        }
+      });
     }
 
     if (quiet) {
       tags.add(LogTag.IF_NOT_QUIETED);
+      executionContext.state.isQuieted = true;
       tags.add(LogTag.IF_NOT_HUSHED);
+      executionContext.state.isHushed = true;
     }
 
     if (hush) {
       tags.add(LogTag.IF_NOT_HUSHED);
+      executionContext.state.isHushed = true;
     }
 
     disableLoggingByTag({ tags: Array.from(tags) });

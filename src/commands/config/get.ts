@@ -1,6 +1,6 @@
 import { ParentConfiguration } from '@black-flag/core';
-import { loadFromCliConfig } from 'universe/config-manager';
 
+import { loadFromCliConfig } from 'universe/config-manager';
 import { CustomExecutionContext } from 'universe/configure';
 
 import {
@@ -15,7 +15,10 @@ export type CustomCliArguments = GlobalCliArguments & {
   name?: string[];
 };
 
-export default async function ({ debug_ }: CustomExecutionContext) {
+export default async function ({
+  debug_,
+  state: { isSilenced }
+}: CustomExecutionContext) {
   return {
     aliases: ['g'],
     builder: await withGlobalOptions<CustomCliArguments>({
@@ -43,6 +46,9 @@ export default async function ({ debug_ }: CustomExecutionContext) {
       debug('names (name): %O', names);
       debug('all: %O', all);
 
+      // eslint-disable-next-line no-console
+      const log = isSilenced ? () => undefined : console.log;
+
       if (names?.length) {
         await Promise.all(
           names.map(async (name) => {
@@ -50,8 +56,7 @@ export default async function ({ debug_ }: CustomExecutionContext) {
               await loadFromCliConfig({ configPath, key: name })
             );
 
-            // eslint-disable-next-line no-console
-            console.log(`${name}=${value}`);
+            log(`${name}=${value}`);
           })
         );
       } else {
@@ -60,7 +65,7 @@ export default async function ({ debug_ }: CustomExecutionContext) {
         if (configEntries.length) {
           for (const [name, value] of configEntries) {
             // eslint-disable-next-line no-console
-            console.log(`${name}=${value}`);
+            log(`${name}=${value}`);
           }
         } else {
           debug('no config entries to output');
