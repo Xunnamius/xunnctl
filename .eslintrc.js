@@ -90,7 +90,8 @@ const rules = {
         obj: false,
         val: false,
         req: false,
-        res: false
+        res: false,
+        ctx: false
       },
       ignore: [/stderr/i]
     }
