@@ -72,9 +72,9 @@ npx xunnctl ...
 
 ## Usage
 
-> Be careful running commands with huge footprints (e.g. using the `--apex-api`
-> parameter) in quick succession. Take note of the [rate limits][1] for the APIs
-> you're invoking.
+> Be careful running commands with huge footprints (e.g. using the
+> `--apex-all-known` parameter) in quick succession. Take note of the [rate
+> limits][1] for the APIs you're invoking.
 
 For first time usage, or if credentials are inaccessible, you will be prompted
 to enter your credentials, which will be saved [locally][2]. You can do this
@@ -227,7 +227,7 @@ x c u --name cloudflare.apiToken
 > Alias: `x d r`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns record retrieve --apex-api`][6].
+[`xunnctl dns record retrieve --apex-all-known`][6].
 
 #### Examples
 
@@ -255,14 +255,13 @@ x d r c A --apex xunn.io --name 'something.else' --ipv4 1.2.3.4
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |   `--ipv4`    |  string   | undefined | A valid IPv4 address.                                                                                                      |
-|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|          <sub>optional</sub>           |  `--proxied`  |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.                                       |
+|                                        |        Name        |   Type    |  Default  | Description                                                                          |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :----------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.         |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.    |
+|        **<sub>REQUIRED</sub>**         |      `--ipv4`      |  string   | undefined | A valid IPv4 address.                                                                |
+|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                |
+|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare. |
 
 ### `xunnctl dns record create AAAA`
 
@@ -280,14 +279,13 @@ x d r c AAAA --apex xunn.io --name 'something.else' --ipv6 2001:db8::8a2e:7334
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |   `--ipv6`    |  string   | undefined | A valid IPv6 address.                                                                                                      |
-|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|          <sub>optional</sub>           |  `--proxied`  |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.                                       |
+|                                        |        Name        |   Type    |  Default  | Description                                                                          |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :----------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.         |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.    |
+|        **<sub>REQUIRED</sub>**         |      `--ipv6`      |  string   | undefined | A valid IPv6 address.                                                                |
+|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                |
+|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare. |
 
 ### `xunnctl dns record create CAA`
 
@@ -305,11 +303,10 @@ x d r c CAA --apex xunn.io --apex xunn.at
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl dns record create CNAME`
 
@@ -327,14 +324,13 @@ x d r c CNAME --apex xunn.io --apex xunn.at --name 'sub.domain' --to-name 'diff.
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|        **<sub>REQUIRED</sub>**         |  `--to-name`  |  string   | undefined | A valid hostname. Must not match the record's name.                                                                        |
-|          <sub>optional</sub>           |  `--proxied`  |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.                                       |
+|                                        |        Name        |   Type    |  Default  | Description                                                                          |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :----------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.         |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.    |
+|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                |
+|        **<sub>REQUIRED</sub>**         |    `--to-name`     |  string   | undefined | A valid hostname. Must not match the record's name.                                  |
+|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare. |
 
 ### `xunnctl dns record create MX`
 
@@ -351,13 +347,12 @@ x d r c MX --apex xunn.io --apex xunn.at --name 'something.else' --mail-name 'ma
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|        **<sub>REQUIRED</sub>**         | `--mail-name` |  string   | undefined | A valid mail server hostname.                                                                                              |
+|                                        |        Name        |   Type    |  Default  | Description                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                             |
+|        **<sub>REQUIRED</sub>**         |   `--mail-name`    |  string   | undefined | A valid mail server hostname.                                                     |
 
 ### `xunnctl dns record create TXT`
 
@@ -375,20 +370,21 @@ x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |   `--name`    |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|        **<sub>REQUIRED</sub>**         |  `--content`  |  string   | undefined | Text content for the record.                                                                                               |
+|                                        |        Name        |   Type    |  Default  | Description                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
+|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                             |
+|        **<sub>REQUIRED</sub>**         |    `--content`     |  string   | undefined | Text content for the record.                                                      |
 
 ### `xunnctl dns record retrieve`
 
 > Alias: `x d r r`
 
-This command retrieves the resource record `--name` of type `--type` from the
-`--apex` DNS zone.
+This command retrieves one or more resource records of name `--name` and/or of
+type `--type` from the specified `--apex*` DNS zone(s).
+
+Omitting both `--name` and `--type` will retrieve all records.
 
 The result can be queried via `--query`, which accepts a [JMESPath][7] value.
 Note that, as a feature, the presence of spaces in the query does not
@@ -399,27 +395,26 @@ necessitate quoting or escaping (e.g. `--query { id: id }` and
 
 ```bash
 xunnctl dns record retrieve --apex xunn.io --name mail --type CNAME
-x d r r --apex-api --apex new-site.com --name mail --type cname
-x d r r --apex xunn.io --apex xunn.at --name mail --type cname --query id
+x d r r --apex-all-known --apex new-site.com --name mail
+x d r r --apex xunn.io --apex xunn.at --type cname --query id
 ```
 
 #### Parameters
 
-|                                        |     Name      |                       Type                        |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |                      boolean                      | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |                      string                       | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |   `--name`    |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|        **<sub>REQUIRED</sub>**         |   `--type`    |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
-|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI.                                                       |
+|                                        |        Name        |                       Type                        |  Default  | Description                                                                                                                |
+| :------------------------------------: | :----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
+|          <sub>optional</sub>           |      `--name`      |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|          <sub>optional</sub>           |      `--type`      |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
+|          <sub>optional</sub>           |     `--query`      | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
 
 ### `xunnctl dns zone`
 
 > Alias: `x d z`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns zone retrieve --apex-api`][8].
+[`xunnctl dns zone retrieve --apex-all-known`][8].
 
 #### Examples
 
@@ -450,11 +445,10 @@ x d z c --apex xunn.at
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl dns zone retrieve`
 
@@ -471,18 +465,17 @@ necessitate quoting or escaping (e.g. `--query { id: id }` and
 
 ```bash
 xunnctl dns zone retrieve --apex xunn.at
-x d z r --apex-api --apex new-site.com --query id
+x d z r --apex-all-known --apex new-site.com --query id
 x d z r --apex xunn.io --apex xunn.at --query { id: id, cdnOnly: meta.cdn_only }
 ```
 
 #### Parameters
 
-|                                        |     Name      |                       Type                        |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |                      boolean                      | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |                      string                       | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
-|          <sub>optional</sub>           |   `--query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI.                                                       |
+|                                        |        Name        |                       Type                        |  Default  | Description                                                                                                                |
+| :------------------------------------: | :----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
+|          <sub>optional</sub>           |     `--query`      | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
 
 ### `xunnctl dns zone update`
 
@@ -496,18 +489,16 @@ when attempting to create records, while reported, are ignored.
 #### Examples
 
 ```bash
-xunnctl dns zone update --apex-api
-x d z u --apex-file /file/containing/domain/names.txt
-x d z u --apex xunn.at
+xunnctl dns zone update --apex-all-known
+x d z u --apex xunn.at --apex xunn.io
 ```
 
 #### Parameters
 
-|                                        |     Name      |   Type    |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/3</sup></sub>** |   `--apex`    | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/3</sup></sub>** | `--apex-api`  |  boolean  | undefined | Include all known domains zone apex domains. Can be used with other `--apex*` parameters.                                  |
-| **<sub>REQUIRED <sup>3/3</sup></sub>** | `--apex-file` |  string   | undefined | A path to a newline-delimited file containing zero or more zone apex domains. Can be used with other `--apex*` parameters. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl firewall`
 
