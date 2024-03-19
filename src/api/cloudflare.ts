@@ -1,8 +1,9 @@
 import { ExtendedLogger } from 'multiverse/rejoinder';
-import { JsonValue } from 'type-fest';
 import { makeApiCaller } from 'universe/api';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { LogTag } from 'universe/constant';
+
+import type { JsonValue } from 'type-fest';
 
 /**
  * @internal
