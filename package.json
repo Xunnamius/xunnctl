@@ -84,6 +84,7 @@
     "debug": "^4.3.4",
     "env-paths": "^3.0.0",
     "get-stdin": "^9.0.0",
+    "jmespath": "^0.16.0",
     "listr2": "^8.0.2",
     "merge-descriptors": "^2.0.0",
     "supports-color": "^8.1.1"
@@ -102,6 +103,7 @@
     "@semantic-release/git": "^10.0.1",
     "@types/glob": "^8.1.0",
     "@types/jest": "^29.5.12",
+    "@types/jmespath": "^0.15.2",
     "@types/lodash.mergewith": "^4.6.9",
     "@types/merge-descriptors": "^1.0.3",
     "@types/node": "^20.11.29",

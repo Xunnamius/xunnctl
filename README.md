@@ -388,8 +388,8 @@ Omitting both `--name` and `--type` will retrieve all records.
 
 The result can be queried via `--query`, which accepts a [JMESPath][7] value.
 Note that, as a feature, the presence of spaces in the query does not
-necessitate quoting or escaping (e.g. `--query { id: id }` and
-`--query '{ id: id }'` are identical).
+necessitate quoting or escaping. When `--query` is present, the resulting JSON
+will be dumped straight to stdout.
 
 #### Examples
 
@@ -458,8 +458,8 @@ This command returns information about one or more `--apex` zones.
 
 The result can be queried via `--query`, which accepts a [JMESPath][7] value.
 Note that, as a feature, the presence of spaces in the query does not
-necessitate quoting or escaping (e.g. `--query { id: id }` and
-`--query '{ id: id }'` are identical).
+necessitate quoting or escaping. When `--query` is present, the resulting JSON
+will be dumped straight to stdout.
 
 #### Examples
 
