@@ -1,1 +1,0 @@
-{ "test": true } -e console.log("X"); require("node:stream/consumers").json(process.stdin).then((o) => console.log("o:", o), (err) => console.log("err:", err))
