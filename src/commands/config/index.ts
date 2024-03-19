@@ -1,6 +1,6 @@
 import { ParentConfiguration } from '@black-flag/core';
-import { CommandNotImplementedError } from '@black-flag/core/util';
 
+import commandConfigGet from 'universe/commands/config/get';
 import { CustomExecutionContext } from 'universe/configure';
 
 import {
@@ -11,15 +11,16 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function ({ debug_ }: CustomExecutionContext) {
+export default async function (executionContext: CustomExecutionContext) {
+  const { debug_ } = executionContext;
   return {
     aliases: ['c'],
     builder: await withGlobalOptions<CustomCliArguments>(),
     description: "Tools to access and mutate this CLI's configuration keys",
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function () {
+    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function (argv) {
       const debug = debug_.extend('handler');
       debug('entered handler');
-      throw new CommandNotImplementedError();
+      await (await commandConfigGet(executionContext)).handler(argv);
     })
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
 }
