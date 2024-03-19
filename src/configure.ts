@@ -90,9 +90,7 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
   // ? Pretty print error output depending on how silent we're supposed to be
   if (!context.state.isSilenced) {
     if (context.state.didOutputHelpOrVersionText) {
-      // ? We use this over log.newline because we want to output to stderr
-      // eslint-disable-next-line no-console
-      console.error();
+      context.log.newline([IF_NOT_SILENCED], 'alternate');
     }
 
     context.log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);
