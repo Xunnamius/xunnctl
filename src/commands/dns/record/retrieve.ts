@@ -1,13 +1,15 @@
 import { ParentConfiguration } from '@black-flag/core';
+import jmespath from 'jmespath';
+
 import { ExtendedLogger, createListrTaskLogger } from 'multiverse/rejoinder';
 import { Zone, makeCloudflareApiCaller } from 'universe/api/cloudflare';
-
 import { CustomExecutionContext } from 'universe/configure';
-import { loggerNamespace } from 'universe/constant';
+import { LogTag, loggerNamespace } from 'universe/constant';
 
 import {
   GlobalCliArguments,
   ensureAtLeastOneOptionWasGiven,
+  logStartTime,
   makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
@@ -24,7 +26,8 @@ export type CustomCliArguments = GlobalCliArguments & {
 export default async function ({
   log: genericLogger,
   debug_,
-  taskManager
+  taskManager,
+  state
 }: CustomExecutionContext) {
   return {
     aliases: ['r'],
@@ -74,10 +77,20 @@ export default async function ({
 
       ensureAtLeastOneOptionWasGiven({ apex, apexAllKnown });
 
-      const ctx: { zoneApexNames: Zone[] } = (taskManager.ctx = { zoneApexNames: [] });
+      const { isHushed, startTime } = state;
+      const results: { zoneApices: Zone[] } = { zoneApices: [] };
+
+      if (query) {
+        taskManager.options = Object.assign(taskManager.options || {}, {
+          silentRendererCondition: () => true
+        } as typeof taskManager.options);
+      } else {
+        logStartTime({ log: genericLogger, startTime });
+      }
+
       taskManager.add([
         {
-          title: 'Downloading apex domain list from Cloudflare',
+          title: 'Downloading apex domain list from Cloudflare...',
           retry: { tries: 3, delay: 5000 },
           task: async function (_ctx, thisTask) {
             const logger = createListrTaskLogger({
@@ -88,10 +101,12 @@ export default async function ({
             const dns = await getDnsProvider(logger);
 
             try {
-              const zoneApexNames = (await dns.getAllDnsZones()).map((zone) => zone.name);
+              const zoneApices = (await dns.getAllDnsZones()).filter(
+                ({ name }) => apexAllKnown || apex?.includes(name)
+              );
 
-              thisTask.title = `Downloaded ${zoneApexNames.length} apex domain list from Cloudflare`;
-              taskManager.ctx = { zoneApexNames };
+              thisTask.title = `Downloaded ${zoneApices.length} apex domains from Cloudflare`;
+              results.zoneApices = zoneApices;
             } catch (error) {
               throw new Error('failed to download zones from cloudflare account', {
                 cause: error
@@ -103,9 +118,19 @@ export default async function ({
 
       await taskManager.runAll();
 
-      ctx.zoneApexNames.forEach((zone) => {
-        genericLogger(`Zone: ${zone.name}\n\tId: ${zone.id}`);
-      });
+      if (query) {
+        // eslint-disable-next-line no-console
+        console.log(
+          JSON.stringify(results.zoneApices.map((zone) => jmespath.search(zone, query)))
+        );
+      } else {
+        results.zoneApices.forEach((zone) => {
+          genericLogger(
+            [LogTag.IF_NOT_SILENCED],
+            isHushed ? zone.name : `Zone: ${zone.name}\n\tId: ${zone.id}`
+          );
+        });
+      }
 
       async function getDnsProvider(listrTaskLogger: ExtendedLogger) {
         return makeCloudflareApiCaller({

@@ -1,13 +1,15 @@
 import { ParentConfiguration } from '@black-flag/core';
+import jmespath from 'jmespath';
+
 import { ExtendedLogger, createListrTaskLogger } from 'multiverse/rejoinder';
 import { Zone, makeCloudflareApiCaller } from 'universe/api/cloudflare';
-
 import { CustomExecutionContext } from 'universe/configure';
 import { LogTag, loggerNamespace } from 'universe/constant';
 
 import {
   GlobalCliArguments,
   ensureAtLeastOneOptionWasGiven,
+  logStartTime,
   makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
@@ -23,7 +25,7 @@ export default async function ({
   log: genericLogger,
   debug_,
   taskManager,
-  state: { isHushed }
+  state
 }: CustomExecutionContext) {
   return {
     aliases: ['r'],
@@ -59,7 +61,16 @@ export default async function ({
 
       ensureAtLeastOneOptionWasGiven({ apex, apexAllKnown });
 
+      const { isHushed, startTime } = state;
       const results: { zoneApices: Zone[] } = { zoneApices: [] };
+
+      if (query) {
+        taskManager.options = Object.assign(taskManager.options || {}, {
+          silentRendererCondition: () => true
+        } as typeof taskManager.options);
+      } else {
+        logStartTime({ log: genericLogger, startTime });
+      }
 
       taskManager.add([
         {
@@ -74,7 +85,9 @@ export default async function ({
             const dns = await getDnsProvider(logger);
 
             try {
-              const zoneApices = await dns.getAllDnsZones();
+              const zoneApices = (await dns.getAllDnsZones()).filter(
+                ({ name }) => apexAllKnown || apex?.includes(name)
+              );
 
               thisTask.title = `Downloaded ${zoneApices.length} apex domains from Cloudflare`;
               results.zoneApices = zoneApices;
@@ -89,12 +102,19 @@ export default async function ({
 
       await taskManager.runAll();
 
-      results.zoneApices.forEach((zone) => {
-        genericLogger(
-          [LogTag.IF_NOT_QUIETED],
-          isHushed ? zone.name : `Zone: ${zone.name}\n\tId: ${zone.id}`
+      if (query) {
+        // eslint-disable-next-line no-console
+        console.log(
+          JSON.stringify(results.zoneApices.map((zone) => jmespath.search(zone, query)))
         );
-      });
+      } else {
+        results.zoneApices.forEach((zone) => {
+          genericLogger(
+            [LogTag.IF_NOT_SILENCED],
+            isHushed ? zone.name : `Zone: ${zone.name}\n\tId: ${zone.id}`
+          );
+        });
+      }
 
       async function getDnsProvider(listrTaskLogger: ExtendedLogger) {
         return makeCloudflareApiCaller({

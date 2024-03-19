@@ -15,10 +15,7 @@ export type CustomCliArguments = GlobalCliArguments & {
   name?: string[];
 };
 
-export default async function ({
-  debug_,
-  state: { isSilenced }
-}: CustomExecutionContext) {
+export default async function ({ debug_, state }: CustomExecutionContext) {
   return {
     aliases: ['g'],
     builder: await withGlobalOptions<CustomCliArguments>({
@@ -47,7 +44,7 @@ export default async function ({
       debug('all: %O', all);
 
       // eslint-disable-next-line no-console
-      const log = isSilenced ? () => undefined : console.log;
+      const log = state.isSilenced ? () => undefined : console.log;
 
       if (names?.length) {
         await Promise.all(

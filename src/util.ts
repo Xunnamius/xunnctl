@@ -2,12 +2,7 @@ import { mkdir } from 'node:fs/promises';
 
 import { $executionContext, CliError, type Configuration } from '@black-flag/core';
 
-import {
-  ExtendedLogger,
-  createListrManager,
-  disableLoggingByTag
-} from 'multiverse/rejoinder';
-
+import { ExtendedLogger, disableLoggingByTag } from 'multiverse/rejoinder';
 import { CustomExecutionContext } from 'universe/configure';
 import { LogTag } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
@@ -124,6 +119,14 @@ export async function withGlobalOptionsHandling<
     const tags = new Set<LogTag>();
     const debug = executionContext.debug_.extend('globalOptionsHandling');
 
+    const silenceRenderer = () => {
+      // ? Redefine taskManager with a silent renderer
+      Object.assign(executionContext.taskManager.options || {}, {
+        silentRendererCondition: () =>
+          executionContext.taskManager.options?.renderer === 'default'
+      } as typeof executionContext.taskManager.options);
+    };
+
     debug('entered global options wrapper (handler)');
     debug('hush: %O', hush);
     debug('quiet: %O', quiet);
@@ -138,13 +141,7 @@ export async function withGlobalOptionsHandling<
       tags.add(LogTag.IF_NOT_HUSHED);
       executionContext.state.isHushed = true;
 
-      // ? Redefine taskManager with a silent renderer
-      executionContext.taskManager = createListrManager({
-        overrides: {
-          silentRendererCondition: () =>
-            executionContext.taskManager.options?.renderer === 'default'
-        }
-      });
+      silenceRenderer();
     }
 
     if (quiet) {
@@ -152,6 +149,8 @@ export async function withGlobalOptionsHandling<
       executionContext.state.isQuieted = true;
       tags.add(LogTag.IF_NOT_HUSHED);
       executionContext.state.isHushed = true;
+
+      silenceRenderer();
     }
 
     if (hush) {
