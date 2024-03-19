@@ -3,6 +3,8 @@
 /* eslint-disable unicorn/prefer-regexp-test */
 // TODO: replace this with the actual rejoinder and vice-versa!
 
+// ! SPLIT OFF LISTR2 FEATURES AS SEPARATE PACKAGE
+
 import {
   $instances,
   debugFactory,
@@ -68,12 +70,41 @@ export interface ExtendedLogger extends _ExtendedLogger<ExtendedLogger> {
    * Send a tagged optionally-formatted message to output.
    */
   (...args: ExtendedLoggerParameters): ReturnType<ExtendedDebugger>;
-  newline: (
-    ...args: WithExtendedParameters<ExtendedDebugger['newline']>
-  ) => ReturnType<ExtendedDebugger['newline']>;
-  extend: (...args: Parameters<ExtendedDebugger['extend']>) => ExtendedLogger;
+  /**
+   * Send a blank newline to output.
+   *
+   * @param outputMethod Determines if the newline will be output via the
+   * default output method or the alternate output method. This parameter only
+   * has an effect when using certain logger backends and typically corresponds
+   * to stdout (`"default"`) and stderr (`"alternate"`).
+   */
+  newline(
+    ...args: [
+      ...WithExtendedParameters<ExtendedDebugger['newline'], false>,
+      outputMethod?: 'default' | 'alternate'
+    ]
+  ): ReturnType<ExtendedDebugger['newline']>;
+  /**
+   * Send a blank newline to output.
+   *
+   * @param outputMethod Determines if the newline will be output via the
+   * default output method or the alternate output method. This parameter only
+   * has an effect when using certain logger backends and typically corresponds
+   * to stdout (`"default"`) and stderr (`"alternate"`).
+   */
+  newline(
+    ...args: [outputMethod?: 'default' | 'alternate']
+  ): ReturnType<ExtendedDebugger['newline']>;
+  /**
+   * Creates a new instance by appending `namespace` to the current logger's
+   * namespace.
+   */
+  extend(...args: Parameters<ExtendedDebugger['extend']>): ExtendedLogger;
 }
-type _ExtendedLogger<T> = Omit<ExtendedDebugger, keyof DebuggerExtension> &
+type _ExtendedLogger<T> = Omit<
+  ExtendedDebugger,
+  keyof DebuggerExtension | 'newline' | 'extend'
+> &
   DebuggerExtension<WithTagSupport<UnextendableInternalDebugger>, T>;
 
 /**
@@ -386,7 +417,8 @@ function makeExtendedLogger(
    * in `extendedDebugger` generally. Note that function overrides should try to
    * avoid using `this`.
    */
-  standardOverrides: Partial<UnextendableInternalDebugger> = {},
+  standardOverrides: Partial<UnextendableInternalDebugger> &
+    Required<Pick<UnextendableInternalDebugger, 'log'>>,
   /**
    * The property descriptors of `specialOverrides` will overwrite matching
    * properties in `extendedDebugger.message`, `extendedDebugger.warn`, and
@@ -395,9 +427,9 @@ function makeExtendedLogger(
    *
    * @default standardOverrides
    */
-  specialOverrides: Partial<UnextendableInternalDebugger> = standardOverrides
+  specialOverrides: typeof standardOverrides = standardOverrides
 ): ExtendedLogger {
-  const extendedLogger = patchInstance('$log', extendedDebugger);
+  const extendedLogger: ExtendedLogger = patchInstance('$log', extendedDebugger);
   // TODO: fork merge-descriptors to make @xunnamius/merge-descriptors that
   // TODO: fixes this.
   // ! merge-descriptors does not copy over symbols!
@@ -405,9 +437,16 @@ function makeExtendedLogger(
 
   const extend = extendedDebugger.extend.bind(extendedDebugger);
   extendedLogger.extend = (...args) =>
-    makeExtendedLogger(extend(...args), standardOverrides);
+    makeExtendedLogger(extend(...args), standardOverrides, specialOverrides);
 
-  extendedLogger.newline = decorateWithTagSupport(extendedDebugger.newline, 1);
+  extendedLogger.newline = decorateWithTagSupport(
+    (outputMethod: Parameters<ExtendedLogger['newline']>[0]) => {
+      if (extendedLogger.enabled) {
+        (outputMethod === 'alternate' ? specialOverrides : standardOverrides).log('');
+      }
+    },
+    1
+  ) as typeof extendedLogger.newline;
 
   Object.entries(extendedLogger[$instances])
     // eslint-disable-next-line unicorn/no-array-callback-reference
@@ -441,7 +480,7 @@ function makeExtendedLogger(
  * `trapdoorArgLength` to the number of params necessary to trigger
  * blacklisting.
  */
-function decorateWithTagSupport<T extends (...args: unknown[]) => unknown>(
+function decorateWithTagSupport<T extends (...args: any[]) => unknown>(
   fn: T,
   trapdoorArgsMinLength: number
 ): WithTagSupport<T> {

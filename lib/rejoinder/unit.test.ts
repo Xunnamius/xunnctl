@@ -99,10 +99,41 @@ describe('::createGenericLogger', () => {
     });
   });
 
+  it('can hint at output stream when calling newline (defaults to stdout)', async () => {
+    expect.hasAssertions();
+
+    await withMockedOutput(({ logSpy, errorSpy }) => {
+      const log = createGenericLogger({ namespace });
+      const extension = log.extend(namespace);
+
+      log.newline();
+      log.newline('default');
+
+      expect(logSpy.mock.calls).toStrictEqual([[''], ['']]);
+      expect(errorSpy.mock.calls).toStrictEqual([]);
+
+      log.newline('alternate');
+
+      expect(logSpy.mock.calls).toStrictEqual([[''], ['']]);
+      expect(errorSpy.mock.calls).toStrictEqual([['']]);
+
+      extension.newline();
+      extension.newline('default');
+
+      expect(logSpy.mock.calls).toStrictEqual([[''], [''], [''], ['']]);
+      expect(errorSpy.mock.calls).toStrictEqual([['']]);
+
+      extension.newline('alternate');
+
+      expect(logSpy.mock.calls).toStrictEqual([[''], [''], [''], ['']]);
+      expect(errorSpy.mock.calls).toStrictEqual([[''], ['']]);
+    });
+  });
+
   it('is unaffected by the presence of tags by default', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ logSpy }) => {
+    await withMockedOutput(({ logSpy, errorSpy }) => {
       const log = createGenericLogger({ namespace });
       const extension = log.extend(namespace);
 
@@ -110,18 +141,32 @@ describe('::createGenericLogger', () => {
       log.error(['tag-1', 'tag-2'], 'logged: %O', { success: true });
       log.message(['tag-1', 'tag-2'], 'logged: %O', { success: true });
       log.warn(['tag-1', 'tag-2'], 'logged: %O', { success: true });
+
       log.newline(['tag-1', 'tag-2']);
+      log.newline(['tag-1', 'tag-2'], 'default');
+      log.newline(['tag-1', 'tag-2'], 'alternate');
 
       extension(['tag-3', 'tag-4'], 'logged');
       extension.error(['tag-3', 'tag-4'], 'logged');
       extension.message(['tag-3', 'tag-4'], 'logged');
       extension.warn(['tag-3', 'tag-4'], 'logged');
+
       extension.newline(['tag-3', 'tag-4']);
+      extension.newline(['tag-3', 'tag-4'], 'default');
+      extension.newline(['tag-3', 'tag-4'], 'alternate');
 
       expect(logSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([
           expect.stringMatching(/namespace.+logged:.+{.+success:.+true.+}/)
         ]),
+        [''],
+        [''],
+        expect.arrayContaining([expect.stringMatching(/namespace:namespace.+logged/)]),
+        [''],
+        ['']
+      ]);
+
+      expect(errorSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([
           expect.stringMatching(/namespace:<error>.+logged:.+{.+success:.+true.+}/)
         ]),
@@ -132,7 +177,6 @@ describe('::createGenericLogger', () => {
           expect.stringMatching(/namespace:<warn>.+logged:.+{.+success:.+true.+}/)
         ]),
         [''],
-        expect.arrayContaining([expect.stringMatching(/namespace:namespace.+logged/)]),
         expect.arrayContaining([
           expect.stringMatching(/namespace:namespace:<error>.+logged/)
         ]),
@@ -238,10 +282,10 @@ describe('::createListrTaskLogger', () => {
       expect.stringMatching(/namespace:<message>.+logged:.+{.+success:.+true.+}/),
       expect.stringMatching(/namespace:<warn>.+logged:.+{.+success:.+true.+}/),
       '',
-      expect.stringMatching(/namespace:namespace.+logged.+/),
-      expect.stringMatching(/namespace:namespace:<error>.+logged.+/),
-      expect.stringMatching(/namespace:namespace:<message>.+logged.+/),
-      expect.stringMatching(/(?:namespace:){2}<warn>.+logged.+/),
+      expect.stringMatching(/namespace:namespace.+logged/),
+      expect.stringMatching(/namespace:namespace:<error>.+logged/),
+      expect.stringMatching(/namespace:namespace:<message>.+logged/),
+      expect.stringMatching(/(?:namespace:){2}<warn>.+logged/),
       ''
     ]);
   });
