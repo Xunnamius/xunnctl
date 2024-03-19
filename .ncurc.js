@@ -5,6 +5,8 @@ module.exports = {
     // ? Pin the CJS version of execa
     'execa',
     // ? Pin the CJS version of execa
-    'alpha-sort'
+    'alpha-sort',
+    // ? Pin the CJS version of execa
+    'supports-color'
   ]
 };
