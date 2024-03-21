@@ -11,7 +11,7 @@ export const MAX_LOG_ERROR_ENTRIES = 10;
 /**
  * The CLI-wide namespace that appears in logger output.
  */
-export const loggerNamespace = 'xctl';
+export const loggerNamespace = 'xunnctl';
 
 /**
  * The CLI-wide namespace that appears in debugger output.
@@ -42,3 +42,9 @@ export enum LogTag {
   IF_NOT_QUIETED = 'lens-cli:if-not-quieted',
   IF_NOT_HUSHED = 'lens-cli:if-not-hushed'
 }
+
+/**
+ * These color codes correspond to a reddish color on the console.
+ * https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124?permalink_comment_id=4481079#gistcomment-4481079
+ */
+export const ansiRedColorCodes = [1, 9, 52, 88, 124, 160, 196];

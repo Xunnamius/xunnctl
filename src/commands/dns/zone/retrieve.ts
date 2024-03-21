@@ -1,16 +1,20 @@
+import { isNativeError } from 'node:util/types';
+
 import { ParentConfiguration } from '@black-flag/core';
 import jmespath from 'jmespath';
 
-import { ExtendedLogger, createListrTaskLogger } from 'multiverse/rejoinder';
-import { Zone, makeCloudflareApiCaller } from 'universe/api/cloudflare';
+import { TAB } from 'multiverse/rejoinder';
+import { Zone } from 'universe/api/cloudflare/index.js';
 import { CustomExecutionContext } from 'universe/configure';
-import { LogTag, loggerNamespace } from 'universe/constant';
+import { LogTag } from 'universe/constant';
+import { TaskError } from 'universe/error';
 
 import {
   GlobalCliArguments,
-  ensureAtLeastOneOptionWasGiven,
+  addToTaskManager,
   logStartTime,
   makeUsageString,
+  toSpacedSentenceCase,
   withGlobalOptions,
   withGlobalOptionsHandling
 } from 'universe/util';
@@ -18,7 +22,7 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  query?: string;
+  localQuery?: string;
 };
 
 export default async function ({
@@ -27,102 +31,109 @@ export default async function ({
   taskManager,
   state
 }: CustomExecutionContext) {
+  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+    apex: {
+      demandOption: ['apex-all-known'],
+      array: true,
+      description: 'Zero or more zone apex domains'
+    },
+    'apex-all-known': {
+      demandOption: ['apex'],
+      boolean: true,
+      description: 'Include all known zone apex domains'
+    },
+    'local-query': {
+      array: true,
+      description: 'A JMESPath query string for querying downloaded result data',
+      coerce: (args) => args.join(' ')
+    }
+  });
+
   return {
     aliases: ['r'],
-    builder: await withGlobalOptions<CustomCliArguments>({
-      apex: {
-        array: true,
-        description: 'Zero or more zone apex domains'
-      },
-      'apex-all-known': {
-        boolean: true,
-        description: 'Include all known zone apex domains'
-      },
-      query: {
-        array: true,
-        description: 'A JMESPath query string',
-        coerce: (args) => args.join(' ')
-      }
-    }),
+    builder,
     description: 'Retrieve information about one or more zones',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function ({
-      configPath,
-      apex,
-      apexAllKnown,
-      query
-    }) {
-      const debug = debug_.extend('handler');
-      debug('entered handler');
+    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+      builderData,
+      async function ({ configPath, apex = [], apexAllKnown, localQuery }) {
+        const debug = debug_.extend('handler');
+        debug('entered handler');
 
-      debug('apex', apex);
-      debug('apexAllKnown: %O', apexAllKnown);
-      debug('query: %O', query);
+        debug('apex', apex);
+        debug('apexAllKnown: %O', apexAllKnown);
+        debug('localQuery: %O', localQuery);
 
-      ensureAtLeastOneOptionWasGiven({ apex, apexAllKnown });
+        const { isHushed, startTime } = state;
+        const results = { zoneApices: [] as Zone[] };
 
-      const { isHushed, startTime } = state;
-      const results: { zoneApices: Zone[] } = { zoneApices: [] };
+        if (localQuery) {
+          taskManager.options = Object.assign(taskManager.options || {}, {
+            silentRendererCondition: true
+          } as typeof taskManager.options);
+        } else {
+          logStartTime({ log: genericLogger, startTime });
+        }
 
-      if (query) {
-        taskManager.options = Object.assign(taskManager.options || {}, {
-          silentRendererCondition: () => true
-        } as typeof taskManager.options);
-      } else {
-        logStartTime({ log: genericLogger, startTime });
-      }
-
-      taskManager.add([
-        {
-          title: 'Downloading apex domain list from Cloudflare...',
-          retry: { tries: 3, delay: 5000 },
-          task: async function (_ctx, thisTask) {
-            const logger = createListrTaskLogger({
-              namespace: loggerNamespace,
-              task: thisTask
-            });
-
-            const dns = await getDnsProvider(logger);
-
+        addToTaskManager({
+          initialTitle: 'Downloading apex domain zones from Cloudflare...',
+          taskManager,
+          configPath,
+          debug,
+          async callback({ thisTask, dns, taskLogger }) {
             try {
-              const zoneApices = (await dns.getAllDnsZones()).filter(
-                ({ name }) => apexAllKnown || apex?.includes(name)
-              );
+              const zoneApices = (await dns.getDnsZones()).filter(({ name }) => {
+                const returnValue = apexAllKnown || apex.includes(name);
+                taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                return returnValue;
+              });
 
-              thisTask.title = `Downloaded ${zoneApices.length} apex domains from Cloudflare`;
+              thisTask.title = `Downloaded ${zoneApices.length} apex domain zones from Cloudflare`;
               results.zoneApices = zoneApices;
             } catch (error) {
-              throw new Error('failed to download zones from cloudflare account', {
+              throw new TaskError('failed to download zones from Cloudflare account', {
                 cause: error
               });
             }
           }
+        });
+
+        await taskManager.runAll();
+
+        if (localQuery) {
+          try {
+            // eslint-disable-next-line no-console
+            console.log(
+              JSON.stringify(
+                Object.fromEntries(
+                  results.zoneApices.map((zone) => [
+                    zone.name,
+                    jmespath.search(zone, localQuery)
+                  ])
+                )
+              )
+            );
+          } catch (error) {
+            throw new Error(
+              `fatal JMESPath error: ${isNativeError(error) ? error.message : error}`
+            );
+          }
+        } else {
+          results.zoneApices.forEach((zone) => {
+            // eslint-disable-next-line unicorn/no-array-reduce
+            const suffix = Object.entries(zone).reduce(
+              (str, [key, value]) =>
+                `${str}\n${TAB}${toSpacedSentenceCase(key)}: ${JSON.stringify(value)}`,
+              ''
+            );
+
+            genericLogger(
+              [LogTag.IF_NOT_SILENCED],
+              isHushed ? zone.name : `Zone: ${zone.name}${suffix || `\n${TAB}(no data)`}`
+            );
+          });
         }
-      ]);
-
-      await taskManager.runAll();
-
-      if (query) {
-        // eslint-disable-next-line no-console
-        console.log(
-          JSON.stringify(results.zoneApices.map((zone) => jmespath.search(zone, query)))
-        );
-      } else {
-        results.zoneApices.forEach((zone) => {
-          genericLogger(
-            [LogTag.IF_NOT_SILENCED],
-            isHushed ? zone.name : `Zone: ${zone.name}\n\tId: ${zone.id}`
-          );
-        });
       }
-
-      async function getDnsProvider(listrTaskLogger: ExtendedLogger) {
-        return makeCloudflareApiCaller({
-          configPath,
-          debug: debug_,
-          log: listrTaskLogger
-        });
-      }
-    })
+    )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

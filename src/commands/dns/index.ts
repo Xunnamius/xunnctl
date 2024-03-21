@@ -5,6 +5,7 @@ import { CustomExecutionContext } from 'universe/configure';
 
 import {
   GlobalCliArguments,
+  makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
 } from 'universe/util';
@@ -12,14 +13,20 @@ import {
 export type CustomCliArguments = GlobalCliArguments;
 
 export default async function ({ debug_ }: CustomExecutionContext) {
+  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+
   return {
     aliases: ['d'],
-    builder: await withGlobalOptions<CustomCliArguments>(),
+    builder,
     description: 'Tools for DNS-related tasks',
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function () {
-      const debug = debug_.extend('handler');
-      debug('entered handler');
-      throw new CommandNotImplementedError();
-    })
+    usage: makeUsageString(),
+    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+      builderData,
+      async function () {
+        const debug = debug_.extend('handler');
+        debug('entered handler');
+        throw new CommandNotImplementedError();
+      }
+    )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

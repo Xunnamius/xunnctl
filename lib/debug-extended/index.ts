@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
+import { isPromise, isSymbolObject } from 'node:util/types';
+
 import getDebugger, { type Debug as _Debug, type Debugger as _Debugger } from 'debug';
-import overwriteDescriptors from 'merge-descriptors';
 
 import type { Merge } from 'type-fest';
 
@@ -138,14 +139,39 @@ type _DebuggerExtension<T = UnextendableInternalDebugger> = {
  * An `ExtendedDebug` instance that returns an {@link ExtendedDebugger} instance
  * via {@link extendDebugger}.
  */
-const debugFactory = ((...args: Parameters<InternalDebug>) => {
-  return extendDebugger(getDebugger(...args));
-}) as ExtendedDebug;
+export const debugFactory = new Proxy(getDebugger as unknown as ExtendedDebug, {
+  apply(_target, _this: unknown, args: Parameters<InternalDebug>) {
+    return extendDebugger(getDebugger(...args));
+  },
+  get(target, property: PropertyKey, proxy: ExtendedDebug) {
+    const value: unknown = target[property as keyof typeof target];
+    const isSymbolOrOwnProperty =
+      typeof property === 'string' &&
+      (isSymbolObject(property) ||
+        Object.hasOwn(getDebugger, property) ||
+        Object.hasOwn(Object.getPrototypeOf(getDebugger), property));
 
-// * Note that this does NOT rebind getDebugger's methods!
-overwriteDescriptors(debugFactory, getDebugger);
+    if (isSymbolOrOwnProperty && typeof value === 'function') {
+      return function (...args: unknown[]) {
+        // ? This is "this-recovering" code.
+        const returnValue = value.apply(target, args);
+        // ? Whenever we'd return a yargs instance, return the wrapper
+        // ? program instead.
+        /* istanbul ignore next */
+        return isPromise(returnValue)
+          ? returnValue.then((realReturnValue) => maybeReturnProxy(realReturnValue))
+          : maybeReturnProxy(returnValue);
+      };
+    }
 
-export { debugFactory };
+    return value;
+
+    /* istanbul ignore next */
+    function maybeReturnProxy(returnValue: unknown) {
+      return returnValue === target ? proxy : returnValue;
+    }
+  }
+});
 
 /**
  * Extends a {@link InternalDebugger} instance with several convenience methods,

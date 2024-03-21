@@ -386,17 +386,17 @@ type `--type` from the specified `--apex*` DNS zone(s).
 
 Omitting both `--name` and `--type` will retrieve all records.
 
-The result can be queried via `--query`, which accepts a [JMESPath][7] value.
-Note that, as a feature, the presence of spaces in the query does not
-necessitate quoting or escaping. When `--query` is present, the resulting JSON
-will be dumped straight to stdout.
+The result can be queried via `--local-query`, which accepts a [JMESPath][7]
+value. Note that, as a feature, the presence of spaces in the query does not
+necessitate quoting or escaping. When `--local-query` is present, the resulting
+JSON will be dumped straight to stdout.
 
 #### Examples
 
 ```bash
 xunnctl dns record retrieve --apex xunn.io --name mail --type CNAME
 x d r r --apex-all-known --apex new-site.com --name mail
-x d r r --apex xunn.io --apex xunn.at --type cname --query id
+x d r r --apex xunn.io --apex xunn.at --type cname --local-query id
 ```
 
 #### Parameters
@@ -407,7 +407,7 @@ x d r r --apex xunn.io --apex xunn.at --type cname --query id
 | **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
 |          <sub>optional</sub>           |      `--name`      |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
 |          <sub>optional</sub>           |      `--type`      |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
-|          <sub>optional</sub>           |     `--query`      | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
 
 ### `xunnctl dns zone`
 
@@ -445,10 +445,9 @@ x d z c --apex xunn.at
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                       |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
+|                         |   Name   |   Type    |  Default  | Description                                                                  |
+| :---------------------: | :------: | :-------: | :-------: | :--------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--apex` | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters. |
 
 ### `xunnctl dns zone retrieve`
 
@@ -456,17 +455,17 @@ x d z c --apex xunn.at
 
 This command returns information about one or more `--apex` zones.
 
-The result can be queried via `--query`, which accepts a [JMESPath][7] value.
-Note that, as a feature, the presence of spaces in the query does not
-necessitate quoting or escaping. When `--query` is present, the resulting JSON
-will be dumped straight to stdout.
+The result can be queried via `--local-query`, which accepts a [JMESPath][7]
+value. Note that, as a feature, the presence of spaces in the query does not
+necessitate quoting or escaping. When `--local-query` is present, the resulting
+JSON will be dumped straight to stdout.
 
 #### Examples
 
 ```bash
 xunnctl dns zone retrieve --apex xunn.at
-x d z r --apex-all-known --apex new-site.com --query id
-x d z r --apex xunn.io --apex xunn.at --query { id: id, cdnOnly: meta.cdn_only }
+x d z r --apex-all-known --apex new-site.com --local-query id
+x d z r --apex xunn.io --apex xunn.at --local-query { id: id, cdnOnly: meta.cdn_only }
 ```
 
 #### Parameters
@@ -475,7 +474,7 @@ x d z r --apex xunn.io --apex xunn.at --query { id: id, cdnOnly: meta.cdn_only }
 | :------------------------------------: | :----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
 | **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
 | **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
-|          <sub>optional</sub>           |     `--query`      | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
 
 ### `xunnctl dns zone update`
 
@@ -600,14 +599,14 @@ file and it will be included in the output with respect for the lines consisting
 of `### START AUTOGENERATED RULES` and `### END AUTOGENERATED RULES`. For
 example:
 
-```
+```text
 echo 'before\n### START AUTOGENERATED RULES\n\nx\ny\nz\n\n### END AUTOGENERATED RULES\nafter\n' | npx x r --id conf.nginx.allowOnlyCloudflare
 ```
 
 Note that `deny all;` should be included in your Nginx configuration for it to
 be meaningful. This tool will not add it for you. For example:
 
-```
+```text
 ...
 ### START AUTOGENERATED RULES
 ...

@@ -5,6 +5,7 @@ import { CustomExecutionContext } from 'universe/configure';
 
 import {
   GlobalCliArguments,
+  makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
 } from 'universe/util';
@@ -13,16 +14,22 @@ export type CustomCliArguments = GlobalCliArguments;
 
 export default async function (executionContext: CustomExecutionContext) {
   const { debug_ } = executionContext;
+  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+
   return {
     aliases: ['z'],
-    builder: await withGlobalOptions<CustomCliArguments>(),
+    builder,
     description: 'Tools to manage DNS zones',
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function (argv) {
-      const debug = debug_.extend('handler');
-      debug('entered handler');
-      await (
-        await commandZoneRetrieve(executionContext)
-      ).handler({ ...argv, apexAllKnown: true });
-    })
+    usage: makeUsageString(),
+    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+      builderData,
+      async function (argv) {
+        const debug = debug_.extend('handler');
+        debug('entered handler');
+        await (
+          await commandZoneRetrieve(executionContext)
+        ).handler({ ...argv, apexAllKnown: true, hush: true });
+      }
+    )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

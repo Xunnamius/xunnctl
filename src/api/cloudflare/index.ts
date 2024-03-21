@@ -4,40 +4,9 @@ import { loadFromCliConfig } from 'universe/config-manager';
 import { LogTag } from 'universe/constant';
 
 import type { JsonValue } from 'type-fest';
+import type { ResourceRecord, Ruleset, RulesetRule, WithId, Zone } from './types';
 
-/**
- * @internal
- */
-export type WithId<T = unknown> = { id: string } & T;
-
-/**
- * https://developers.cloudflare.com/api/operations/listZoneRulesets
- * @internal
- */
-export type Rulesets = Omit<Ruleset, 'rules'>[];
-
-/**
- * https://developers.cloudflare.com/api/operations/getZoneRuleset
- * @internal
- */
-export type Ruleset = WithId<{
-  name: string;
-  description: string;
-  rules: RulesetRule[];
-  phase: string;
-}>;
-
-/**
- * https://developers.cloudflare.com/api/operations/getZoneRuleset
- * @internal
- */
-export type RulesetRule = WithId<{ description: string }>;
-
-/**
- * https://developers.cloudflare.com/api/operations/zones-get
- * @internal
- */
-export type Zone = WithId<{ name: string }>;
+export * from './types';
 
 export async function makeCloudflareApiCaller({
   configPath,
@@ -101,8 +70,8 @@ export async function makeCloudflareApiCaller({
      *
      * @returns A list of DNS zone objects.
      */
-    async getAllDnsZones() {
-      const debug = debug_.extend('getAllDnsZones');
+    async getDnsZones() {
+      const debug = debug_.extend('getDnsZones');
       debug('entered method');
 
       const zones: Zone[] = [];
@@ -134,8 +103,8 @@ export async function makeCloudflareApiCaller({
         zones.push(...zones_);
         countRemaining = total_count - (count + (page - 1) * per_page);
 
-        debug('(getAllDnsZones) zones.length: %O', zones.length);
-        debug('(getAllDnsZones) countRemaining: %O', countRemaining);
+        debug('zones.length: %O', zones.length);
+        debug('countRemaining: %O', countRemaining);
       } while (countRemaining > 0);
 
       return zones;
@@ -221,6 +190,51 @@ export async function makeCloudflareApiCaller({
           ]
         }
       });
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
+     *
+     * @returns A list of DNS record objects.
+     */
+    async getDnsZoneRecords({ zoneId }: { zoneId: string }) {
+      const debug = debug_.extend('getDnsZoneRecords');
+      debug('entered method');
+
+      const records: ResourceRecord[] = [];
+      let currentPage = 0;
+      let countRemaining = 0;
+
+      do {
+        const [
+          records_,
+          {
+            result_info: { count, page, per_page, total_count }
+          }
+          // eslint-disable-next-line no-await-in-loop
+        ] = await this.callApi<
+          ResourceRecord[],
+          {
+            result_info: {
+              count: number;
+              page: number;
+              per_page: number;
+              total_count: number;
+            };
+          }
+        >({
+          uri: `zones/${zoneId}/dns_records?page=${++currentPage}`,
+          method: 'GET'
+        });
+
+        records.push(...records_);
+        countRemaining = total_count - (count + (page - 1) * per_page);
+
+        debug('records.length: %O', records.length);
+        debug('countRemaining: %O', countRemaining);
+      } while (countRemaining > 0);
+
+      return records;
     },
 
     /**

@@ -77,7 +77,7 @@
     }
   },
   "dependencies": {
-    "@black-flag/core": "^1.2.1",
+    "@black-flag/core": "^1.2.2",
     "@listr2/manager": "^2.0.2",
     "@types/debug": "^4.1.12",
     "core-js": "3.36.1",
@@ -91,11 +91,11 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.15.2",
-    "@babel/cli": "^7.23.9",
-    "@babel/eslint-parser": "^7.23.10",
-    "@babel/plugin-proposal-export-default-from": "^7.23.3",
-    "@babel/preset-env": "^7.24.0",
-    "@babel/preset-typescript": "^7.23.3",
+    "@babel/cli": "^7.24.1",
+    "@babel/eslint-parser": "^7.24.1",
+    "@babel/plugin-proposal-export-default-from": "^7.24.1",
+    "@babel/preset-env": "^7.24.3",
+    "@babel/preset-typescript": "^7.24.1",
     "@commitlint/cli": "^19.2.1",
     "@commitlint/config-conventional": "^19.1.0",
     "@semantic-release/changelog": "^6.0.3",
@@ -106,7 +106,7 @@
     "@types/jmespath": "^0.15.2",
     "@types/lodash.mergewith": "^4.6.9",
     "@types/merge-descriptors": "^1.0.3",
-    "@types/node": "^20.11.29",
+    "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",
     "@xunnamius/conventional-changelog-projector": "^1.2.1",
@@ -192,10 +192,10 @@
     "spellchecker": "^3.7.1",
     "text-extensions": "^2.4.0",
     "tsconfig-replace-paths": "^0.0.14",
-    "type-fest": "^4.13.0",
+    "type-fest": "^4.13.1",
     "typedoc": "^0.25.12",
     "typedoc-plugin-markdown": "^3.17.1",
-    "typescript": "^5.4.2",
+    "typescript": "^5.4.3",
     "unique-filename": "^3.0.0"
   },
   "engines": {

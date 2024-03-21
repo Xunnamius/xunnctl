@@ -5,6 +5,7 @@ import { CustomExecutionContext } from 'universe/configure';
 
 import {
   GlobalCliArguments,
+  makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
 } from 'universe/util';
@@ -13,14 +14,20 @@ export type CustomCliArguments = GlobalCliArguments;
 
 export default async function (executionContext: CustomExecutionContext) {
   const { debug_ } = executionContext;
+  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+
   return {
     aliases: ['c'],
-    builder: await withGlobalOptions<CustomCliArguments>(),
+    builder,
     description: "Tools to access and mutate this CLI's configuration keys",
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(async function (argv) {
-      const debug = debug_.extend('handler');
-      debug('entered handler');
-      await (await commandConfigGet(executionContext)).handler(argv);
-    })
+    usage: makeUsageString(),
+    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+      builderData,
+      async function (argv) {
+        const debug = debug_.extend('handler');
+        debug('entered handler');
+        await (await commandConfigGet(executionContext)).handler(argv);
+      }
+    )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

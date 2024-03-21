@@ -1,21 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
 /* eslint-disable unicorn/prefer-regexp-test */
 // TODO: replace this with the actual rejoinder and vice-versa!
 
 // ! SPLIT OFF LISTR2 FEATURES AS SEPARATE PACKAGE
 
-import {
-  $instances,
-  debugFactory,
-  type DebuggerExtension,
-  type ExtendedDebugger,
-  type InstanceKey,
-  type UnextendableInternalDebugger
-} from 'multiverse/debug-extended';
+import assert from 'node:assert';
+import { isPromise } from 'node:util/types';
 
 import {
+  ListrLogger,
   PRESET_TIMER,
+  PRESET_TIMESTAMP,
+  ProcessOutput,
   type ListrBaseClassOptions,
   type ListrContext,
   type ListrRenderer,
@@ -23,7 +19,19 @@ import {
 } from 'listr2';
 
 import { Manager } from '@listr2/manager';
-import overwriteDescriptors from 'merge-descriptors';
+
+import {
+  $instances,
+  debugFactory,
+  type DebuggerExtension,
+  type ExtendedDebugger,
+  type InternalDebugger,
+  type UnextendableInternalDebugger
+} from 'multiverse/debug-extended';
+
+import { ansiRedColorCodes } from 'universe/constant';
+
+import type { Entry } from 'type-fest';
 
 export { debugFactory as extendedDebugFactory, type ExtendedDebugger };
 
@@ -36,7 +44,7 @@ export type ListrManager<T = any> = Manager<T, 'default' | 'verbose'>;
  * @internal
  */
 export type WithExtendedParameters<
-  T extends (...args: unknown[]) => unknown,
+  T extends (...args: any[]) => any,
   Optional = true
 > = Optional extends true
   ? [tags?: string[], ...Parameters<T>]
@@ -45,10 +53,9 @@ export type WithExtendedParameters<
 /**
  * @internal
  */
-export type WithTagSupport<
-  T extends (...args: unknown[]) => unknown,
-  Optional = true
-> = ((...args: WithExtendedParameters<T, Optional>) => ReturnType<T> | undefined) & {
+export type WithTagSupport<T extends (...args: any[]) => any, Optional = true> = ((
+  ...args: WithExtendedParameters<T, Optional>
+) => ReturnType<T> | undefined) & {
   [P in keyof T]: T[P];
 };
 
@@ -134,6 +141,11 @@ const metadata = {
  */
 export const TAB = '    ';
 
+// eslint-disable-next-line no-console
+const consoleLog = (...args: unknown[]) => console.log(...args);
+// eslint-disable-next-line no-console
+const consoleError = (...args: unknown[]) => console.error(...args);
+
 /**
  * Create and return new set of logger instances.
  */
@@ -148,19 +160,7 @@ export function createGenericLogger({
    */
   namespace: string;
 }) {
-  const logger = makeExtendedLogger(
-    debugFactory(namespace),
-    {
-      log(...args) {
-        console.log(...args);
-      }
-    },
-    {
-      log(...args) {
-        console.error(...args);
-      }
-    }
-  );
+  const logger = makeExtendedLogger(debugFactory(namespace), consoleLog, consoleError);
 
   metadata.stdout.push(logger);
   return logger;
@@ -186,11 +186,12 @@ export function createListrTaskLogger({
    */
   task: GenericListrTask;
 }) {
-  const logger = makeExtendedLogger(debugFactory(namespace), {
-    log(...args) {
+  const logger = makeExtendedLogger(
+    debugFactory(namespace),
+    function (...args: unknown[]) {
       task.output = args.join(' ');
     }
-  });
+  );
 
   metadata.stdout.push(logger);
   return logger;
@@ -211,6 +212,7 @@ export function createDebugLogger({
   namespace: string;
 }) {
   const debug = debugFactory(namespace);
+  debug.log = consoleError;
   metadata.debug.push(debug);
   return debug;
 }
@@ -233,19 +235,29 @@ export function createListrManager<T = any>(options?: {
    */
   overrides?: ListrBaseClassOptions;
 }) {
-  const manager = new Manager<T, 'default' | 'verbose'>({
+  const processOutput = new ProcessOutput();
+  // ? Since we use the fallback logger whenever we're in debug mode, let's
+  // ? allow debug traffic to hit stderr live.
+  processOutput.hijack = processOutput.release = () => undefined /* noop */;
+
+  const manager = new Manager<T, 'default', 'verbose' | 'simple'>({
     concurrent: false,
     collectErrors: 'minimal',
     exitOnError: true,
     registerSignalListeners: true,
-    renderer:
-      !!process.env.DEBUG || metadata.debug.some((l) => l.enabled)
-        ? 'verbose'
-        : 'default',
+    renderer: 'default',
+    fallbackRenderer: 'verbose',
+    fallbackRendererCondition: () =>
+      !!process.env.DEBUG || metadata.debug.some((l) => l.enabled),
     rendererOptions: {
       collapseSubtasks: false,
       collapseSkips: false,
       timer: PRESET_TIMER
+    },
+    fallbackRendererOptions: {
+      timestamp: PRESET_TIMESTAMP,
+      timer: PRESET_TIMER,
+      logger: new ListrLogger({ processOutput })
     },
     ...options?.overrides
   });
@@ -413,65 +425,146 @@ export function resetInternalState() {
 function makeExtendedLogger(
   extendedDebugger: ExtendedDebugger,
   /**
-   * The property descriptors of `overrides` will overwrite matching properties
-   * in `extendedDebugger` generally. Note that function overrides should try to
-   * avoid using `this`.
+   * This function will be called with various arguments of unknown type when
+   * default (e.g. stdout) output should be sent to the user, such as when
+   * `::newline(...)` is called.
    */
-  standardOverrides: Partial<UnextendableInternalDebugger> &
-    Required<Pick<UnextendableInternalDebugger, 'log'>>,
+  underlyingDefaultLogFn: NonNullable<InternalDebugger['log']>,
   /**
-   * The property descriptors of `specialOverrides` will overwrite matching
-   * properties in `extendedDebugger.message`, `extendedDebugger.warn`, and
-   * `extendedDebugger.error` specifically. Note that function overrides should
-   * try to avoid using `this`.
-   *
-   * @default standardOverrides
+   * This function will be called with various arguments of unknown type when
+   * alternate (e.g. stderr) output should be sent to the user, such as when
+   * `::newline(..., 'alternate')` and `::error(...)`, `::warn(...)`,
+   * `::message(...)`, etc are called.
    */
-  specialOverrides: typeof standardOverrides = standardOverrides
+  underlyingAlternateLogFn: NonNullable<InternalDebugger['log']> = underlyingDefaultLogFn
 ): ExtendedLogger {
-  const extendedLogger: ExtendedLogger = patchInstance('$log', extendedDebugger);
-  // TODO: fork merge-descriptors to make @xunnamius/merge-descriptors that
-  // TODO: fixes this.
-  // ! merge-descriptors does not copy over symbols!
-  extendedLogger[$instances] = extendedDebugger[$instances];
-
-  const extend = extendedDebugger.extend.bind(extendedDebugger);
-  extendedLogger.extend = (...args) =>
-    makeExtendedLogger(extend(...args), standardOverrides, specialOverrides);
-
-  extendedLogger.newline = decorateWithTagSupport(
+  const baseLoggerFn = decorateWithTagSupport(extendedDebugger, 2);
+  const baseNewlineFn = decorateWithTagSupport(
     (outputMethod: Parameters<ExtendedLogger['newline']>[0]) => {
       if (extendedLogger.enabled) {
-        (outputMethod === 'alternate' ? specialOverrides : standardOverrides).log('');
+        (outputMethod === 'alternate'
+          ? underlyingAlternateLogFn
+          : underlyingDefaultLogFn)('');
       }
     },
     1
   ) as typeof extendedLogger.newline;
 
-  Object.entries(extendedLogger[$instances])
-    // eslint-disable-next-line unicorn/no-array-callback-reference
-    .filter((o): o is [Exclude<InstanceKey, '$log'>, (typeof o)[1]] => o[0] !== '$log')
-    .forEach(([key, instance]) => patchInstance(key, instance));
+  const extendedLogger = new Proxy(extendedDebugger as ExtendedLogger, {
+    apply(
+      _target,
+      _this: unknown,
+      args: Parameters<WithTagSupport<typeof extendedDebugger>>
+    ) {
+      return baseLoggerFn(...args);
+    },
+    get(target, property: PropertyKey, proxy: ExtendedLogger) {
+      if (property === 'extend') {
+        return function (...args: Parameters<ExtendedLogger['extend']>) {
+          return makeExtendedLogger(
+            extendedDebugger.extend(...args),
+            underlyingDefaultLogFn,
+            underlyingAlternateLogFn
+          );
+        };
+      }
+
+      if (property === 'newline') {
+        return function (...args: Parameters<ExtendedLogger['newline']>) {
+          return baseNewlineFn(...args);
+        };
+      }
+
+      const value: unknown = target[property as keyof typeof target];
+
+      if (typeof value === 'function') {
+        return function (...args: unknown[]) {
+          // ? This is "this-recovering" code.
+          const returnValue = value.apply(target, args);
+          // ? Whenever we'd return a yargs instance, return the wrapper
+          // ? program instead.
+          /* istanbul ignore next */
+          return isPromise(returnValue)
+            ? returnValue.then((realReturnValue) => maybeReturnProxy(realReturnValue))
+            : maybeReturnProxy(returnValue);
+        };
+      }
+
+      return value;
+
+      /* istanbul ignore next */
+      function maybeReturnProxy(returnValue: unknown) {
+        return returnValue === target ? proxy : returnValue;
+      }
+    }
+  });
+
+  // ? Decorate the pre-extended instances (error, warn, etc) with tag support.
+  for (const [key, instance] of Object.entries(extendedDebugger[$instances]).filter(
+    (o): o is LoggerExtensionEntry => o[0] !== '$log'
+  )) {
+    if (key === 'error') {
+      // ? Ensure "error" outputs are always red (color = 1 === red).
+      // @ts-expect-error: external types are incongruent
+      instance.color = 1;
+    } else {
+      ensureInstanceHasNonRedColor(instance);
+    }
+
+    // ? Ensure our sub-loggers are using the correct underlying logging
+    // ? function.
+    instance.log = underlyingAlternateLogFn;
+
+    // ? Ensure our sub-loggers are enabled (generate output) by default.
+    instance.enabled = true;
+
+    // ? Decorate the sub-logger with tag support.
+    extendedLogger[$instances][key] = decorateWithTagSupport(instance, 2);
+  }
+
+  // ? Ensure the special $log circular reference points back to us instead of
+  // ? the original debug logger.
+  extendedLogger[$instances].$log = extendedLogger;
+
+  // ? Ensure our extendedLogger is using the correct underlying logging
+  // ? function.
+  extendedLogger.log = underlyingDefaultLogFn;
+
+  // ? Ensure our extendedLogger is enabled (generates output) by default.
+  extendedLogger.enabled = true;
+
+  ensureInstanceHasNonRedColor(extendedLogger);
 
   return extendedLogger;
 
-  function patchInstance<T extends ExtendedDebugger | UnextendableInternalDebugger>(
-    key: InstanceKey,
-    instance: T
+  type LoggerExtensionEntry = Entry<
+    Omit<(typeof extendedDebugger)[typeof $instances], '$log'>
+  >;
+
+  function ensureInstanceHasNonRedColor(
+    instance: ExtendedLogger | UnextendableInternalDebugger
   ) {
-    instance.enabled = true;
-    overwriteDescriptors(
-      instance,
-      ['error', 'message', 'warn'].includes(key) ? specialOverrides : standardOverrides
-    );
+    if (ansiRedColorCodes.includes(instance.color as unknown as number)) {
+      // ? Ensure only "error" outputs can be red
 
-    // @ts-expect-error: TS isn't smart enough to figure this out just yet
-    const patchedInstance = ((extendedDebugger as ExtendedLogger)[$instances][key] =
-      // ? Ensure TS errors aren't swallowed
-      // prettier-ignore
-      decorateWithTagSupport(instance, 2));
+      const hiddenInternals = debugFactory as typeof debugFactory & { colors: number[] };
+      assert(Array.isArray(hiddenInternals.colors));
 
-    return patchedInstance;
+      const oldAvailableColors = hiddenInternals.colors;
+      hiddenInternals.colors = oldAvailableColors.filter(
+        (c) => !ansiRedColorCodes.includes(c)
+      );
+
+      try {
+        const selectedColor = hiddenInternals.selectColor(extendedDebugger.namespace);
+        assert(typeof selectedColor === 'number' || typeof selectedColor === 'string');
+
+        // @ts-expect-error: external types are incongruent
+        instance.color = selectedColor;
+      } finally {
+        hiddenInternals.colors = oldAvailableColors;
+      }
+    }
   }
 }
 
@@ -480,20 +573,21 @@ function makeExtendedLogger(
  * `trapdoorArgLength` to the number of params necessary to trigger
  * blacklisting.
  */
-function decorateWithTagSupport<T extends (...args: any[]) => unknown>(
+function decorateWithTagSupport<T extends (...args: any[]) => any>(
   fn: T,
   trapdoorArgsMinLength: number
 ): WithTagSupport<T> {
-  // * Note that this does NOT rebind fn's methods!
-  return overwriteDescriptors((...args: unknown[]) => {
-    if (args.length >= trapdoorArgsMinLength && Array.isArray(args[0])) {
-      if (args[0].some((tag) => metadata.blacklist.has(tag))) {
-        return undefined;
+  return new Proxy(fn as WithTagSupport<T>, {
+    apply(_target, _this: unknown, args: Parameters<typeof fn>) {
+      if (args.length >= trapdoorArgsMinLength && Array.isArray(args[0])) {
+        if (args[0].some((tag) => metadata.blacklist.has(tag))) {
+          return undefined;
+        }
+
+        return fn(...args.slice(1));
       }
 
-      return fn(...args.slice(1)) as ReturnType<T>;
+      return fn(...args);
     }
-
-    return fn(...args) as ReturnType<T>;
-  }, fn) as WithTagSupport<T>;
+  });
 }

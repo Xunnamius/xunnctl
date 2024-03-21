@@ -295,13 +295,13 @@ describe('::createDebugLogger', () => {
   it('returns ExtendedDebugger instance', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ stdErrSpy }) => {
+    await withMockedOutput(({ errorSpy }) => {
       const debug = createDebugLogger({ namespace });
 
       debug.enabled = true;
       debug('logged');
 
-      expect(stdErrSpy.mock.calls).toStrictEqual([
+      expect(errorSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([expect.stringMatching(/namespace.+logged/)])
       ]);
     });
@@ -317,13 +317,13 @@ describe('::createDebugLogger', () => {
   it('returns instance capable of handling complex input', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ stdErrSpy }) => {
+    await withMockedOutput(({ errorSpy }) => {
       const debug = createDebugLogger({ namespace });
 
       debug.enabled = true;
       debug('logged: %O', { success: true });
 
-      expect(stdErrSpy.mock.calls).toStrictEqual([
+      expect(errorSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([
           expect.stringMatching(/namespace.+logged:.+{.+success:.+true.+}/)
         ])
@@ -334,7 +334,7 @@ describe('::createDebugLogger', () => {
   it('returns extensions that can themselves be extended', async () => {
     expect.hasAssertions();
 
-    await withMockedOutput(({ stdErrSpy }) => {
+    await withMockedOutput(({ errorSpy }) => {
       const debug = createDebugLogger({ namespace });
       const extension1 = debug.extend(namespace);
       const extension2 = extension1.extend(namespace);
@@ -348,7 +348,7 @@ describe('::createDebugLogger', () => {
       extension2.enabled = true;
       extension2('logged');
 
-      expect(stdErrSpy.mock.calls).toStrictEqual([
+      expect(errorSpy.mock.calls).toStrictEqual([
         expect.arrayContaining([expect.stringMatching(/namespace.+logged/)]),
         expect.arrayContaining([expect.stringMatching(/namespace:namespace.+logged/)]),
         expect.arrayContaining([
@@ -373,22 +373,30 @@ describe('::createListrManager', () => {
     }, {});
   });
 
-  it('returns a Manager using verbose renderer if process.env.DEBUG is present', async () => {
+  it('returns a Manager using fallback renderer if process.env.DEBUG is present', async () => {
     expect.hasAssertions();
 
     await withMockedEnv(
       () => {
-        expect(createListrManager().options?.renderer).toBe('verbose');
+        const { fallbackRendererCondition: fallback } =
+          createListrManager().options || {};
+
+        expect(typeof fallback === 'boolean' ? fallback : fallback?.()).toBeTrue();
       },
       { DEBUG: '*:*' }
     );
   });
 
-  it('returns a Manager using verbose renderer if any debug loggers are enabled', async () => {
+  it('returns a Manager using fallback renderer if any debug loggers are enabled', async () => {
     expect.hasAssertions();
 
     createDebugLogger({ namespace }).enabled = true;
-    expect(createListrManager().options?.renderer).toBe('verbose');
+
+    await withMockedEnv(() => {
+      const { fallbackRendererCondition: fallback } = createListrManager().options || {};
+
+      expect(typeof fallback === 'boolean' ? fallback : fallback?.()).toBeTrue();
+    }, {});
   });
 });
 

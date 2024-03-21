@@ -1,5 +1,6 @@
 import { isNativeError } from 'node:util/types';
 
+import { type ExecutionContext } from '@black-flag/core/util';
 import { ListrErrorTypes } from 'listr2';
 
 import {
@@ -7,6 +8,7 @@ import {
   createGenericLogger,
   createListrManager,
   ExtendedDebugger,
+  TAB,
   type ExtendedLogger,
   type ListrManager
 } from 'multiverse/rejoinder';
@@ -18,12 +20,13 @@ import {
   MAX_LOG_ERROR_ENTRIES
 } from 'universe/constant';
 
+import { TaskError } from 'universe/error';
+import { toFirstLowerCase, toSentenceCase } from 'universe/util';
+
 import type {
   ConfigureErrorHandlingEpilogue,
   ConfigureExecutionContext
 } from '@black-flag/core';
-
-import type { ExecutionContext } from '@black-flag/core/util';
 
 const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
 const rootGenericLogger = createGenericLogger({ namespace: loggerNamespace });
@@ -93,7 +96,10 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
       context.log.newline([IF_NOT_SILENCED], 'alternate');
     }
 
-    context.log.error([IF_NOT_SILENCED], `❌ Execution failed: ${message}`);
+    context.log.error(
+      [IF_NOT_SILENCED],
+      `❌ Execution failed: ${toFirstLowerCase(message)}`
+    );
 
     if (
       !context.state.isQuieted &&
@@ -116,10 +122,13 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
             context.log.error([IF_NOT_QUIETED], '❌ Causal stack:');
           }
 
-          context.log.error([IF_NOT_QUIETED], `   ⮕  ${subError.cause.message}`);
+          context.log.error(
+            [IF_NOT_QUIETED],
+            `${TAB}⮕  ${subError.cause instanceof TaskError ? toFirstLowerCase(subError.cause.message) : subError.cause.message}`
+          );
           subError = subError.cause;
         } else {
-          context.log.error([IF_NOT_QUIETED], `   ⮕  ${subError.cause}`);
+          context.log.error([IF_NOT_QUIETED], `${TAB}⮕  ${String(subError.cause)}`);
           subError = undefined;
         }
 
@@ -135,7 +144,10 @@ export const configureErrorHandlingEpilogue: ConfigureErrorHandlingEpilogue<
 
       for (const taskError of context.taskManager.errors) {
         if (taskError.type !== ListrErrorTypes.HAS_FAILED_WITHOUT_ERROR) {
-          context.log.error([IF_NOT_HUSHED], `   ❗ ${taskError.message}`);
+          context.log.error(
+            [IF_NOT_HUSHED],
+            `${TAB}❗ ${toSentenceCase(taskError.message)}`
+          );
         }
       }
     }
