@@ -11,12 +11,12 @@ import { TaskError } from 'universe/error';
 
 import {
   GlobalCliArguments,
-  addToTaskManager,
   logStartTime,
   makeUsageString,
   toSpacedSentenceCase,
   withGlobalOptions,
-  withGlobalOptionsHandling
+  withGlobalOptionsHandling,
+  withStandardListrTaskConfig
 } from 'universe/util';
 
 export type CustomCliArguments = GlobalCliArguments & {
@@ -95,62 +95,64 @@ export default async function ({
           logStartTime({ log: genericLogger, startTime });
         }
 
-        addToTaskManager({
-          initialTitle: `Downloading ${apexAllKnown ? 'all' : 'individual'} apex domain ids from Cloudflare...`,
-          taskManager,
-          configPath,
-          debug,
-          async callback({ thisTask, dns, taskLogger }) {
-            try {
-              const zoneApexEntries = (await dns.getDnsZones())
-                .filter(({ name }) => {
-                  const returnValue = apexAllKnown || apex.includes(name);
-                  taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
-                  return returnValue;
-                })
-                .map(({ name, id }) => [name, id]);
+        taskManager.add([
+          withStandardListrTaskConfig({
+            initialTitle: `Downloading ${apexAllKnown ? 'all' : 'individual'} apex domain ids from Cloudflare...`,
+            configPath,
+            debug,
+            async callback({ thisTask, dns, taskLogger }) {
+              try {
+                const zoneApexEntries = (await dns.getDnsZones())
+                  .filter(({ name }) => {
+                    const returnValue = apexAllKnown || apex.includes(name);
+                    taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                    return returnValue;
+                  })
+                  .map(({ name, id }) => [name, id]);
 
-              const zoneApexIds = Object.fromEntries(zoneApexEntries);
+                const zoneApexIds = Object.fromEntries(zoneApexEntries);
 
-              thisTask.title = `Downloaded ${zoneApexEntries.length} apex domain ids from Cloudflare`;
-              results.zoneApexIds = zoneApexIds;
-            } catch (error) {
-              throw new TaskError('failed to download zones from Cloudflare account', {
-                cause: error
-              });
+                thisTask.title = `Downloaded ${zoneApexEntries.length} apex domain id${zoneApexEntries.length === 1 ? '' : 's'} from Cloudflare`;
+                results.zoneApexIds = zoneApexIds;
+              } catch (error) {
+                throw new TaskError('failed to download zones from Cloudflare account', {
+                  cause: error
+                });
+              }
             }
-          }
-        });
+          })
+        ]);
 
-        addToTaskManager({
-          initialTitle: 'Downloading resource records from Cloudflare...',
-          taskManager,
-          configPath,
-          debug,
-          async callback({ thisTask, dns, taskLogger }) {
-            try {
-              let totalRecordCount = 0;
-              const resourceRecordsEntries = await Promise.all(
-                Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
-                  taskLogger('retrieving record for %O (%O)', zoneName, zoneId);
-                  const records = await dns.getDnsZoneRecords({ zoneId });
-                  totalRecordCount += records.length;
-                  return [zoneName, records] as const;
-                })
-              );
+        taskManager.add([
+          withStandardListrTaskConfig({
+            initialTitle: 'Downloading resource records from Cloudflare...',
+            configPath,
+            debug,
+            async callback({ thisTask, dns, taskLogger }) {
+              try {
+                let totalRecordCount = 0;
+                const resourceRecordsEntries = await Promise.all(
+                  Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
+                    taskLogger('retrieving record for %O (%O)', zoneName, zoneId);
+                    const records = await dns.getDnsRecords({ zoneId });
+                    totalRecordCount += records.length;
+                    return [zoneName, records] as const;
+                  })
+                );
 
-              const resourceRecords = Object.fromEntries(resourceRecordsEntries);
+                const resourceRecords = Object.fromEntries(resourceRecordsEntries);
 
-              thisTask.title = `Downloaded ${totalRecordCount} resource record(s) from ${resourceRecordsEntries.length} apex domain(s)`;
-              results.zoneApicesRecords = resourceRecords;
-            } catch (error) {
-              throw new TaskError(
-                'failed to download resource records from Cloudflare account',
-                { cause: error }
-              );
+                thisTask.title = `Downloaded ${totalRecordCount} resource record${totalRecordCount === 1 ? '' : 's'} from ${resourceRecordsEntries.length} apex domain(s)`;
+                results.zoneApicesRecords = resourceRecords;
+              } catch (error) {
+                throw new TaskError(
+                  'failed to download resource records from Cloudflare account',
+                  { cause: error }
+                );
+              }
             }
-          }
-        });
+          })
+        ]);
 
         await taskManager.runAll();
 

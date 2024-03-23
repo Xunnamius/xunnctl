@@ -65,6 +65,21 @@ export type WithTagSupport<T extends (...args: any[]) => any, Optional = true> =
 export type ExtendedLoggerParameters = WithExtendedParameters<ExtendedDebugger, false>;
 
 /**
+ * An instance of {@link UnextendableInternalDebugger} that that belongs to an
+ * {@link ExtendedLogger}.
+ */
+export interface UnextendableInternalLogger extends UnextendableInternalDebugger {
+  /**
+   * Send an optionally-formatted message to output.
+   */
+  (...args: Parameters<ExtendedDebugger>): ReturnType<ExtendedDebugger>;
+  /**
+   * Send a tagged optionally-formatted message to output.
+   */
+  (...args: ExtendedLoggerParameters): ReturnType<ExtendedDebugger>;
+}
+
+/**
  * A wrapper around {@link ExtendedDebugger } representing the extension from
  * mere "debug" logger to general purpose "logger".
  */
@@ -112,7 +127,7 @@ type _ExtendedLogger<T> = Omit<
   ExtendedDebugger,
   keyof DebuggerExtension | 'newline' | 'extend'
 > &
-  DebuggerExtension<WithTagSupport<UnextendableInternalDebugger>, T>;
+  DebuggerExtension<UnextendableInternalLogger, T>;
 
 /**
  * Represents a generic Listr2 Task object.
@@ -189,7 +204,7 @@ export function createListrTaskLogger({
   const logger = makeExtendedLogger(
     debugFactory(namespace),
     function (...args: unknown[]) {
-      task.output = args.join(' ');
+      task.output = args.join(' ').trim();
     }
   );
 

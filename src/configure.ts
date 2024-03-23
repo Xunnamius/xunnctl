@@ -14,8 +14,8 @@ import {
 } from 'multiverse/rejoinder';
 
 import {
-  debuggerNamespace,
-  loggerNamespace,
+  globalDebuggerNamespace,
+  globalLoggerNamespace,
   LogTag,
   MAX_LOG_ERROR_ENTRIES
 } from 'universe/constant';
@@ -29,8 +29,8 @@ import type {
 } from '@black-flag/core';
 
 const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
-const rootGenericLogger = createGenericLogger({ namespace: loggerNamespace });
-const rootDebugLogger = createDebugLogger({ namespace: debuggerNamespace });
+const rootGenericLogger = createGenericLogger({ namespace: globalLoggerNamespace });
+const rootDebugLogger = createDebugLogger({ namespace: globalDebuggerNamespace });
 
 export type CustomExecutionContext = ExecutionContext & {
   /**

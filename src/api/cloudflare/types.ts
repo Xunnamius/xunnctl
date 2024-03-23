@@ -26,7 +26,36 @@ export type RulesetRule = WithId<{ description: string }>;
 /**
  * https://developers.cloudflare.com/api/operations/zones-get
  */
-export type Zone = WithId<{ name: string }>;
+export type Zone = WithId<{
+  account: {
+    id: string;
+    name: string;
+  };
+  activated_on: string;
+  created_on: string;
+  development_mode: number;
+  id: string;
+  meta: {
+    cdn_only: true;
+    custom_certificate_quota: number;
+    dns_only: true;
+    foundation_dns: true;
+    page_rule_quota: number;
+    phishing_detected: false;
+    step: number;
+  };
+  modified_on: string;
+  name: string;
+  original_dnshost: string;
+  original_name_servers: string[];
+  original_registrar: string;
+  owner: {
+    id: string;
+    name: string;
+    type: string;
+  };
+  vanity_name_servers: string[];
+}>;
 
 /**
  * https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records

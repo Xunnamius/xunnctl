@@ -1,7 +1,10 @@
+import assert from 'node:assert';
+
 import { ExtendedLogger } from 'multiverse/rejoinder';
 import { makeApiCaller } from 'universe/api';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { LogTag } from 'universe/constant';
+import { ErrorMessage } from 'universe/error';
 
 import type { JsonValue } from 'type-fest';
 import type { ResourceRecord, Ruleset, RulesetRule, WithId, Zone } from './types';
@@ -21,13 +24,29 @@ export async function makeCloudflareApiCaller({
      *
      * Returns a cloudflare-specific fetch wrapper for making API calls.
      */
-    async callApi<Result = unknown, ResponseJson extends JsonValue = JsonValue>(
-      callApiOptions: Parameters<typeof callApi_>[0]
-    ): Promise<[result: Result, responseJson: ResponseJson]> {
+    async callApi<Result = undefined, ResponseJson extends JsonValue = JsonValue>(
+      callApiOptions: Parameters<typeof callApi_>[0],
+      { parseResultJson = true }: { parseResultJson?: boolean } = {}
+    ): Promise<
+      Result extends undefined
+        ? [result: Response, responseBody: string]
+        : [result: Result, responseJson: ResponseJson]
+    > {
       const { message: logMessage, error: logError } = log.extend('api:cf');
+      const debug = debug_.extend('api:cf:verbose');
 
       const apiUriBase = await loadFromCliConfig({ configPath, key: 'cfApiUriBase' });
       const apiToken = await loadFromCliConfig({ configPath, key: 'cfApiToken' });
+
+      assert(
+        typeof apiUriBase === 'string',
+        ErrorMessage.AssertionFailureInvalidConfig('cfApiUriBase')
+      );
+
+      assert(
+        typeof apiToken === 'string',
+        ErrorMessage.AssertionFailureInvalidConfig('cfApiToken')
+      );
 
       const headers = new Headers(callApiOptions.headers);
       headers.set('Content-Type', 'application/json');
@@ -36,33 +55,52 @@ export async function makeCloudflareApiCaller({
       callApiOptions.uri = `${apiUriBase}/${callApiOptions.uri}`;
       callApiOptions.headers = headers;
 
-      const [, responseBody] = await callApi_(callApiOptions);
+      const [res, responseBody] = await callApi_(callApiOptions);
 
-      const responseJson = JSON.parse(responseBody);
-      const { success, errors, result, messages } = responseJson;
+      if (parseResultJson) {
+        debug('parsing response data as JSON');
 
-      if (messages.length) {
-        messages.forEach((message: string) =>
-          logMessage([LogTag.IF_NOT_HUSHED], message)
-        );
-      }
+        const responseJson = JSON.parse(responseBody);
+        const { success, errors, result, messages } = responseJson;
 
-      if (!success) {
-        if (Array.isArray(errors) && errors?.length) {
-          errors.forEach(({ code, message }) =>
-            logError([LogTag.IF_NOT_SILENCED], `[${code}]: ${message}\n`)
-          );
-        } else {
-          logError(
-            [LogTag.IF_NOT_SILENCED],
-            '(request failed but no error message was returned)'
+        if (messages.length) {
+          debug('parsing response data as JSON');
+          messages.forEach((message: string) =>
+            logMessage([LogTag.IF_NOT_HUSHED], message)
           );
         }
 
-        throw new Error('terminated due to reported API error');
-      }
+        if (!success) {
+          debug('response indicates request was unsuccessful');
 
-      return [result, responseJson];
+          let totalErrorMessage = '';
+          if (Array.isArray(errors) && errors?.length) {
+            errors.forEach(({ code, message }) => {
+              const errorMessage = `[${code}]: ${message}\n`;
+              totalErrorMessage += errorMessage;
+              logError([LogTag.IF_NOT_SILENCED], errorMessage);
+            });
+          } else {
+            totalErrorMessage = '(request failed but no error message was returned)';
+            logError([LogTag.IF_NOT_SILENCED], totalErrorMessage);
+          }
+
+          throw new Error(`terminated due to API error(s): ${totalErrorMessage}`);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return [result, responseJson] as any;
+      } else {
+        debug('not parsing response data');
+        debug('manually ensuring response is ok (i.e. 2xx status)');
+
+        if (!res.ok) {
+          throw new Error(`terminated due to API bad response status: ${res.status}`);
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return [res, responseBody] as any;
+      }
     },
 
     /**
@@ -142,14 +180,12 @@ export async function makeCloudflareApiCaller({
 
     /**
      * - https://developers.cloudflare.com/api/operations/zones-get
-     *
-     * @return The ID of the DNS zone.
      */
-    async getDnsZoneId({ domainName }: { domainName: string }) {
+    async getDnsZone({ domainName }: { domainName: string }) {
       const debug = debug_.extend('getDnsZoneId');
       debug('entered method');
 
-      const zoneId = await this.callApi<Zone[]>({
+      const zone = await this.callApi<Zone[]>({
         uri: `zones?name=${domainName}`,
         method: 'GET'
       }).then(([zones]) => {
@@ -161,11 +197,26 @@ export async function makeCloudflareApiCaller({
         });
 
         debug('selected zone: %O', zone);
-        debug('selected zone.id: %O', zone?.id);
 
-        return zone?.id;
+        return zone;
       });
 
+      return zone;
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/zones-get
+     *
+     * @return The ID of the DNS zone.
+     */
+    async getDnsZoneId({ domainName }: { domainName: string }) {
+      const debug = debug_.extend('getDnsZoneId');
+      debug('entered method');
+
+      const zone = await this.getDnsZone({ domainName });
+      const zoneId = zone?.id;
+
+      debug('selected zone.id: %O', zoneId);
       return zoneId;
     },
 
@@ -193,17 +244,111 @@ export async function makeCloudflareApiCaller({
     },
 
     /**
+     * - https://developers.cloudflare.com/api/operations/zones-0-delete
+     *
+     * Completely destroys a zone.
+     */
+    async deleteDnsZone({ zoneId }: { zoneId: string }) {
+      const debug = debug_.extend('deleteDnsZone');
+      debug('entered method');
+
+      await this.callApi<WithId>({ uri: `zones/${zoneId}`, method: 'DELETE' });
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
+     *
+     * Note that `fullDomainName` must be the **FULLY RESOLVED LEGAL NAME** of
+     * the record that includes the zone apex itself (e.g. "\*.xunn.at" instead
+     * of just "\*" when trying to delete said CNAME record).
+     *
+     * @return The ID of a DNS record.
+     */
+    async getDnsRecord({
+      zoneId,
+      fullDomainName,
+      type
+    }: {
+      zoneId: string;
+      fullDomainName: string;
+      type: string;
+    }) {
+      const debug = debug_.extend('getDnsRecordId');
+      debug('entered method');
+
+      const recordId = await this.callApi<ResourceRecord[]>({
+        uri: `zones/${zoneId}/dns_records?name=${fullDomainName}&type=${type}`,
+        method: 'GET'
+      }).then(([records]) => {
+        debug('searching for %O', fullDomainName);
+
+        const record = records.find(({ name }: { name: string }) => {
+          debug('saw %O', name);
+          return name === fullDomainName;
+        });
+
+        debug('selected record: %O', record);
+
+        return record;
+      });
+
+      return recordId;
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
+     *
+     * Note that `fullDomainName` must be the **FULLY RESOLVED LEGAL NAME** of
+     * the record that includes the zone apex itself (e.g. "*.xunn.at" instead
+     * of just "*" when trying to delete said CNAME record).
+     *
+     * @return The ID of a DNS record.
+     */
+    async getDnsRecordId({
+      zoneId,
+      fullDomainName,
+      type
+    }: {
+      zoneId: string;
+      fullDomainName: string;
+      type: string;
+    }) {
+      const debug = debug_.extend('getDnsRecordId');
+      debug('entered method');
+
+      const record = await this.getDnsRecord({ zoneId, fullDomainName, type });
+      const recordId = record?.id;
+
+      debug('selected record.id: %O', recordId);
+      return recordId;
+    },
+
+    /**
      * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
      *
      * @returns A list of DNS record objects.
      */
-    async getDnsZoneRecords({ zoneId }: { zoneId: string }) {
+    async getDnsRecords({
+      zoneId,
+      recordName,
+      recordType
+    }: {
+      zoneId: string;
+      recordName?: string;
+      recordType?: string;
+    }) {
       const debug = debug_.extend('getDnsZoneRecords');
       debug('entered method');
 
       const records: ResourceRecord[] = [];
       let currentPage = 0;
       let countRemaining = 0;
+
+      // eslint-disable-next-line unicorn/no-array-reduce
+      const additionalQuery = Object.entries({ recordName, recordType }).reduce(
+        (str, [key, value]) => (value !== undefined ? `${str}&${key}=${value}` : str),
+        ''
+      );
 
       do {
         const [
@@ -223,7 +368,7 @@ export async function makeCloudflareApiCaller({
             };
           }
         >({
-          uri: `zones/${zoneId}/dns_records?page=${++currentPage}`,
+          uri: `zones/${zoneId}/dns_records?page=${++currentPage}${additionalQuery}`,
           method: 'GET'
         });
 
@@ -424,6 +569,27 @@ export async function makeCloudflareApiCaller({
     },
 
     /**
+     * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-delete-dns-record
+     *
+     * Completely destroys a DNS record.
+     */
+    async deleteDnsRecord({
+      zoneId,
+      recordId
+    }: {
+      zoneId: string;
+      recordId: string;
+    }): Promise<void> {
+      const debug = debug_.extend('deleteDnsRecord');
+      debug('entered method');
+
+      await this.callApi({
+        uri: `zones/${zoneId}/dns_records/${recordId}`,
+        method: 'DELETE'
+      });
+    },
+
+    /**
      * - https://developers.cloudflare.com/api/operations/cloudflare-i-ps-cloudflare-ip-details
      *
      * @returns An object containing Cloudflare's public IPv4 and IPv6 addresses.
@@ -454,17 +620,17 @@ export async function makeCloudflareApiCaller({
      */
     async getDnsZoneCustomFirewallRulesetId({
       zoneId,
-      phaseName
+      rulesetPhaseName
     }: {
       zoneId: string;
-      phaseName: string;
+      rulesetPhaseName: string;
     }) {
       const debug = debug_.extend('getDnsZoneCustomFirewallRulesetId');
       debug('entered method');
 
       const rulesetId = await this.getDnsZoneCustomFirewallRuleset({
         zoneId,
-        phaseName
+        rulesetPhaseName
       }).then(async (ruleset) => {
         if (ruleset?.id) {
           debug('using existing custom firewall ruleset: %O', ruleset.id);
@@ -478,8 +644,8 @@ export async function makeCloudflareApiCaller({
             body: {
               description: '',
               kind: 'zone',
-              name: 'default',
-              phase: phaseName,
+              name: 'fail2ban-ip-block-list-connector',
+              phase: rulesetPhaseName,
               rules: []
             }
           });
@@ -500,19 +666,19 @@ export async function makeCloudflareApiCaller({
      */
     async getDnsZoneCustomFirewallRuleset({
       zoneId,
-      phaseName
+      rulesetPhaseName
     }: {
       zoneId: string;
-      phaseName: string;
+      rulesetPhaseName: string;
     }) {
       const debug = debug_.extend('getDnsZoneCustomFirewallRuleset');
       debug('entered method');
 
-      debug('searching for %O', phaseName);
+      debug('searching for %O', rulesetPhaseName);
 
       const ruleset = (await this.getDnsZoneRulesets({ zoneId })).find((ruleset) => {
         debug('saw ruleset phase %O', ruleset.phase);
-        return ruleset.phase === phaseName;
+        return ruleset.phase === rulesetPhaseName;
       });
 
       debug('selected ruleset: %O', ruleset);
@@ -548,19 +714,19 @@ export async function makeCloudflareApiCaller({
      */
     async createDnsZoneCustomFirewallRulesetRule({
       zoneId,
-      action,
-      expression,
-      description,
+      ruleAction,
+      ruleExpression,
+      ruleDescription,
       allowDuplicate,
-      phaseName,
+      rulesetPhaseName,
       ...additionalOptions
     }: {
       zoneId: string;
-      action: string;
-      expression: string;
-      description: string;
+      ruleAction: string;
+      ruleExpression: string;
+      ruleDescription: string;
       allowDuplicate?: boolean;
-      phaseName: string;
+      rulesetPhaseName: string;
       [additionalOption: string]: unknown;
     }) {
       const debug = debug_.extend('createDnsZoneCustomFirewallRulesetRule');
@@ -568,24 +734,25 @@ export async function makeCloudflareApiCaller({
 
       const rulesetRuleId = await this.getDnsZoneCustomFirewallRulesetId({
         zoneId,
-        phaseName
+        rulesetPhaseName
       }).then(async (rulesetId) => {
         if (!allowDuplicate) {
           const existingRules = await this.getDnsZoneRulesetRules({
             zoneId,
             rulesetId
           });
+
           const matchesDescription = (rule: RulesetRule) => {
             debug(
-              `error check: rule.description === description ("${rule.description}" === "${description}")`
+              `error check: rule.description === description ("${rule.description}" === "${ruleDescription}")`
             );
 
-            return rule.description === description;
+            return rule.description === ruleDescription;
           };
 
           if (existingRules.some((rule) => matchesDescription(rule))) {
             throw new Error(
-              `cannot create dns zone custom firewall ruleset rule with duplicate description "${description}"`
+              `cannot create dns zone custom firewall ruleset rule with duplicate description "${ruleDescription}"`
             );
           }
         }
@@ -593,9 +760,9 @@ export async function makeCloudflareApiCaller({
         return this.createDnsZoneRulesetRule({
           zoneId,
           rulesetId,
-          action,
-          expression,
-          description,
+          action: ruleAction,
+          expression: ruleExpression,
+          description: ruleDescription,
           ...additionalOptions
         });
       });
@@ -610,22 +777,51 @@ export async function makeCloudflareApiCaller({
      */
     async getDnsZoneCustomFirewallRulesetRules({
       zoneId,
-      phaseName
+      rulesetPhaseName
     }: {
       zoneId: string;
-      phaseName: string;
+      rulesetPhaseName: string;
     }) {
       const debug = debug_.extend('getDnsZoneCustomFirewallRulesetRules');
       debug('entered method');
 
       const rules = await this.getDnsZoneCustomFirewallRulesetId({
         zoneId,
-        phaseName
+        rulesetPhaseName
       }).then((rulesetId) => {
         return this.getDnsZoneRulesetRules({ zoneId, rulesetId });
       });
 
       return rules;
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/deleteZoneRuleset
+     *
+     * Completely deletes a zone-level ruleset.
+     */
+    async deleteDnsZoneCustomFirewallRuleset({
+      zoneId,
+      rulesetPhaseName
+    }: {
+      zoneId: string;
+      rulesetPhaseName: string;
+    }) {
+      const debug = debug_.extend('deleteDnsZoneCustomFirewallRuleset');
+      debug('entered method');
+
+      const rulesetId = await this.getDnsZoneCustomFirewallRulesetId({
+        zoneId,
+        rulesetPhaseName: rulesetPhaseName
+      });
+
+      await this.callApi<undefined>(
+        {
+          uri: `zones/${zoneId}/rulesets/${rulesetId}`,
+          method: 'DELETE'
+        },
+        { parseResultJson: false }
+      );
     },
 
     /**

@@ -52,7 +52,7 @@ type __Debugger = Omit<_Debugger, 'log'> & { log?: _Debugger['log'] };
 
 /**
  * An instance of {@link InternalDebugger} that cannot be extended via
- * {@link InternalDebugger.extend}.
+ * `InternalDebugger.extend`.
  */
 export interface UnextendableInternalDebugger extends InternalDebugger {
   extend: (...args: Parameters<InternalDebugger['extend']>) => never;

@@ -7,8 +7,8 @@ import { Options } from 'yargs';
 
 import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import { CustomExecutionContext } from 'universe/configure';
-import { LogTag, loggerNamespace } from 'universe/constant';
-import { ErrorMessage } from 'universe/error';
+import { LogTag, globalLoggerNamespace } from 'universe/constant';
+import { ErrorMessage, TaskError } from 'universe/error';
 
 import {
   ExtendedDebugger,
@@ -188,7 +188,7 @@ export async function withGlobalOptions<CustomCliArguments extends GlobalCliArgu
     argv
   ) {
     const debug = createDebugLogger({
-      namespace: `${loggerNamespace}:globalOptionsBuilding`
+      namespace: `${globalLoggerNamespace}:globalOptionsBuilding`
     });
 
     debug('entered global options wrapper (builder)');
@@ -449,36 +449,36 @@ export async function withGlobalOptionsHandling<
   };
 }
 
-/**
- * Add a task to the given task manager.
- */
-export function addToTaskManager({
+export type ListrTaskLiteral = Exclude<
+  Parameters<ListrManager['add']>[0],
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  Function
+>[number];
+
+export function withStandardListrTaskConfig({
   callback,
   configPath,
   debug,
   initialTitle,
-  taskManager
+  shouldRetry = false
 }: {
   initialTitle: string;
-  taskManager: ListrManager;
   debug: ExtendedDebugger;
   configPath: string;
+  shouldRetry?: number | false;
   callback: (context: {
     ctx: ListrManager['ctx'];
-    thisTask: Parameters<
-      // eslint-disable-next-line @typescript-eslint/ban-types
-      Exclude<Parameters<ListrManager['add']>[0], Function>[number]['task']
-    >[1];
+    thisTask: Parameters<ListrTaskLiteral['task']>[1];
     dns: Awaited<ReturnType<typeof makeCloudflareApiCaller>>;
-    taskLogger: ReturnType<typeof createListrTaskLogger>;
-  }) => Promisable<void>;
+    taskLogger: ExtendedLogger;
+  }) => ReturnType<ListrTaskLiteral['task']>;
 }) {
-  taskManager.add([
-    {
-      title: initialTitle,
-      retry: { tries: 3, delay: 5000 },
-      rendererOptions: { outputBar: 3 },
-      task: async function (ctx, thisTask) {
+  return {
+    title: initialTitle,
+    ...(shouldRetry ? { retry: { tries: 3, delay: 5000 } } : {}),
+    rendererOptions: { outputBar: 3 },
+    task: async function (ctx: { initialTitle?: string }, thisTask) {
+      if (shouldRetry) {
         const retryData = thisTask.isRetrying();
         const retryCount = retryData?.count || 0;
         debug('retryData: %O', retryData);
@@ -488,22 +488,58 @@ export function addToTaskManager({
           // @ts-expect-error: yeah, we're being bad here
           thisTask.task.initialTitle = `[RETRY ${retryCount + 1}/3] ${ctx.initialTitle}`;
         }
+      }
 
-        const taskLogger = createListrTaskLogger({
-          namespace: loggerNamespace,
-          task: thisTask
-        });
+      const taskLogger = createListrTaskLogger({
+        namespace: 'task',
+        task: thisTask
+      });
 
-        const dns = await makeCloudflareApiCaller({
-          configPath,
-          debug,
-          log: taskLogger
-        });
+      const dns = await makeCloudflareApiCaller({
+        configPath,
+        debug,
+        log: taskLogger
+      });
 
-        await callback({ ctx, thisTask, dns, taskLogger });
+      return callback({ ctx, thisTask, dns, taskLogger });
+    }
+  } as ListrTaskLiteral;
+}
+
+/**
+ * Make it easier to report output via Listr2 when tasks start, succeed, and
+ * fail.
+ */
+export function makeLocalErrorReportingWrapper({
+  startedPrefix,
+  successPrefix,
+  errorPrefix,
+  taskLogger,
+  ignoreErrors = false
+}: {
+  startedPrefix: string;
+  successPrefix: string;
+  errorPrefix: string;
+  taskLogger: ExtendedLogger;
+  ignoreErrors?: boolean;
+}) {
+  return async function (subject: string, fn: () => Promisable<void>) {
+    try {
+      taskLogger(startedPrefix + subject);
+      const result = await fn();
+      taskLogger(successPrefix + subject);
+      return result;
+    } catch (error) {
+      const errorMessage = errorPrefix + subject;
+
+      if (ignoreErrors) {
+        taskLogger.warn('(ignored) %O', errorMessage);
+      } else {
+        taskLogger.error(errorMessage);
+        throw new TaskError(errorMessage, { cause: error });
       }
     }
-  ]);
+  };
 }
 
 function getOptionsFromArgv(

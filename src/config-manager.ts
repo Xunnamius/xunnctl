@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { JsonValue } from 'type-fest';
+import { JsonValue, LiteralUnion } from 'type-fest';
 import { ErrorMessage } from 'universe/error';
 
 let cache: Config | undefined = undefined;
@@ -61,8 +61,8 @@ export async function loadFromCliConfig({
   key
 }: {
   configPath: string;
-  key: string;
-}): Promise<Config[keyof Config]>;
+  key: LiteralUnion<keyof Config, string>;
+}): Promise<JsonValue>;
 export async function loadFromCliConfig({
   configPath,
   key
@@ -75,7 +75,7 @@ export async function loadFromCliConfig({
   key
 }: {
   configPath: string;
-  key?: string;
+  key?: keyof Config | string;
 }) {
   const config: Config = await (async () => {
     if (cache !== undefined) {
@@ -116,7 +116,7 @@ export async function saveToCliConfig({
   value
 }: {
   configPath: string;
-  key: string;
+  key: LiteralUnion<keyof Config, string>;
   value: JsonValue | undefined;
 }) {
   const config = cache !== undefined ? cache : await loadFromCliConfig({ configPath });

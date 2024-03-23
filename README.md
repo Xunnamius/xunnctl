@@ -30,7 +30,6 @@ These used to be several CLIs, but the time has come to bring them together!
   - [`xunnctl config get`](#xunnctl-config-get)
   - [`xunnctl config set`](#xunnctl-config-set)
   - [`xunnctl config unset`](#xunnctl-config-unset)
-  - [`xunnctl dns record`](#xunnctl-dns-record)
   - [`xunnctl dns record create A`](#xunnctl-dns-record-create-a)
   - [`xunnctl dns record create AAAA`](#xunnctl-dns-record-create-aaaa)
   - [`xunnctl dns record create CAA`](#xunnctl-dns-record-create-caa)
@@ -38,10 +37,12 @@ These used to be several CLIs, but the time has come to bring them together!
   - [`xunnctl dns record create MX`](#xunnctl-dns-record-create-mx)
   - [`xunnctl dns record create TXT`](#xunnctl-dns-record-create-txt)
   - [`xunnctl dns record retrieve`](#xunnctl-dns-record-retrieve)
+  - [`xunnctl dns record destroy`](#xunnctl-dns-record-destroy)
   - [`xunnctl dns zone`](#xunnctl-dns-zone)
   - [`xunnctl dns zone create`](#xunnctl-dns-zone-create)
   - [`xunnctl dns zone retrieve`](#xunnctl-dns-zone-retrieve)
   - [`xunnctl dns zone update`](#xunnctl-dns-zone-update)
+  - [`xunnctl dns zone destroy`](#xunnctl-dns-zone-destroy)
   - [`xunnctl firewall`](#xunnctl-firewall)
   - [`xunnctl firewall ban`](#xunnctl-firewall-ban)
   - [`xunnctl firewall status`](#xunnctl-firewall-status)
@@ -98,6 +99,11 @@ which can be found in the following table:
 | <sub>optional</sub> |    `--hush`     | boolean |            false            | The program output will be somewhat less verbose than usual.                                                   |
 | <sub>optional</sub> |    `--quiet`    | boolean |            false            | The program output will be dramatically less verbose than usual. Implies (and takes precedence over) `--hush`. |
 | <sub>optional</sub> |   `--silent`    | boolean |            false            | The program will not output anything at all. Implies (and takes precedence over) `--quiet` and `--hush`.       |
+
+Some commands have an additional `--force` parameter that is required whenever
+an exceedingly dangerous operation is requested. While present in help text
+output, this parameter will not be mentioned in this documentation going
+forward.
 
 Currently, the available commands are:
 
@@ -221,24 +227,6 @@ x c u --name cloudflare.apiToken
 | :-----------------: | :------: | :-------: | :-------: | :---------------------------------------------------------------------------------------- |
 | <sub>optional</sub> | `--all`  |  boolean  | undefined | Delete all options in the configuration file. Cannot be used with the `--name` parameter. |
 | <sub>optional</sub> | `--name` | string\[] | undefined | The names of one or more options to delete. Cannot be used with the `--all` parameter.    |
-
-### `xunnctl dns record`
-
-> Alias: `x d r`
-
-This command, unless called with `--help`, is an alias for
-[`xunnctl dns record retrieve --apex-all-known`][6].
-
-#### Examples
-
-```bash
-xunnctl dns record
-x d r
-```
-
-#### Parameters
-
-See [`xunnctl dns record retrieve`][6].
 
 ### `xunnctl dns record create A`
 
@@ -386,7 +374,7 @@ type `--type` from the specified `--apex*` DNS zone(s).
 
 Omitting both `--name` and `--type` will retrieve all records.
 
-The result can be queried via `--local-query`, which accepts a [JMESPath][7]
+The result can be queried via `--local-query`, which accepts a [JMESPath][6]
 value. Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping. When `--local-query` is present, the resulting
 JSON will be dumped straight to stdout.
@@ -407,14 +395,38 @@ x d r r --apex xunn.io --apex xunn.at --type cname --local-query id
 | **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
 |          <sub>optional</sub>           |      `--name`      |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
 |          <sub>optional</sub>           |      `--type`      |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
-|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+
+### `xunnctl dns record destroy`
+
+> Alias: `x d r d`
+
+This command irrecoverably destroys one or more resource records that are named
+`--name` and are of type `--type` from the specified `--apex*` DNS zone(s). If
+no such record(s) exist, this command is a no-op.
+
+#### Examples
+
+```bash
+xunnctl dns record destroy --apex dangerous.com --name some.specific.record --type CNAME
+xunnctl d r d --apex dangerous.com --name some.specific.record --type cname
+```
+
+#### Parameters
+
+|                                        |        Name        |   Type    |  Default  | Description                                                                                                                   |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                                  |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. **Note that this is incredibly dangerous!** |
+|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                         |
+|        **<sub>REQUIRED</sub>**         |      `--type`      |  string   | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                     |
 
 ### `xunnctl dns zone`
 
 > Alias: `x d z`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl dns zone retrieve --apex-all-known`][8].
+[`xunnctl dns zone retrieve --apex-all-known`][7].
 
 #### Examples
 
@@ -425,7 +437,7 @@ x d z
 
 #### Parameters
 
-See [`xunnctl dns zone retrieve`][8].
+See [`xunnctl dns zone retrieve`][7].
 
 ### `xunnctl dns zone create`
 
@@ -434,7 +446,7 @@ See [`xunnctl dns zone retrieve`][8].
 This command creates and initializes a new DNS `--apex` zone. If a conflicting
 apex zone already exists, this command will fail. If you're trying to bring an
 existing zone up to current configuration standards, see
-[`xunnctl dns zone update`][9] instead.
+[`xunnctl dns zone update`][8] instead.
 
 #### Examples
 
@@ -455,7 +467,7 @@ x d z c --apex xunn.at
 
 This command returns information about one or more `--apex` zones.
 
-The result can be queried via `--local-query`, which accepts a [JMESPath][7]
+The result can be queried via `--local-query`, which accepts a [JMESPath][6]
 value. Note that, as a feature, the presence of spaces in the query does not
 necessitate quoting or escaping. When `--local-query` is present, the resulting
 JSON will be dumped straight to stdout.
@@ -474,16 +486,17 @@ x d z r --apex xunn.io --apex xunn.at --local-query { id: id, cdnOnly: meta.cdn_
 | :------------------------------------: | :----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
 | **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
 | **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
-|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][7] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
 
 ### `xunnctl dns zone update`
 
 > Alias: `x d z u`
 
-This command is equivalent to [`xunnctl dns zone create`][10] but for zones that
+This command is equivalent to [`xunnctl dns zone create`][9] but for zones that
 already exist. It will attempt to bring one or more zones up to date with the
 latest best practices with respect to zone configuration; any failures thrown
-when attempting to create records, while reported, are ignored.
+when attempting to create records, while reported, are ignored. No records are
+deleted or updated, only creations will be attempted.
 
 #### Examples
 
@@ -494,17 +507,38 @@ x d z u --apex xunn.at --apex xunn.io
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                       |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                             |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.            |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.       |
+|          <sub>optional</sub>           |  `--purge-first`   |  boolean  | undefined | Delete pertinent records on the zone before recreating them. **This can be dangerous!** |
+
+### `xunnctl dns zone destroy`
+
+> Alias: `x d z d`
+
+This command irrecoverably destroys a DNS `--apex` zone. If no such zone exists,
+this command is a no-op.
+
+#### Examples
+
+```bash
+xunnctl dns zone destroy --apex be-careful.org
+x d z d --apex dangerous.com
+```
+
+#### Parameters
+
+|                         |   Name   |  Type  |  Default  | Description                |
+| :---------------------: | :------: | :----: | :-------: | :------------------------- |
+| **<sub>REQUIRED</sub>** | `--apex` | string | undefined | An apex domain to destroy. |
 
 ### `xunnctl firewall`
 
 > Alias: `x f`
 
 This command, unless called with `--help`, is an alias for
-[`xunnctl firewall status`][11].
+[`xunnctl firewall status`][10].
 
 #### Examples
 
@@ -515,14 +549,14 @@ x f
 
 #### Parameters
 
-See [`xunnctl firewall status`][11].
+See [`xunnctl firewall status`][10].
 
 ### `xunnctl firewall ban`
 
 > Alias: `x f b`
 
 This command adds an ip address to the global hostile ip list, which is a
-[Cloudflare WAF List][12]. No managed system will accept packets coming from an
+[Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list. Both ipv4 and ipv6 addresses are supported, as is CIDR
 notation.
 
@@ -537,14 +571,14 @@ x f b --ip 1.2.3.4
 
 |                         |  Name  |  Type  |  Default  | Description                                                                                                                |
 | :---------------------: | :----: | :----: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to ban. All IP formats supported by [Cloudflare WAF Lists][12] are supported here, including ipv4 and ipv6. |
+| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
 
 ### `xunnctl firewall status`
 
 > Alias: `x f s`
 
 This command returns the contents of the global hostile ip list, which is a
-[Cloudflare WAF List][12]. No managed system will accept packets coming from an
+[Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list.
 
 #### Examples
@@ -563,7 +597,7 @@ This command does not accept additional parameters.
 > Alias: `x f u`
 
 This command removes an ip address from the global hostile ip list, which is a
-[Cloudflare WAF List][12]. No managed system will accept packets coming from an
+[Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list.
 
 #### Examples
@@ -577,7 +611,7 @@ x f u --ip 1.2.3.4
 
 |                         |  Name  |  Type  |  Default  | Description                                                                                                                  |
 | :---------------------: | :----: | :----: | :-------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to unban. All IP formats supported by [Cloudflare WAF Lists][12] are supported here, including ipv4 and ipv6. |
+| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
 
 ### `xunnctl raw`
 
@@ -786,10 +820,9 @@ specification. Contributions of any kind welcome!
 [3]: #xunnctl-config-set
 [4]: #xunnctl-config-get
 [5]: ./docs/modules/config_manager.md#config
-[6]: #xunnctl-dns-record-retrieve
-[7]: https://jmespath.org/tutorial.html
-[8]: #xunnctl-dns-zone-retrieve
-[9]: #xunnctl-dns-zone-update
-[10]: #xunnctl-dns-zone-create
-[11]: #xunnctl-firewall-status
-[12]: https://developers.cloudflare.com/waf/tools/lists
+[6]: https://jmespath.org/tutorial.html
+[7]: #xunnctl-dns-zone-retrieve
+[8]: #xunnctl-dns-zone-update
+[9]: #xunnctl-dns-zone-create
+[10]: #xunnctl-firewall-status
+[11]: https://developers.cloudflare.com/waf/tools/lists

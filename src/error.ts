@@ -22,6 +22,9 @@ export const ErrorMessage = {
   AssertionFailureUnequalDemandOptions() {
     return 'Assertion failed: special demandOptions array feature requires matching arrays';
   },
+  AssertionFailureInvalidConfig(key: string) {
+    return `Assertion failed: loaded configuration value was invalid for key "${key}"`;
+  },
   MissingConfigurationKey(key: string) {
     return `missing config key "${key}". Use the 'xunnctl config set' to add it`;
   },

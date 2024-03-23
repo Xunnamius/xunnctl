@@ -5,6 +5,7 @@ import { CustomExecutionContext } from 'universe/configure';
 
 import {
   GlobalCliArguments,
+  logStartTime,
   makeUsageString,
   withGlobalOptions,
   withGlobalOptionsHandling
@@ -13,7 +14,11 @@ import {
 export type CustomCliArguments = GlobalCliArguments;
 
 export default async function (executionContext: CustomExecutionContext) {
-  const { debug_ } = executionContext;
+  const {
+    debug_,
+    log,
+    state: { startTime }
+  } = executionContext;
   const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
 
   return {
@@ -26,6 +31,9 @@ export default async function (executionContext: CustomExecutionContext) {
       async function (argv) {
         const debug = debug_.extend('handler');
         debug('entered handler');
+
+        logStartTime({ log, startTime });
+
         await (
           await commandZoneRetrieve(executionContext)
         ).handler({ ...argv, apexAllKnown: true, hush: true });

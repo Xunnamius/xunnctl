@@ -11,12 +11,12 @@ import { TaskError } from 'universe/error';
 
 import {
   GlobalCliArguments,
-  addToTaskManager,
   logStartTime,
   makeUsageString,
   toSpacedSentenceCase,
   withGlobalOptions,
-  withGlobalOptionsHandling
+  withGlobalOptionsHandling,
+  withStandardListrTaskConfig
 } from 'universe/util';
 
 export type CustomCliArguments = GlobalCliArguments & {
@@ -75,28 +75,29 @@ export default async function ({
           logStartTime({ log: genericLogger, startTime });
         }
 
-        addToTaskManager({
-          initialTitle: 'Downloading apex domain zones from Cloudflare...',
-          taskManager,
-          configPath,
-          debug,
-          async callback({ thisTask, dns, taskLogger }) {
-            try {
-              const zoneApices = (await dns.getDnsZones()).filter(({ name }) => {
-                const returnValue = apexAllKnown || apex.includes(name);
-                taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
-                return returnValue;
-              });
+        taskManager.add([
+          withStandardListrTaskConfig({
+            initialTitle: 'Downloading apex domain zones from Cloudflare...',
+            configPath,
+            debug,
+            async callback({ thisTask, dns, taskLogger }) {
+              try {
+                const zoneApices = (await dns.getDnsZones()).filter(({ name }) => {
+                  const returnValue = apexAllKnown || apex.includes(name);
+                  taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                  return returnValue;
+                });
 
-              thisTask.title = `Downloaded ${zoneApices.length} apex domain zones from Cloudflare`;
-              results.zoneApices = zoneApices;
-            } catch (error) {
-              throw new TaskError('failed to download zones from Cloudflare account', {
-                cause: error
-              });
+                thisTask.title = `Downloaded ${zoneApices.length} apex domain zone${zoneApices.length === 1 ? '' : 's'} from Cloudflare`;
+                results.zoneApices = zoneApices;
+              } catch (error) {
+                throw new TaskError('failed to download zones from Cloudflare account', {
+                  cause: error
+                });
+              }
             }
-          }
-        });
+          })
+        ]);
 
         await taskManager.runAll();
 
