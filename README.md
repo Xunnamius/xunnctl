@@ -65,10 +65,16 @@ You can install this package globally:
 npm install --global @-xun/ctl
 ```
 
-Alternatively, you can use npx to call this package without pre-installation:
+And then:
 
 ```shell
 npx xunnctl ...
+```
+
+Alternatively, you can use npx to call this package without pre-installation:
+
+```shell
+npx @-xun/ctl ...
 ```
 
 ## Usage
