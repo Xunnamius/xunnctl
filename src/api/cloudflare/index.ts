@@ -344,8 +344,11 @@ export async function makeCloudflareApiCaller({
       let currentPage = 0;
       let countRemaining = 0;
 
-      // eslint-disable-next-line unicorn/no-array-reduce
-      const additionalQuery = Object.entries({ recordName, recordType }).reduce(
+      const additionalQuery = Object.entries({
+        name: recordName,
+        type: recordType
+        // eslint-disable-next-line unicorn/no-array-reduce
+      }).reduce(
         (str, [key, value]) => (value !== undefined ? `${str}&${key}=${value}` : str),
         ''
       );

@@ -314,6 +314,8 @@ export async function withGlobalOptions<CustomCliArguments extends GlobalCliArgu
 
       debug('requiredAtLeastOneOptionsGroups: %O', requiredAtLeastOneOptionsSet);
 
+      let count = 0;
+
       for (const [
         atLeastOneOfDemandedSet,
         atLeastOneOfOptions
@@ -336,8 +338,15 @@ export async function withGlobalOptions<CustomCliArguments extends GlobalCliArgu
           debug('pushed to handlerPreCheckData.atLeastOneOfOptions');
         }
 
-        blackFlag.group(atLeastOneOfOptions, 'Required Options (at least one):');
-        debug('added "Required (at least one)" grouping: %O', atLeastOneOfOptions);
+        blackFlag.group(
+          atLeastOneOfOptions,
+          `Required Options ${requiredAtLeastOneOptionsSet.size > 1 ? `${++count} ` : ''}(at least one):`
+        );
+        debug(
+          `added "Required (at least one)" grouping #%O: %O`,
+          count,
+          atLeastOneOfOptions
+        );
       }
 
       if (requiredOptions.length) {

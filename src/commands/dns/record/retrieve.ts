@@ -71,14 +71,21 @@ export default async function ({
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
-      async function ({ configPath, apex = [], apexAllKnown, name, type, localQuery }) {
+      async function ({
+        configPath,
+        apex = [],
+        apexAllKnown,
+        name: recordName,
+        type: recordType,
+        localQuery
+      }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
 
         debug('apex', apex);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', name);
-        debug('type: %O', type);
+        debug('name: %O', recordName);
+        debug('type: %O', recordType);
         debug('query: %O', localQuery);
 
         const { isHushed, isQuieted, startTime } = state;
@@ -133,8 +140,14 @@ export default async function ({
                 let totalRecordCount = 0;
                 const resourceRecordsEntries = await Promise.all(
                   Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
-                    taskLogger('retrieving record for %O (%O)', zoneName, zoneId);
-                    const records = await dns.getDnsRecords({ zoneId });
+                    taskLogger('retrieving records for %O (%O)', zoneName, zoneId);
+
+                    const records = await dns.getDnsRecords({
+                      zoneId,
+                      recordName,
+                      recordType
+                    });
+
                     totalRecordCount += records.length;
                     return [zoneName, records] as const;
                   })
@@ -200,7 +213,7 @@ export default async function ({
                           `${isHushed ? '' : '\n\n'}${TAB}[${record.type}] ${record.name}${record.proxied ? ' <PROXIED>' : ''}\n` +
                           suffix
                         );
-                      }, '') || `\n${TAB}(no data)`
+                      }, '') || `${isHushed ? '' : '\n'}${TAB}(no data)`
                 }`
               );
             }

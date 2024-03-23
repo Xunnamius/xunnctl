@@ -1,6 +1,6 @@
 import { ParentConfiguration } from '@black-flag/core';
+import { CommandNotImplementedError } from '@black-flag/core/util';
 
-import commandConfigGet from 'universe/commands/config/get';
 import { CustomExecutionContext } from 'universe/configure';
 
 import {
@@ -23,10 +23,10 @@ export default async function (executionContext: CustomExecutionContext) {
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
-      async function (argv) {
+      async function (_argv) {
         const debug = debug_.extend('handler');
         debug('entered handler');
-        await (await commandConfigGet(executionContext)).handler(argv);
+        throw new CommandNotImplementedError();
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
