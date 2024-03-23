@@ -62,7 +62,7 @@ These used to be several CLIs, but the time has come to bring them together!
 You can install this package globally:
 
 ```shell
-npm install --global xunnctl
+npm install --global @-xun/ctl
 ```
 
 Alternatively, you can use npx to call this package without pre-installation:
