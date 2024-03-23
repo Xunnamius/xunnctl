@@ -120,7 +120,7 @@ function areEqualSets(setA: Set<unknown>, setB: Set<unknown>) {
   return setA.size === setB.size && [...setA].every((item) => setB.has(item));
 }
 
-type WithGlobalOptionsReturnType<CustomCliArguments extends GlobalCliArguments> = [
+export type WithGlobalOptionsReturnType<CustomCliArguments extends GlobalCliArguments> = [
   builder: (
     ...args: Parameters<BuilderFunction<CustomCliArguments>>
   ) => BuilderObject<CustomCliArguments>,
@@ -132,7 +132,7 @@ type WithGlobalOptionsReturnType<CustomCliArguments extends GlobalCliArguments> 
   }
 ];
 
-type ExtendedBuilderObject = {
+export type ExtendedBuilderObject = {
   [key: string]: Omit<Options, 'demandOption'> & {
     demandOption?: Options['demandOption'] | string[];
   };

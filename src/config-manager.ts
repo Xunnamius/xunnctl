@@ -45,10 +45,6 @@ export type Config = {
    * DigitalOcean API token.
    */
   doApiToken: string;
-  /**
-   * A list of domain names manageable from this CLI.
-   */
-  apexDomains: string[];
 };
 
 /**
