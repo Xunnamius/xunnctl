@@ -26,7 +26,6 @@ Available configuration keys and their value types.
 
 | Name | Type | Description |
 | :------ | :------ | :------ |
-| `apexDomains` | `string`[] | A list of domain names manageable from this CLI. |
 | `cfAccountId` | `string` | Cloudflare account token. |
 | `cfApiToken` | `string` | Cloudflare API token. |
 | `cfApiUriBase` | `string` | Cloudflare API base URI. For example: https://api.cloudflare.com/client/v4 |
@@ -39,13 +38,13 @@ Available configuration keys and their value types.
 
 #### Defined in
 
-src/config-manager.ts:10
+[src/config-manager.ts:10](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/config-manager.ts#L10)
 
 ## Functions
 
 ### loadFromCliConfig
 
-▸ **loadFromCliConfig**(`«destructured»`): `Promise`\<[`Config`](config_manager.md#config)[keyof [`Config`](config_manager.md#config)]\>
+▸ **loadFromCliConfig**(`«destructured»`): `Promise`\<`JsonValue`\>
 
 Loads and caches a JSON configuration file and returns a key, if available.
 If the key is not available, either a default value or `undefined` is
@@ -57,15 +56,15 @@ returned.
 | :------ | :------ |
 | `«destructured»` | `Object` |
 | › `configPath` | `string` |
-| › `key` | `string` |
+| › `key` | `LiteralUnion`\<keyof [`Config`](config_manager.md#config), `string`\> |
 
 #### Returns
 
-`Promise`\<[`Config`](config_manager.md#config)[keyof [`Config`](config_manager.md#config)]\>
+`Promise`\<`JsonValue`\>
 
 #### Defined in
 
-src/config-manager.ts:59
+[src/config-manager.ts:55](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/config-manager.ts#L55)
 
 ▸ **loadFromCliConfig**(`«destructured»`): `Promise`\<[`Config`](config_manager.md#config)\>
 
@@ -83,7 +82,7 @@ src/config-manager.ts:59
 
 #### Defined in
 
-src/config-manager.ts:66
+[src/config-manager.ts:62](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/config-manager.ts#L62)
 
 ___
 
@@ -100,8 +99,8 @@ result into a JSON configuration file while updating the cache.
 | :------ | :------ |
 | `«destructured»` | `Object` |
 | › `configPath` | `string` |
-| › `key` | `string` |
-| › `value` | `JsonValue` |
+| › `key` | `LiteralUnion`\<keyof [`Config`](config_manager.md#config), `string`\> |
+| › `value` | `undefined` \| `JsonValue` |
 
 #### Returns
 
@@ -109,7 +108,7 @@ result into a JSON configuration file while updating the cache.
 
 #### Defined in
 
-src/config-manager.ts:113
+[src/config-manager.ts:109](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/config-manager.ts#L109)
 
 ___
 
@@ -131,4 +130,4 @@ Overwrites the current configuration cache. Useful while testing.
 
 #### Defined in
 
-src/config-manager.ts:139
+[src/config-manager.ts:141](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/config-manager.ts#L141)

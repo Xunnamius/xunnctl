@@ -41,4 +41,4 @@ Returns a generic fetch wrapper for making API calls.
 
 #### Defined in
 
-[src/api/index.ts:7](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/api/index.ts#L7)
+[src/api/index.ts:9](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/api/index.ts#L9)

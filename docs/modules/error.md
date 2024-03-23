@@ -4,6 +4,10 @@
 
 ## Table of contents
 
+### Classes
+
+- [TaskError](../classes/error.TaskError.md)
+
 ### Variables
 
 - [ErrorMessage](error.md#errormessage)
@@ -41,26 +45,31 @@ A collection of possible error and warning messages.
 | `AssertionFailureBadConfigurationPath` | (`path`: `unknown`) => `string` |
 | `AssertionFailureBadParameterCombination` | () => `string` |
 | `AssertionFailureCannotExecuteMultipleTimes` | () => `string` |
+| `AssertionFailureCannotUseDoubleFeature` | () => `string` |
 | `AssertionFailureConfigureExecutionEpilogue` | () => `string` |
 | `AssertionFailureDuplicateCommandName` | (`parentFullName`: `undefined` \| `string`, `name1`: `string`, `type1`: ``"name"`` \| ``"alias"``, `name2`: `string`, `type2`: ``"name"`` \| ``"alias"``) => `string` |
 | `AssertionFailureInvalidCommandExport` | (`name`: `string`) => `string` |
+| `AssertionFailureInvalidConfig` | (`key`: `string`) => `string` |
 | `AssertionFailureInvocationNotAllowed` | (`name`: `string`) => `string` |
 | `AssertionFailureNoConfigurationLoaded` | (`path`: `string`) => `string` |
 | `AssertionFailureReachedTheUnreachable` | () => `string` |
+| `AssertionFailureUnequalDemandOptions` | () => `string` |
 | `AssertionFailureUseParseAsyncInstead` | () => `string` |
 | `CommandNotImplemented` | () => `string` |
 | `ConfigLoadFailure` | (`path`: `string`) => `string` |
 | `ConfigSaveFailure` | () => `string` |
+| `DidNotProvideAtLeastOneOfSeveralOptions` | (`givenOptions`: `Record`\<`string`, `unknown`\>) => `string` |
+| `DidNotProvideExactlyOneOfSeveralOptions` | (`givenOptions`: `Record`\<`string`, `unknown`\>) => `string` |
 | `FailedCloudflareIpFetch` | () => `string` |
 | `FrameworkError` | (`error`: `unknown`) => `string` |
 | `Generic` | () => `string` |
 | `GracefulEarlyExit` | () => `string` |
 | `InvalidCharacters` | (`str`: `string`, `violation`: `string`) => `string` |
-| `InvalidCommandInvocation` | () => `string` |
 | `InvalidConfigureArgumentsReturnType` | () => `string` |
 | `InvalidConfigureExecutionContextReturnType` | () => `string` |
+| `InvalidSubCommandInvocation` | () => `string` |
 | `MissingConfigurationKey` | (`key`: `string`) => `string` |
 
 #### Defined in
 
-[src/error.ts:7](https://github.com/Xunnamius/xunnctl/blob/12ada31/src/error.ts#L7)
+[src/error.ts:17](https://github.com/Xunnamius/xunnctl/blob/ec3f0bb/src/error.ts#L17)
