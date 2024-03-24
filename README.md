@@ -791,19 +791,19 @@ specification. Contributions of any kind welcome!
   'Is this package well-tested?'
 [x-badge-codecov-link]: https://codecov.io/gh/Xunnamius/xunnctl
 [x-badge-downloads-image]:
-  https://img.shields.io/npm/dm/xunnctl?style=flat-square
+  https://img.shields.io/npm/dm/@-xun/ctl?style=flat-square
   'Number of times this package has been downloaded per month'
 [x-badge-lastcommit-image]:
   https://img.shields.io/github/last-commit/xunnamius/xunnctl?style=flat-square
   'Latest commit timestamp'
 [x-badge-license-image]:
-  https://img.shields.io/npm/l/xunnctl?style=flat-square
+  https://img.shields.io/npm/l/@-xun/ctl?style=flat-square
   "This package's source license"
 [x-badge-license-link]: https://github.com/Xunnamius/xunnctl/blob/main/LICENSE
 [x-badge-npm-image]:
-  https://xunn.at/npm-pkg-version/xunnctl
+  https://xunn.at/npm-pkg-version/@-xun/ctl
   'Install this package using npm or yarn!'
-[x-badge-npm-link]: https://www.npmjs.com/package/xunnctl
+[x-badge-npm-link]: https://www.npmjs.com/package/@-xun/ctl
 [x-badge-repo-link]: https://github.com/xunnamius/xunnctl
 [x-badge-semanticrelease-image]:
   https://xunn.at/badge-semantic-release
