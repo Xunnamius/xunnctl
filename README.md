@@ -803,7 +803,7 @@ specification. Contributions of any kind welcome!
 [x-badge-npm-image]:
   https://xunn.at/npm-pkg-version/@-xun/ctl
   'Install this package using npm or yarn!'
-[x-badge-npm-link]: https://www.npmjs.com/package/@-xun/ctl
+[x-badge-npm-link]: https://npmtrends.com/@-xun/ctl
 [x-badge-repo-link]: https://github.com/xunnamius/xunnctl
 [x-badge-semanticrelease-image]:
   https://xunn.at/badge-semantic-release
