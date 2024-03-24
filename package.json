@@ -1,6 +1,6 @@
 {
   "name": "@-xun/ctl",
-  "version": "0.0.0-semantic",
+  "version": "1.0.0",
   "description": "The personal CLI of Xunnamius",
   "keywords": [
     "Xunnamius"

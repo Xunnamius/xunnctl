@@ -30,6 +30,7 @@ Available configuration keys and their value types.
 | `cfApiToken` | `string` | Cloudflare API token. |
 | `cfApiUriBase` | `string` | Cloudflare API base URI. For example: https://api.cloudflare.com/client/v4 |
 | `cfFirewallPhaseName` | `string` | Cloudflare firewall phase name. |
+| `cfHostileIpListId` | `string` | Cloudflare hostile IP blocking list ID. |
 | `cfMainZoneId` | `string` | The ID of the primary zone where, for instance, ban lists and email-related configurations are stored. |
 | `cfWafBlockHostileIpListName` | `string` | Cloudflare hostile IP blocking list name. |
 | `cfWafBlockHostileIpRuleName` | `string` | Cloudflare hostile IP blocking rule name. |
@@ -38,7 +39,7 @@ Available configuration keys and their value types.
 
 #### Defined in
 
-[src/config-manager.ts:10](https://github.com/Xunnamius/xunnctl/blob/ed9ea99/src/config-manager.ts#L10)
+[src/config-manager.ts:10](https://github.com/Xunnamius/xunnctl/blob/d4b0c04/src/config-manager.ts#L10)
 
 ## Functions
 
@@ -64,7 +65,7 @@ returned.
 
 #### Defined in
 
-[src/config-manager.ts:55](https://github.com/Xunnamius/xunnctl/blob/ed9ea99/src/config-manager.ts#L55)
+[src/config-manager.ts:59](https://github.com/Xunnamius/xunnctl/blob/d4b0c04/src/config-manager.ts#L59)
 
 ▸ **loadFromCliConfig**(`«destructured»`): `Promise`\<[`Config`](config_manager.md#config)\>
 
@@ -82,7 +83,7 @@ returned.
 
 #### Defined in
 
-[src/config-manager.ts:62](https://github.com/Xunnamius/xunnctl/blob/ed9ea99/src/config-manager.ts#L62)
+[src/config-manager.ts:66](https://github.com/Xunnamius/xunnctl/blob/d4b0c04/src/config-manager.ts#L66)
 
 ___
 
@@ -108,7 +109,7 @@ result into a JSON configuration file while updating the cache.
 
 #### Defined in
 
-[src/config-manager.ts:109](https://github.com/Xunnamius/xunnctl/blob/ed9ea99/src/config-manager.ts#L109)
+[src/config-manager.ts:113](https://github.com/Xunnamius/xunnctl/blob/d4b0c04/src/config-manager.ts#L113)
 
 ___
 
@@ -130,4 +131,4 @@ Overwrites the current configuration cache. Useful while testing.
 
 #### Defined in
 
-[src/config-manager.ts:141](https://github.com/Xunnamius/xunnctl/blob/ed9ea99/src/config-manager.ts#L141)
+[src/config-manager.ts:145](https://github.com/Xunnamius/xunnctl/blob/d4b0c04/src/config-manager.ts#L145)
