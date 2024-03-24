@@ -16,3 +16,6 @@ export default runProgram<CustomExecutionContext>(
   join(__dirname, 'commands'),
   require('universe/configure')
 );
+
+module.exports = exports.default;
+module.exports.default = exports.default;
