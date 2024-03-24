@@ -45,6 +45,10 @@ export type Config = {
    * DigitalOcean API token.
    */
   doApiToken: string;
+  /**
+   * Cloudflare hostile IP blocking list ID.
+   */
+  cfHostileIpListId: string;
 };
 
 /**

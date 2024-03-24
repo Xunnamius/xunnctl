@@ -172,6 +172,17 @@ export default async function ({
                           });
                         }
 
+                        taskLogger('reinitializing dns zone');
+
+                        await makeLocalErrorReportingWrapper({
+                          startedPrefix: 'reinitializing ',
+                          successPrefix: 'reinitialized ',
+                          errorPrefix: 'failed to reinitialize ',
+                          taskLogger
+                        })('DNS zone configuration', async function () {
+                          await dns.reinitializeDnsZone({ zoneId });
+                        });
+
                         const withLocalErrorReporting = makeLocalErrorReportingWrapper({
                           startedPrefix: 'adding ',
                           successPrefix: 'added ',

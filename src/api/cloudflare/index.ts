@@ -7,7 +7,14 @@ import { LogTag } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
 
 import type { JsonValue } from 'type-fest';
-import type { ResourceRecord, Ruleset, RulesetRule, WithId, Zone } from './types';
+import type {
+  HostileIp,
+  ResourceRecord,
+  Ruleset,
+  RulesetRule,
+  WithId,
+  Zone
+} from './types';
 
 export * from './types';
 
@@ -885,6 +892,102 @@ export async function makeCloudflareApiCaller({
         method: 'GET'
       });
       return rules || [];
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/lists-get-list-items
+     */
+    async getHostileIps({ accountId, listId }: { accountId: string; listId: string }) {
+      const debug = debug_.extend('getHostileIps');
+      debug('entered method');
+
+      const ips: HostileIp[] = [];
+      let next = undefined as string | undefined;
+
+      do {
+        const [
+          ips_,
+          {
+            result_info: {
+              cursors: { after }
+            }
+          }
+          // eslint-disable-next-line no-await-in-loop
+        ] = await this.callApi<
+          HostileIp[],
+          { result_info: { cursors: { after: string } } }
+        >({
+          uri: `accounts/${accountId}/rules/lists/${listId}/items?${next ? 'cursor=' + next : ''}`,
+          method: 'GET'
+        });
+
+        ips.push(...ips_);
+        next = after;
+
+        debug('ips.length: %O', ips.length);
+      } while (next);
+
+      return ips;
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/lists-delete-list-items
+     *
+     * Completely deletes one or more IPs.
+     */
+    async deleteHostileIps({
+      accountId,
+      listId,
+      listItemIds
+    }: {
+      accountId: string;
+      listId: string;
+      listItemIds: string[];
+    }) {
+      const debug = debug_.extend('deleteHostileIp');
+      debug('entered method');
+
+      await this.callApi<undefined>(
+        {
+          uri: `accounts/${accountId}/rules/lists/${listId}/items`,
+          method: 'DELETE',
+          body: {
+            items: listItemIds.map((id) => {
+              debug(`DELETE: ${id}`);
+              return { id };
+            })
+          }
+        },
+        { parseResultJson: false }
+      );
+    },
+
+    /**
+     * - https://developers.cloudflare.com/api/operations/lists-create-list-items
+     */
+    async addHostileIps({
+      accountId,
+      listId,
+      targetIps
+    }: {
+      accountId: string;
+      listId: string;
+      targetIps: string[];
+    }) {
+      const debug = debug_.extend('addHostileIps');
+      debug('entered method');
+
+      await this.callApi<undefined>(
+        {
+          uri: `accounts/${accountId}/rules/lists/${listId}/items`,
+          method: 'POST',
+          body: targetIps.map((ip) => {
+            debug(`ADD: ${ip}`);
+            return { ip, comment: 'Created by xunnctl' };
+          })
+        },
+        { parseResultJson: false }
+      );
     }
   };
 }

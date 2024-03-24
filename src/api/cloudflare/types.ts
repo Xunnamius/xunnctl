@@ -76,3 +76,11 @@ export type ResourceRecord = {
   zone_id?: string;
   zone_name: string;
 };
+
+export type HostileIp = {
+  comment: string;
+  created_on: string;
+  id: string;
+  ip: string;
+  modified_on: string;
+};

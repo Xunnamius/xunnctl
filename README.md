@@ -563,21 +563,25 @@ See [`xunnctl firewall status`][10].
 
 This command adds an ip address to the global hostile ip list, which is a
 [Cloudflare WAF List][11]. No managed system will accept packets coming from an
-IP on this list. Both ipv4 and ipv6 addresses are supported, as is CIDR
-notation.
+IP on this list.
+
+All [IP formats supported by Cloudflare WAF Lists][12] are supported.
+Additionally, full ipv6 addresses will be translated into the supported ipv6
+CIDR double colon notation.
 
 #### Examples
 
 ```bash
-xunnctl firewall ban --ip 1.2.3.4
-x f b --ip 1.2.3.4
+xunnctl firewall ban --ip 1.2.3.4 --ip 5.6.7.8
+# Cloudflare doesn't support the following, but this CLI does:
+x f b --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 ```
 
 #### Parameters
 
-|                         |  Name  |  Type  |  Default  | Description                                                                                                                |
-| :---------------------: | :----: | :----: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
+|                         |  Name  |   Type    |  Default  | Description                                                                                                 |
+| :---------------------: | :----: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP addresses to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. |
 
 ### `xunnctl firewall status`
 
@@ -587,16 +591,22 @@ This command returns the contents of the global hostile ip list, which is a
 [Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list.
 
+All [IP formats supported by Cloudflare WAF Lists][12] are supported.
+Additionally, full ipv6 addresses will be translated into the supported ipv6
+CIDR double colon notation.
+
 #### Examples
 
 ```bash
 xunnctl firewall status
-x f s
+x f s --ip 5.6.7.8 --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 ```
 
 #### Parameters
 
-This command does not accept additional parameters.
+|                     |  Name  |   Type    |  Default  | Description                                                                                                       |
+| :-----------------: | :----: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------------- |
+| <sub>optional</sub> | `--ip` | string\[] | undefined | One or more IP addresses to report on. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. |
 
 ### `xunnctl firewall unban`
 
@@ -606,18 +616,23 @@ This command removes an ip address from the global hostile ip list, which is a
 [Cloudflare WAF List][11]. No managed system will accept packets coming from an
 IP on this list.
 
+All [IP formats supported by Cloudflare WAF Lists][12] are supported.
+Additionally, full ipv6 addresses will be translated into the supported ipv6
+CIDR double colon notation.
+
 #### Examples
 
 ```bash
-xunnctl firewall unban --ip 1.2.3.4
-x f u --ip 1.2.3.4
+xunnctl firewall unban --ip 1.2.3.4 --ip 5.6.7.8
+# Cloudflare doesn't support the following, but this CLI does:
+x f u --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 ```
 
 #### Parameters
 
-|                         |  Name  |  Type  |  Default  | Description                                                                                                                  |
-| :---------------------: | :----: | :----: | :-------: | :--------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string | undefined | The IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here, including ipv4 and ipv6. |
+|                         |  Name  |   Type    |  Default  | Description                                                                                                 |
+| :---------------------: | :----: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. |
 
 ### `xunnctl raw`
 
@@ -832,3 +847,4 @@ specification. Contributions of any kind welcome!
 [9]: #xunnctl-dns-zone-create
 [10]: #xunnctl-firewall-status
 [11]: https://developers.cloudflare.com/waf/tools/lists
+[12]: https://developers.cloudflare.com/waf/tools/lists/custom-lists#ip-lists

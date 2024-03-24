@@ -1,6 +1,6 @@
 import { ParentConfiguration } from '@black-flag/core';
-import { CommandNotImplementedError } from '@black-flag/core/util';
 
+import commandFirewallStatus from 'universe/commands/firewall/status';
 import { CustomExecutionContext } from 'universe/configure';
 
 import {
@@ -23,10 +23,13 @@ export default async function (executionContext: CustomExecutionContext) {
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
-      async function (_argv) {
+      async function (argv) {
         const debug = debug_.extend('handler');
         debug('entered handler');
-        throw new CommandNotImplementedError();
+
+        await (
+          await commandFirewallStatus(executionContext)
+        ).handler({ ...argv, hush: true });
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;

@@ -60,7 +60,7 @@ export default async function ({
   return {
     aliases: ['d'],
     builder,
-    description: 'Irrecoverably destroy a DNS zone',
+    description: 'Irrecoverably destroy DNS record(s)',
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(
       builderData,

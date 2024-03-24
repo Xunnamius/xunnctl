@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import { mkdir } from 'node:fs/promises';
 
 import { $executionContext, CliError, type Configuration } from '@black-flag/core';
+import ip6addr from 'ip6addr';
 import { Promisable } from 'type-fest';
 import { Options } from 'yargs';
 
@@ -547,6 +548,34 @@ export function makeLocalErrorReportingWrapper({
         taskLogger.error(errorMessage);
         throw new TaskError(errorMessage, { cause: error });
       }
+    }
+  };
+}
+
+export function makeIpToCidrFn<T>(context: string) {
+  return ({ ip, ...rest }: { ip: string } & T) => {
+    try {
+      // ? Normalize IPs into CIDRs. Originally, IPs can be:
+      // ? - Individual IPv4 addresses
+      // ? - IPv4 CIDR ranges with a prefix from /8 to /32
+      // ? - IPv6 CIDR ranges with a prefix from /4 to /64
+      const cidr = (() => {
+        try {
+          return ip6addr.createCIDR(ip + '/64');
+        } catch {
+          try {
+            return ip6addr.createCIDR(ip + '/32');
+          } catch {
+            return ip6addr.createCIDR(ip);
+          }
+        }
+      })();
+
+      return { cidr, ...rest };
+    } catch (error) {
+      throw new Error(`failed to create CIDR IP "${ip}" from ${context}`, {
+        cause: error
+      });
     }
   };
 }
