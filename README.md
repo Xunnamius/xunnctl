@@ -376,7 +376,9 @@ x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...
 > Alias: `x d r r`
 
 This command retrieves one or more resource records of name `--name` and/or of
-type `--type` from the specified `--apex*` DNS zone(s).
+type `--type` from the specified `--apex*` DNS zone(s). If `--search-for-name`
+is given, `--name` will be matched partially (via `startsWith()`) rather than
+exactly.
 
 Omitting both `--name` and `--type` will retrieve all records.
 
@@ -395,13 +397,14 @@ x d r r --apex xunn.io --apex xunn.at --type cname --local-query id
 
 #### Parameters
 
-|                                        |        Name        |                       Type                        |  Default  | Description                                                                                                                |
-| :------------------------------------: | :----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
-|          <sub>optional</sub>           |      `--name`      |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|          <sub>optional</sub>           |      `--type`      |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
-|          <sub>optional</sub>           |  `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+|                                        |        Name         |                       Type                        |  Default  | Description                                                                                                                |
+| :------------------------------------: | :-----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`       |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known`  |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
+|          <sub>optional</sub>           |      `--name`       |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
+|          <sub>optional</sub>           |      `--type`       |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
+|          <sub>optional</sub>           |   `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
+|          <sub>optional</sub>           | `--search-for-name` |                   boolean<br />                   |   false   | Match names starting with `--name` instead of exact match.                                                                 |
 
 ### `xunnctl dns record destroy`
 
@@ -410,6 +413,9 @@ x d r r --apex xunn.io --apex xunn.at --type cname --local-query id
 This command irrecoverably destroys one or more resource records that are named
 `--name` and are of type `--type` from the specified `--apex*` DNS zone(s). If
 no such record(s) exist, this command is a no-op.
+
+If `--search-for-name` is given, `--name` will be matched partially (via
+`startsWith()`) rather than exactly.
 
 #### Examples
 
@@ -420,12 +426,13 @@ xunnctl d r d --apex dangerous.com --name some.specific.record --type cname
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                                                                   |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                                  |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. **Note that this is incredibly dangerous!** |
-|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                         |
-|        **<sub>REQUIRED</sub>**         |      `--type`      |  string   | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                     |
+|                                        |        Name         |     Type      |  Default  | Description                                                                                                                   |
+| :------------------------------------: | :-----------------: | :-----------: | :-------: | :---------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`       |   string\[]   | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                                  |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known`  |    boolean    | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. **Note that this is incredibly dangerous!** |
+|        **<sub>REQUIRED</sub>**         |      `--name`       |    string     | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                         |
+|        **<sub>REQUIRED</sub>**         |      `--type`       |    string     | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                     |
+|          <sub>optional</sub>           | `--search-for-name` | boolean<br /> |   false   | Match names starting with `--name` instead of exact match.                                                                    |
 
 ### `xunnctl dns zone`
 

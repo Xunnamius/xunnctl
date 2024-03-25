@@ -302,19 +302,19 @@ export async function doDnsZoneInitializationPrePurge({
           }
         });
       },
-      async function () {
-        await withLocalErrorReporting('ACME mail CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
-            zoneId,
-            fullDomainName: `_acme-challenge.mail.${zoneName}`,
-            type: 'cname'
-          });
+      // async function () {
+      //   await withLocalErrorReporting('ACME mail CNAME record', async function () {
+      //     const recordId = await dns.getDnsRecordId({
+      //       zoneId,
+      //       fullDomainName: `_acme-challenge.mail.${zoneName}`,
+      //       type: 'cname'
+      //     });
 
-          if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
-          }
-        });
-      },
+      //     if (recordId) {
+      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //     }
+      //   });
+      // },
       async function () {
         await withLocalErrorReporting('smtp CNAME record', async function () {
           const recordId = await dns.getDnsRecordId({
@@ -328,19 +328,19 @@ export async function doDnsZoneInitializationPrePurge({
           }
         });
       },
-      async function () {
-        await withLocalErrorReporting('ACME smtp CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
-            zoneId,
-            fullDomainName: `_acme-challenge.smtp.${zoneName}`,
-            type: 'cname'
-          });
+      // async function () {
+      //   await withLocalErrorReporting('ACME smtp CNAME record', async function () {
+      //     const recordId = await dns.getDnsRecordId({
+      //       zoneId,
+      //       fullDomainName: `_acme-challenge.smtp.${zoneName}`,
+      //       type: 'cname'
+      //     });
 
-          if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
-          }
-        });
-      },
+      //     if (recordId) {
+      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //     }
+      //   });
+      // },
       async function () {
         await withLocalErrorReporting('imap CNAME record', async function () {
           const recordId = await dns.getDnsRecordId({
@@ -354,19 +354,19 @@ export async function doDnsZoneInitializationPrePurge({
           }
         });
       },
-      async function () {
-        await withLocalErrorReporting('ACME imap CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
-            zoneId,
-            fullDomainName: `_acme-challenge.imap.${zoneName}`,
-            type: 'cname'
-          });
+      // async function () {
+      //   await withLocalErrorReporting('ACME imap CNAME record', async function () {
+      //     const recordId = await dns.getDnsRecordId({
+      //       zoneId,
+      //       fullDomainName: `_acme-challenge.imap.${zoneName}`,
+      //       type: 'cname'
+      //     });
 
-          if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
-          }
-        });
-      },
+      //     if (recordId) {
+      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //     }
+      //   });
+      // },
       async function () {
         await withLocalErrorReporting('neutral SPF TXT record', async function () {
           const recordId = await dns.getDnsRecordId({
@@ -461,20 +461,20 @@ export async function doDnsZoneInitializationPrePurge({
             rulesetPhaseName: firewallPhaseName
           });
         });
-      },
-      async function () {
-        await withLocalErrorReporting('ACME challenge CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
-            zoneId,
-            fullDomainName: `_acme-challenge.${zoneName}`,
-            type: 'cname'
-          });
-
-          if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
-          }
-        });
       }
+      // async function () {
+      //   await withLocalErrorReporting('ACME challenge CNAME record', async function () {
+      //     const recordId = await dns.getDnsRecordId({
+      //       zoneId,
+      //       fullDomainName: `_acme-challenge.${zoneName}`,
+      //       type: 'cname'
+      //     });
+
+      //     if (recordId) {
+      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //     }
+      //   });
+      // }
     ].map((fn) => fn())
   );
 }

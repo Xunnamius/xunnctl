@@ -23,6 +23,7 @@ export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
   name?: string;
+  searchForName?: boolean;
   type?: string;
   localQuery?: string;
 };
@@ -53,6 +54,10 @@ export default async function ({
       string: true,
       description: 'DNS record name (or @ for the zone apex) in Punycode'
     },
+    'search-for-name': {
+      boolean: true,
+      description: 'Match names starting with --name instead of exact match'
+    },
     type: {
       string: true,
       description: 'Case-insensitive DNS record type, such as AAAA or mx'
@@ -77,7 +82,8 @@ export default async function ({
         apexAllKnown,
         name: recordName,
         type: recordType,
-        localQuery
+        localQuery,
+        searchForName = false
       }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
@@ -87,6 +93,7 @@ export default async function ({
         debug('name: %O', recordName);
         debug('type: %O', recordType);
         debug('query: %O', localQuery);
+        debug('searchForName: %O', searchForName);
 
         const { isHushed, isQuieted, startTime } = state;
         const results = {
@@ -142,11 +149,16 @@ export default async function ({
                   Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
                     taskLogger('retrieving records for %O (%O)', zoneName, zoneId);
 
-                    const records = await dns.getDnsRecords({
+                    const records_ = await dns.getDnsRecords({
                       zoneId,
-                      recordName,
+                      recordName: searchForName ? undefined : recordName,
                       recordType
                     });
+
+                    const records =
+                      searchForName && recordName
+                        ? records_.filter(({ name }) => name.startsWith(recordName))
+                        : records_;
 
                     totalRecordCount += records.length;
                     return [zoneName, records] as const;

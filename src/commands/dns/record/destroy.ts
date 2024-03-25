@@ -20,6 +20,7 @@ export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
   name?: string;
+  searchForName?: boolean;
   type?: string;
 };
 
@@ -50,6 +51,10 @@ export default async function ({
       string: true,
       description: 'DNS record name (or @ for the zone apex) in Punycode'
     },
+    'search-for-name': {
+      boolean: true,
+      description: 'Match names starting with --name instead of exact match'
+    },
     type: {
       demandOption: ['name'],
       string: true,
@@ -69,7 +74,8 @@ export default async function ({
         apex: apices = [],
         apexAllKnown,
         name: recordName,
-        type: recordType
+        type: recordType,
+        searchForName = false
       }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
@@ -78,6 +84,7 @@ export default async function ({
         debug('apexAllKnown: %O', apexAllKnown);
         debug('name: %O', recordName);
         debug('type: %O', recordType);
+        debug('searchForName: %O', searchForName);
 
         const { startTime } = state;
         const results = {
@@ -153,11 +160,16 @@ export default async function ({
                       zoneId
                     );
 
-                    const records = await dns.getDnsRecords({
+                    const records_ = await dns.getDnsRecords({
                       zoneId,
-                      recordName,
+                      recordName: searchForName ? undefined : recordName,
                       recordType
                     });
+
+                    const records =
+                      searchForName && recordName
+                        ? records_.filter(({ name }) => name.startsWith(recordName))
+                        : records_;
 
                     await Promise.all(
                       records.map(({ id: recordId }) =>

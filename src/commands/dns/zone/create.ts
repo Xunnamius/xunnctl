@@ -36,7 +36,6 @@ export type CustomCliArguments = GlobalCliArguments & {
 export async function doDnsZoneInitialization({
   zoneId,
   withLocalErrorReporting,
-  debug,
   dns,
   mainZoneId,
   zoneName,
@@ -96,16 +95,16 @@ export async function doDnsZoneInitialization({
           });
         });
       },
-      async function () {
-        await withLocalErrorReporting('ACME mail CNAME record', function () {
-          return dns.createDnsCnameRecord({
-            zoneId,
-            domainName: '_acme-challenge.mail',
-            redirectToHostname: '_acme-challenge.darkgray.org',
-            proxied: false
-          });
-        });
-      },
+      // async function () {
+      //   await withLocalErrorReporting('ACME mail CNAME record', function () {
+      //     return dns.createDnsCnameRecord({
+      //       zoneId,
+      //       domainName: '_acme-challenge.mail',
+      //       redirectToHostname: '_acme-challenge.darkgray.org',
+      //       proxied: false
+      //     });
+      //   });
+      // },
       async function () {
         await withLocalErrorReporting('smtp CNAME record', function () {
           return dns.createDnsCnameRecord({
@@ -116,16 +115,16 @@ export async function doDnsZoneInitialization({
           });
         });
       },
-      async function () {
-        await withLocalErrorReporting('ACME smtp CNAME record', function () {
-          return dns.createDnsCnameRecord({
-            zoneId,
-            domainName: '_acme-challenge.smtp',
-            redirectToHostname: '_acme-challenge.darkgray.org',
-            proxied: false
-          });
-        });
-      },
+      // async function () {
+      //   await withLocalErrorReporting('ACME smtp CNAME record', function () {
+      //     return dns.createDnsCnameRecord({
+      //       zoneId,
+      //       domainName: '_acme-challenge.smtp',
+      //       redirectToHostname: '_acme-challenge.darkgray.org',
+      //       proxied: false
+      //     });
+      //   });
+      // },
       async function () {
         await withLocalErrorReporting('imap CNAME record', function () {
           return dns.createDnsCnameRecord({
@@ -136,16 +135,16 @@ export async function doDnsZoneInitialization({
           });
         });
       },
-      async function () {
-        await withLocalErrorReporting('ACME imap CNAME record', function () {
-          return dns.createDnsCnameRecord({
-            zoneId,
-            domainName: '_acme-challenge.imap',
-            redirectToHostname: '_acme-challenge.darkgray.org',
-            proxied: false
-          });
-        });
-      },
+      // async function () {
+      //   await withLocalErrorReporting('ACME imap CNAME record', function () {
+      //     return dns.createDnsCnameRecord({
+      //       zoneId,
+      //       domainName: '_acme-challenge.imap',
+      //       redirectToHostname: '_acme-challenge.darkgray.org',
+      //       proxied: false
+      //     });
+      //   });
+      // },
       async function () {
         await withLocalErrorReporting('neutral SPF TXT record', function () {
           return dns.createDnsTxtRecord({
@@ -212,23 +211,23 @@ export async function doDnsZoneInitialization({
             rulesetPhaseName: firewallPhaseName
           });
         });
-      },
-      async function () {
-        if (zoneName !== 'darkgray.org') {
-          await withLocalErrorReporting('ACME challenge CNAME record', function () {
-            return dns.createDnsCnameRecord({
-              zoneId,
-              domainName: '_acme-challenge',
-              redirectToHostname: '_acme-challenge.darkgray.org',
-              proxied: false
-            });
-          });
-        } else {
-          debug(
-            '(skipped creating ACME challenge CNAME record for known domain "darkgray.org")'
-          );
-        }
       }
+      // async function () {
+      //   if (zoneName !== 'darkgray.org') {
+      //     await withLocalErrorReporting('ACME challenge CNAME record', function () {
+      //       return dns.createDnsCnameRecord({
+      //         zoneId,
+      //         domainName: '_acme-challenge',
+      //         redirectToHostname: '_acme-challenge.darkgray.org',
+      //         proxied: false
+      //       });
+      //     });
+      //   } else {
+      //     debug(
+      //       '(skipped creating ACME challenge CNAME record for known domain "darkgray.org")'
+      //     );
+      //   }
+      // }
     ].map((fn) => fn())
   );
 }
