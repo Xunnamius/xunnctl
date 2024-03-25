@@ -37,7 +37,7 @@
 
 #### Defined in
 
-[src/util.ts:136](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L136)
+[src/util.ts:136](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L136)
 
 ___
 
@@ -59,7 +59,7 @@ uses `withGlobalOptions` to construct its `builder`.
 
 #### Defined in
 
-[src/util.ts:31](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L31)
+[src/util.ts:31](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L31)
 
 ___
 
@@ -69,7 +69,7 @@ ___
 
 #### Defined in
 
-[src/util.ts:462](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L462)
+[src/util.ts:462](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L462)
 
 ___
 
@@ -85,7 +85,7 @@ ___
 
 #### Defined in
 
-[src/util.ts:124](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L124)
+[src/util.ts:124](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L124)
 
 ## Functions
 
@@ -101,7 +101,7 @@ Returns a well-known configuration path.
 
 #### Defined in
 
-[src/util.ts:81](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L81)
+[src/util.ts:81](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L81)
 
 ___
 
@@ -125,7 +125,7 @@ Prints a timestamp indicating the beginning of execution.
 
 #### Defined in
 
-[src/util.ts:90](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L90)
+[src/util.ts:90](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L90)
 
 ___
 
@@ -163,7 +163,7 @@ ___
 
 #### Defined in
 
-[src/util.ts:555](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L555)
+[src/util.ts:555](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L555)
 
 ___
 
@@ -204,7 +204,7 @@ fail.
 
 #### Defined in
 
-[src/util.ts:523](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L523)
+[src/util.ts:523](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L523)
 
 ___
 
@@ -226,7 +226,7 @@ Generate standard command usage text.
 
 #### Defined in
 
-[src/util.ts:70](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L70)
+[src/util.ts:70](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L70)
 
 ___
 
@@ -248,7 +248,7 @@ Lower-cases the first letter of `str`.
 
 #### Defined in
 
-[src/util.ts:63](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L63)
+[src/util.ts:63](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L63)
 
 ___
 
@@ -270,7 +270,7 @@ Upper-cases the first letter of `str`.
 
 #### Defined in
 
-[src/util.ts:41](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L41)
+[src/util.ts:41](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L41)
 
 ___
 
@@ -292,7 +292,7 @@ Upper-cases the first letter of `str`.
 
 #### Defined in
 
-[src/util.ts:48](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L48)
+[src/util.ts:48](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L48)
 
 ___
 
@@ -346,7 +346,7 @@ functionality:
 
 #### Defined in
 
-[src/util.ts:170](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L170)
+[src/util.ts:170](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L170)
 
 ___
 
@@ -381,7 +381,7 @@ function.
 
 #### Defined in
 
-[src/util.ts:390](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L390)
+[src/util.ts:390](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L390)
 
 ___
 
@@ -406,4 +406,4 @@ ___
 
 #### Defined in
 
-[src/util.ts:468](https://github.com/Xunnamius/xunnctl/blob/7275721/src/util.ts#L468)
+[src/util.ts:468](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L468)
