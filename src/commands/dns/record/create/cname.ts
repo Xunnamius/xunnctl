@@ -18,6 +18,7 @@ export type CustomCliArguments = GlobalCliArguments & {
   apexAllKnown?: boolean;
   name: string;
   toName: string;
+  ttl?: number;
   proxied?: boolean;
 };
 
@@ -53,6 +54,10 @@ export default async function ({
       string: true,
       description: 'A valid hostname'
     },
+    ttl: {
+      number: true,
+      description: 'A valid time-to-live value'
+    },
     proxied: {
       boolean: true,
       description: 'Proxy the record through Cloudflare'
@@ -72,6 +77,7 @@ export default async function ({
         apexAllKnown,
         name: domainName,
         toName,
+        ttl,
         proxied = false
       }) {
         const debug = debug_.extend('handler');
@@ -81,6 +87,7 @@ export default async function ({
         debug('apexAllKnown: %O', apexAllKnown);
         debug('name: %O', domainName);
         debug('toName: %O', toName);
+        debug('ttl: %O', ttl);
         debug('proxied: %O', proxied);
 
         const { startTime } = state;
@@ -135,6 +142,7 @@ export default async function ({
                       zoneId,
                       domainName,
                       redirectToHostname: toName,
+                      ttl,
                       proxied
                     });
 

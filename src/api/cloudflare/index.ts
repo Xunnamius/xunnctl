@@ -399,11 +399,13 @@ export async function makeCloudflareApiCaller({
       zoneId,
       domainName,
       ipv4,
+      ttl,
       proxied = false
     }: {
       zoneId: string;
       domainName: string;
       ipv4: string;
+      ttl?: number;
       proxied: boolean;
     }): Promise<void> {
       const debug = debug_.extend('createDnsARecord');
@@ -414,6 +416,7 @@ export async function makeCloudflareApiCaller({
         type: 'A',
         domainName,
         content: ipv4,
+        ttl,
         proxied
       });
     },
@@ -425,11 +428,13 @@ export async function makeCloudflareApiCaller({
       domainName,
       ipv6: content,
       zoneId,
+      ttl,
       proxied = false
     }: {
       zoneId: string;
       domainName: string;
       ipv6: string;
+      ttl?: number;
       proxied: boolean;
     }): Promise<void> {
       const debug = debug_.extend('createDnsAaaaRecord');
@@ -440,6 +445,7 @@ export async function makeCloudflareApiCaller({
         type: 'AAAA',
         domainName,
         content,
+        ttl,
         proxied
       });
     },
@@ -483,11 +489,13 @@ export async function makeCloudflareApiCaller({
       domainName,
       redirectToHostname,
       zoneId,
+      ttl,
       proxied = false
     }: {
       zoneId: string;
       domainName: string;
       redirectToHostname: string;
+      ttl?: number;
       proxied: boolean;
     }): Promise<void> {
       const debug = debug_.extend('createDnsCnameRecord');
@@ -498,6 +506,7 @@ export async function makeCloudflareApiCaller({
         type: 'CNAME',
         domainName,
         content: redirectToHostname,
+        ttl,
         proxied
       });
     },
@@ -508,11 +517,13 @@ export async function makeCloudflareApiCaller({
     async createDnsMxRecord({
       zoneId,
       domainName,
-      mailHostname
+      mailHostname,
+      ttl
     }: {
       zoneId: string;
       domainName: string;
       mailHostname: string;
+      ttl?: number;
     }): Promise<void> {
       const debug = debug_.extend('createDnsMxRecord');
       debug('entered method');
@@ -522,7 +533,8 @@ export async function makeCloudflareApiCaller({
         type: 'MX',
         domainName,
         content: mailHostname,
-        priority: 1
+        priority: 1,
+        ttl
       });
     },
 
@@ -532,11 +544,13 @@ export async function makeCloudflareApiCaller({
     async createDnsTxtRecord({
       content,
       domainName,
-      zoneId
+      zoneId,
+      ttl
     }: {
       zoneId: string;
       domainName: string;
       content: string;
+      ttl?: number;
     }): Promise<void> {
       const debug = debug_.extend('createDnsTxtRecord');
       debug('entered method');
@@ -545,7 +559,8 @@ export async function makeCloudflareApiCaller({
         zoneId,
         type: 'TXT',
         domainName,
-        content
+        content,
+        ttl
       });
     },
 
@@ -556,11 +571,13 @@ export async function makeCloudflareApiCaller({
       zoneId,
       type,
       domainName,
+      ttl = 1 /* TTL of 1 === "automatic" */,
       ...additionalOptions
     }: {
       zoneId: string;
       type: string;
       domainName: string;
+      ttl?: number;
       [additionalOption: string]: unknown;
     }): Promise<void> {
       const debug = debug_.extend('createDnsRecord');
@@ -572,7 +589,7 @@ export async function makeCloudflareApiCaller({
         body: {
           name: domainName,
           type,
-          ttl: 1,
+          ttl,
           ...additionalOptions
         }
       });

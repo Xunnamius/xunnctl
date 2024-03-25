@@ -18,6 +18,7 @@ export type CustomCliArguments = GlobalCliArguments & {
   apexAllKnown?: boolean;
   name: string;
   content: string;
+  ttl?: number;
 };
 
 export default async function ({
@@ -51,6 +52,10 @@ export default async function ({
       demandOption: true,
       string: true,
       description: 'Text content for the record'
+    },
+    ttl: {
+      number: true,
+      description: 'A valid time-to-live value'
     }
   });
 
@@ -66,7 +71,8 @@ export default async function ({
         apex: apices = [],
         apexAllKnown,
         name: domainName,
-        content
+        content,
+        ttl
       }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
@@ -75,6 +81,7 @@ export default async function ({
         debug('apexAllKnown: %O', apexAllKnown);
         debug('name: %O', domainName);
         debug('content: %O', content);
+        debug('ttl: %O', ttl);
 
         const { startTime } = state;
         const results = {
@@ -123,7 +130,7 @@ export default async function ({
                 await Promise.all(
                   Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
                     taskLogger('creating TXT record for %O (%O)', zoneName, zoneId);
-                    await dns.createDnsTxtRecord({ zoneId, domainName, content });
+                    await dns.createDnsTxtRecord({ zoneId, domainName, content, ttl });
                     totalRecordCount += 1;
                   })
                 );

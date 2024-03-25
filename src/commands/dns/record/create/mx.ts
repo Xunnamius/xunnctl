@@ -18,6 +18,7 @@ export type CustomCliArguments = GlobalCliArguments & {
   apexAllKnown?: boolean;
   name: string;
   mailName: string;
+  ttl?: number;
 };
 
 export default async function ({
@@ -51,6 +52,10 @@ export default async function ({
       demandOption: true,
       string: true,
       description: 'A valid mail server hostname'
+    },
+    ttl: {
+      number: true,
+      description: 'A valid time-to-live value'
     }
   });
 
@@ -66,7 +71,8 @@ export default async function ({
         apex: apices = [],
         apexAllKnown,
         name: domainName,
-        mailName
+        mailName,
+        ttl
       }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
@@ -75,6 +81,7 @@ export default async function ({
         debug('apexAllKnown: %O', apexAllKnown);
         debug('name: %O', domainName);
         debug('mailName: %O', mailName);
+        debug('ttl: %O', ttl);
 
         const { startTime } = state;
         const results = {
@@ -127,7 +134,8 @@ export default async function ({
                     await dns.createDnsMxRecord({
                       zoneId,
                       domainName,
-                      mailHostname: mailName
+                      mailHostname: mailName,
+                      ttl
                     });
 
                     totalRecordCount += 1;
