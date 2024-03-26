@@ -3,7 +3,7 @@ import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import { makeDigitalOceanApiCaller } from 'universe/api/digitalocean/index.js';
 
 import { CustomExecutionContext } from 'universe/configure';
-import { standardSuccessMessage } from 'universe/constant';
+import { LogTag, standardSuccessMessage } from 'universe/constant';
 import { TaskError } from 'universe/error';
 
 import {
@@ -223,7 +223,7 @@ export default async function ({
 
         await taskManager.runAll();
 
-        log(standardSuccessMessage);
+        log([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;

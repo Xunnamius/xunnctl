@@ -8,7 +8,7 @@ import {
 } from 'universe/api/cloudflare/index.js';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { CustomExecutionContext } from 'universe/configure';
-import { standardSuccessMessage } from 'universe/constant';
+import { LogTag, standardSuccessMessage } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
 
 import {
@@ -150,7 +150,7 @@ export default async function ({
 
         await taskManager.runAll();
 
-        genericLogger(standardSuccessMessage);
+        genericLogger([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;

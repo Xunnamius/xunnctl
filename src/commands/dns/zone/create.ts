@@ -371,7 +371,7 @@ export default async function ({
 
         await taskManager.runAll();
 
-        log(standardSuccessMessage);
+        log([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
 
         log.message(
           [LogTag.IF_NOT_HUSHED],

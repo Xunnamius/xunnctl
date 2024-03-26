@@ -2,7 +2,7 @@ import { ParentConfiguration } from '@black-flag/core';
 import { loadFromCliConfig, saveToCliConfig } from 'universe/config-manager';
 
 import { CustomExecutionContext } from 'universe/configure';
-import { standardSuccessMessage } from 'universe/constant';
+import { LogTag, standardSuccessMessage } from 'universe/constant';
 
 import {
   GlobalCliArguments,
@@ -63,8 +63,11 @@ export default async function ({
           );
         }
 
-        log(standardSuccessMessage);
-        log(`Ensured ${names?.length || 0} configuration option(s) were removed`);
+        log([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
+        log(
+          [LogTag.IF_NOT_HUSHED],
+          `Ensured ${names?.length || 0} configuration option(s) were removed`
+        );
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;

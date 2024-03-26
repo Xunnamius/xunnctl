@@ -6,7 +6,7 @@ import { Zone, makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js'
 import { doDnsZoneInitialization } from 'universe/commands/dns/zone/create';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { CustomExecutionContext } from 'universe/configure';
-import { standardSuccessMessage } from 'universe/constant';
+import { LogTag, standardSuccessMessage } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
 
 import {
@@ -223,7 +223,7 @@ export default async function ({
 
         await taskManager.runAll();
 
-        log(standardSuccessMessage);
+        log([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
