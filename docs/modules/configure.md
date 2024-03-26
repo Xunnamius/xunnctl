@@ -21,7 +21,7 @@
 
 #### Defined in
 
-[src/configure.ts:35](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/configure.ts#L35)
+[src/configure.ts:35](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/configure.ts#L35)
 
 ## Functions
 
@@ -46,7 +46,7 @@
 
 #### Defined in
 
-[src/configure.ts:86](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/configure.ts#L86)
+[src/configure.ts:86](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/configure.ts#L86)
 
 ___
 
@@ -66,4 +66,4 @@ ___
 
 #### Defined in
 
-[src/configure.ts:70](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/configure.ts#L70)
+[src/configure.ts:70](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/configure.ts#L70)

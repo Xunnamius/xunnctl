@@ -6,13 +6,13 @@
 
 ### Functions
 
-- [makeApiCaller](api.md#makeapicaller)
+- [makeApiCallerBase](api.md#makeapicallerbase)
 
 ## Functions
 
-### makeApiCaller
+### makeApiCallerBase
 
-▸ **makeApiCaller**(`«destructured»`): (`__namedParameters`: \{ `body?`: `JsonValue` ; `uri`: `string`  } & `Omit`\<`RequestInit`, ``"body"``\> & \{ `[additionalOption: string]`: `unknown`;  }) => `Promise`\<[response: Response, responseBody: string]\>
+▸ **makeApiCallerBase**(`«destructured»`): (`__namedParameters`: \{ `body?`: `JsonValue` ; `uri`: `string`  } & `Omit`\<`RequestInit`, ``"body"``\> & \{ `[additionalOption: string]`: `unknown`;  }) => `Promise`\<[response: Response, responseBody: string]\>
 
 Returns a generic fetch wrapper for making API calls.
 
@@ -41,4 +41,4 @@ Returns a generic fetch wrapper for making API calls.
 
 #### Defined in
 
-[src/api/index.ts:9](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/api/index.ts#L9)
+[src/api/index.ts:9](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/api/index.ts#L9)

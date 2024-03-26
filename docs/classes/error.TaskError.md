@@ -53,7 +53,7 @@ Error.constructor
 
 #### Defined in
 
-[src/error.ts:8](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/error.ts#L8)
+[src/error.ts:8](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/error.ts#L8)
 
 ## Properties
 

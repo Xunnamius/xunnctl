@@ -37,7 +37,7 @@
 
 #### Defined in
 
-[src/util.ts:136](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L136)
+[src/util.ts:137](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L137)
 
 ___
 
@@ -59,7 +59,7 @@ uses `withGlobalOptions` to construct its `builder`.
 
 #### Defined in
 
-[src/util.ts:31](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L31)
+[src/util.ts:32](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L32)
 
 ___
 
@@ -69,7 +69,7 @@ ___
 
 #### Defined in
 
-[src/util.ts:462](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L462)
+[src/util.ts:463](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L463)
 
 ___
 
@@ -85,7 +85,7 @@ ___
 
 #### Defined in
 
-[src/util.ts:124](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L124)
+[src/util.ts:125](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L125)
 
 ## Functions
 
@@ -101,7 +101,7 @@ Returns a well-known configuration path.
 
 #### Defined in
 
-[src/util.ts:81](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L81)
+[src/util.ts:82](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L82)
 
 ___
 
@@ -125,7 +125,7 @@ Prints a timestamp indicating the beginning of execution.
 
 #### Defined in
 
-[src/util.ts:90](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L90)
+[src/util.ts:91](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L91)
 
 ___
 
@@ -163,7 +163,7 @@ ___
 
 #### Defined in
 
-[src/util.ts:555](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L555)
+[src/util.ts:558](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L558)
 
 ___
 
@@ -204,7 +204,7 @@ fail.
 
 #### Defined in
 
-[src/util.ts:523](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L523)
+[src/util.ts:526](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L526)
 
 ___
 
@@ -226,7 +226,7 @@ Generate standard command usage text.
 
 #### Defined in
 
-[src/util.ts:70](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L70)
+[src/util.ts:71](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L71)
 
 ___
 
@@ -248,7 +248,7 @@ Lower-cases the first letter of `str`.
 
 #### Defined in
 
-[src/util.ts:63](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L63)
+[src/util.ts:64](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L64)
 
 ___
 
@@ -270,7 +270,7 @@ Upper-cases the first letter of `str`.
 
 #### Defined in
 
-[src/util.ts:41](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L41)
+[src/util.ts:42](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L42)
 
 ___
 
@@ -292,7 +292,7 @@ Upper-cases the first letter of `str`.
 
 #### Defined in
 
-[src/util.ts:48](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L48)
+[src/util.ts:49](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L49)
 
 ___
 
@@ -346,7 +346,7 @@ functionality:
 
 #### Defined in
 
-[src/util.ts:170](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L170)
+[src/util.ts:171](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L171)
 
 ___
 
@@ -381,20 +381,27 @@ function.
 
 #### Defined in
 
-[src/util.ts:390](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L390)
+[src/util.ts:391](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L391)
 
 ___
 
 ### withStandardListrTaskConfig
 
-▸ **withStandardListrTaskConfig**(`«destructured»`): `ListrTask`\<`unknown`, typeof `DefaultRenderer` \| typeof `VerboseRenderer`, typeof `SimpleRenderer`\>
+▸ **withStandardListrTaskConfig**\<`T`\>(`«destructured»`): `ListrTask`\<`unknown`, typeof `DefaultRenderer` \| typeof `VerboseRenderer`, typeof `SimpleRenderer`\>
+
+#### Type parameters
+
+| Name | Type |
+| :------ | :------ |
+| `T` | extends `ApiCallerFactory` |
 
 #### Parameters
 
 | Name | Type | Default value |
 | :------ | :------ | :------ |
 | `«destructured»` | `Object` | `undefined` |
-| › `callback` | (`context`: \{ `ctx`: `any` ; `dns`: \{ `addHostileIps`: (`__namedParameters`: \{ `accountId`: `string` ; `listId`: `string` ; `targetIps`: `string`[]  }) => `Promise`\<`void`\> ; `callApi`: \<Result, ResponseJson\>(`callApiOptions`: \{ `body?`: `JsonValue` ; `uri`: `string`  } & `Omit`\<`RequestInit`, ``"body"``\> & \{ `[additionalOption: string]`: `unknown`;  }, `__namedParameters`: \{ `parseResultJson?`: `boolean` = true }) => `Promise`\<`Result` extends `undefined` ? [result: Response, responseBody: string] : [result: Result, responseJson: ResponseJson]\> ; `createDnsARecord`: (`__namedParameters`: \{ `domainName`: `string` ; `ipv4`: `string` ; `proxied`: `boolean` = false; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsAaaaRecord`: (`__namedParameters`: \{ `domainName`: `string` ; `ipv6`: `string` ; `proxied`: `boolean` = false; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsCaaRecords`: (`__namedParameters`: \{ `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsCnameRecord`: (`__namedParameters`: \{ `domainName`: `string` ; `proxied`: `boolean` = false; `redirectToHostname`: `string` ; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsMxRecord`: (`__namedParameters`: \{ `domainName`: `string` ; `mailHostname`: `string` ; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsRecord`: (`__namedParameters`: \{ `[additionalOption: string]`: `unknown`; `domainName`: `string` ; `type`: `string` ; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsTxtRecord`: (`__namedParameters`: \{ `content`: `string` ; `domainName`: `string` ; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `createDnsZone`: (`__namedParameters`: \{ `accountId`: `string` ; `domainName`: `string`  }) => `Promise`\<`string`\> ; `createDnsZoneCustomFirewallRulesetRule`: (`__namedParameters`: \{ `[additionalOption: string]`: `unknown`; `allowDuplicate?`: `boolean` ; `ruleAction`: `string` ; `ruleDescription`: `string` ; `ruleExpression`: `string` ; `rulesetPhaseName`: `string` ; `zoneId`: `string`  }) => `Promise`\<`string`\> ; `createDnsZoneRulesetRule`: (`__namedParameters`: \{ `[additionalOption: string]`: `unknown`; `action`: `string` ; `description`: `string` ; `expression`: `string` ; `rulesetId`: `string` ; `zoneId`: `string`  }) => `Promise`\<`string`\> ; `deleteDnsRecord`: (`__namedParameters`: \{ `recordId`: `string` ; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `deleteDnsZone`: (`__namedParameters`: \{ `zoneId`: `string`  }) => `Promise`\<`void`\> ; `deleteDnsZoneCustomFirewallRuleset`: (`__namedParameters`: \{ `rulesetPhaseName`: `string` ; `zoneId`: `string`  }) => `Promise`\<`void`\> ; `deleteHostileIps`: (`__namedParameters`: \{ `accountId`: `string` ; `listId`: `string` ; `listItemIds`: `string`[]  }) => `Promise`\<`void`\> ; `getCloudflareIps`: () => `Promise`\<\{ `ipv4`: `string`[] ; `ipv6`: `string`[]  }\> ; `getDnsRecord`: (`__namedParameters`: \{ `fullDomainName`: `string` ; `type`: `string` ; `zoneId`: `string`  }) => `Promise`\<`undefined` \| `ResourceRecord`\> ; `getDnsRecordId`: (`__namedParameters`: \{ `fullDomainName`: `string` ; `type`: `string` ; `zoneId`: `string`  }) => `Promise`\<`undefined` \| `string`\> ; `getDnsRecords`: (`__namedParameters`: \{ `recordName?`: `string` ; `recordType?`: `string` ; `zoneId`: `string`  }) => `Promise`\<`ResourceRecord`[]\> ; `getDnsZone`: (`__namedParameters`: \{ `domainName`: `string`  }) => `Promise`\<`undefined` \| `Zone`\> ; `getDnsZoneCustomFirewallRuleset`: (`__namedParameters`: \{ `rulesetPhaseName`: `string` ; `zoneId`: `string`  }) => `Promise`\<`undefined` \| `Ruleset`\> ; `getDnsZoneCustomFirewallRulesetId`: (`__namedParameters`: \{ `rulesetPhaseName`: `string` ; `zoneId`: `string`  }) => `Promise`\<`string`\> ; `getDnsZoneCustomFirewallRulesetRules`: (`__namedParameters`: \{ `rulesetPhaseName`: `string` ; `zoneId`: `string`  }) => `Promise`\<`RulesetRule`[]\> ; `getDnsZoneId`: (`__namedParameters`: \{ `domainName`: `string`  }) => `Promise`\<`undefined` \| `string`\> ; `getDnsZoneRulesetRules`: (`__namedParameters`: \{ `rulesetId`: `string` ; `zoneId`: `string`  }) => `Promise`\<`RulesetRule`[]\> ; `getDnsZoneRulesets`: (`__namedParameters`: \{ `zoneId`: `string`  }) => `Promise`\<`Ruleset`[]\> ; `getDnsZones`: () => `Promise`\<`Zone`[]\> ; `getHostileIps`: (`__namedParameters`: \{ `accountId`: `string` ; `listId`: `string`  }) => `Promise`\<`HostileIp`[]\> ; `reinitializeDnsZone`: (`__namedParameters`: \{ `zoneId`: `string`  }) => `Promise`\<`void`\>  } ; `taskLogger`: `ExtendedLogger` ; `thisTask`: `TaskWrapper`\<`unknown`, typeof `DefaultRenderer` \| typeof `VerboseRenderer`, typeof `SimpleRenderer`\>  }) => `void` \| `ListrTaskResult`\<`unknown`\> | `undefined` |
+| › `apiCallerFactory` | `T` | `undefined` |
+| › `callback` | (`context`: \{ `api`: `Awaited`\<`ReturnType`\<`T`\>\> ; `ctx`: `any` ; `taskLogger`: `ExtendedLogger` ; `thisTask`: `TaskWrapper`\<`unknown`, typeof `DefaultRenderer` \| typeof `VerboseRenderer`, typeof `SimpleRenderer`\>  }) => `void` \| `ListrTaskResult`\<`unknown`\> | `undefined` |
 | › `configPath` | `string` | `undefined` |
 | › `debug` | `ExtendedDebugger` | `undefined` |
 | › `initialTitle` | `string` | `undefined` |
@@ -406,4 +413,4 @@ ___
 
 #### Defined in
 
-[src/util.ts:468](https://github.com/Xunnamius/xunnctl/blob/2a2fcdf/src/util.ts#L468)
+[src/util.ts:469](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/util.ts#L469)
