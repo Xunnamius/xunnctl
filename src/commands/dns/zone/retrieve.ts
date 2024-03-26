@@ -4,10 +4,15 @@ import { ParentConfiguration } from '@black-flag/core';
 import jmespath from 'jmespath';
 
 import { TAB } from 'multiverse/rejoinder';
-import { Zone } from 'universe/api/cloudflare/index.js';
+import { makeCloudflareApiCaller, type Zone } from 'universe/api/cloudflare/index.js';
 import { CustomExecutionContext } from 'universe/configure';
-import { LogTag } from 'universe/constant';
+import { $originApi, LogTag } from 'universe/constant';
 import { TaskError } from 'universe/error';
+
+import {
+  makeDigitalOceanApiCaller,
+  type Domain
+} from 'universe/api/digitalocean/index.js';
 
 import {
   GlobalCliArguments,
@@ -18,6 +23,8 @@ import {
   withGlobalOptionsHandling,
   withStandardListrTaskConfig
 } from 'universe/util';
+
+import type { WithOriginalApi } from 'types/global';
 
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
@@ -65,7 +72,7 @@ export default async function ({
         debug('localQuery: %O', localQuery);
 
         const { isHushed, startTime } = state;
-        const results = { zoneApices: [] as Zone[] };
+        const results = { zoneApices: [] as WithOriginalApi<Zone | Domain>[] };
 
         if (localQuery) {
           taskManager.options = Object.assign(taskManager.options || {}, {
@@ -78,22 +85,58 @@ export default async function ({
         taskManager.add([
           withStandardListrTaskConfig({
             initialTitle: 'Downloading apex domain zones from Cloudflare...',
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ thisTask, dns, taskLogger }) {
+            async callback({ thisTask, api, taskLogger }) {
               try {
-                const zoneApices = (await dns.getDnsZones()).filter(({ name }) => {
-                  const returnValue = apexAllKnown || apex.includes(name);
-                  taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
-                  return returnValue;
-                });
+                const zoneApices = (await api.getDnsZones())
+                  .filter(({ name }) => {
+                    const returnValue = apexAllKnown || apex.includes(name);
+                    taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                    return returnValue;
+                  })
+                  .map<WithOriginalApi<Zone>>((zone_) => {
+                    const zone = zone_ as WithOriginalApi<typeof zone_>;
+                    zone[$originApi] = 'cloudflare';
+                    return zone;
+                  });
 
                 thisTask.title = `Downloaded ${zoneApices.length} apex domain zone${zoneApices.length === 1 ? '' : 's'} from Cloudflare`;
-                results.zoneApices = zoneApices;
+                results.zoneApices.push(...zoneApices);
               } catch (error) {
                 throw new TaskError('failed to download zones from Cloudflare account', {
                   cause: error
                 });
+              }
+            }
+          }),
+          withStandardListrTaskConfig({
+            initialTitle: 'Downloading apex domain zones from DigitalOcean...',
+            apiCallerFactory: makeDigitalOceanApiCaller,
+            configPath,
+            debug,
+            async callback({ thisTask, api, taskLogger }) {
+              try {
+                const zoneApices = (await api.getDnsZones())
+                  .filter(({ name }) => {
+                    const returnValue = apexAllKnown || apex.includes(name);
+                    taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                    return returnValue;
+                  })
+                  .map<WithOriginalApi<Domain>>((zone_) => {
+                    const zone = zone_ as WithOriginalApi<typeof zone_>;
+                    zone[$originApi] = 'digitalocean';
+                    return zone;
+                  });
+
+                thisTask.title = `Downloaded ${zoneApices.length} apex domain zone${zoneApices.length === 1 ? '' : 's'} from DigitalOcean`;
+                results.zoneApices.push(...zoneApices);
+              } catch (error) {
+                throw new TaskError(
+                  'failed to download zones from DigitalOcean account',
+                  { cause: error }
+                );
               }
             }
           })
@@ -121,18 +164,29 @@ export default async function ({
           }
         } else {
           results.zoneApices.forEach((zone) => {
-            // eslint-disable-next-line unicorn/no-array-reduce
-            const suffix = Object.entries(zone).reduce(
-              (str, [key, value]) =>
-                `${str}\n${TAB}${toSpacedSentenceCase(key)}: ${JSON.stringify(value)}`,
-              ''
-            );
+            if (isHushed) {
+              genericLogger(
+                [LogTag.IF_NOT_SILENCED],
+                `[${zone[$originApi] === 'cloudflare' ? 'CF' : 'DO'}] ${zone.name}`
+              );
+            } else {
+              // eslint-disable-next-line unicorn/no-array-reduce
+              const suffix = Object.entries(zone).reduce(
+                (str, [key, value]) =>
+                  `${str}\n${TAB}${toSpacedSentenceCase(key)}: ${JSON.stringify(value)}`,
+                ''
+              );
 
-            genericLogger(
-              [LogTag.IF_NOT_SILENCED],
-              isHushed ? zone.name : `Zone: ${zone.name}${suffix || `\n${TAB}(no data)`}`
-            );
+              genericLogger(
+                [LogTag.IF_NOT_SILENCED],
+                `\nZone: ${zone.name}${suffix || `\n${TAB}(no data)`}`
+              );
+            }
           });
+
+          if (!results.zoneApices.length) {
+            genericLogger([LogTag.IF_NOT_SILENCED], '(no data)');
+          }
         }
       }
     )

@@ -4,10 +4,20 @@ import { ParentConfiguration } from '@black-flag/core';
 import jmespath from 'jmespath';
 
 import { TAB } from 'multiverse/rejoinder';
-import { type ResourceRecord } from 'universe/api/cloudflare/index.js';
 import { CustomExecutionContext } from 'universe/configure';
 import { LogTag } from 'universe/constant';
 import { TaskError } from 'universe/error';
+
+import {
+  isCfResourceRecord,
+  makeCloudflareApiCaller,
+  type ResourceRecord as CfResourceRecord
+} from 'universe/api/cloudflare/index.js';
+
+import {
+  makeDigitalOceanApiCaller,
+  type ResourceRecord as DoResourceRecord
+} from 'universe/api/digitalocean/index.js';
 
 import {
   GlobalCliArguments,
@@ -97,8 +107,10 @@ export default async function ({
 
         const { isHushed, isQuieted, startTime } = state;
         const results = {
-          zoneApexIds: {} as { [name: string]: string },
-          zoneApicesRecords: {} as { [name: string]: ResourceRecord[] }
+          zoneApexIds: {} as { [name: string]: { id: string; origin: string } },
+          zoneApicesRecords: {} as {
+            [name: string]: (CfResourceRecord | DoResourceRecord)[];
+          }
         };
 
         if (localQuery) {
@@ -112,66 +124,159 @@ export default async function ({
         taskManager.add([
           withStandardListrTaskConfig({
             initialTitle: `Downloading ${apexAllKnown ? 'all' : 'individual'} apex domain ids from Cloudflare...`,
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ thisTask, dns, taskLogger }) {
+            async callback({ thisTask, api, taskLogger }) {
               try {
-                const zoneApexEntries = (await dns.getDnsZones())
+                const zoneApexEntries = (await api.getDnsZones())
                   .filter(({ name }) => {
                     const returnValue = apexAllKnown || apex.includes(name);
                     taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
                     return returnValue;
                   })
-                  .map(({ name, id }) => [name, id]);
-
-                const zoneApexIds = Object.fromEntries(zoneApexEntries);
+                  .map(({ name, id }) => {
+                    return (results.zoneApexIds[name] = {
+                      id,
+                      origin: 'cloudflare'
+                    });
+                  });
 
                 thisTask.title = `Downloaded ${zoneApexEntries.length} apex domain id${zoneApexEntries.length === 1 ? '' : 's'} from Cloudflare`;
-                results.zoneApexIds = zoneApexIds;
               } catch (error) {
                 throw new TaskError('failed to download zones from Cloudflare account', {
                   cause: error
                 });
               }
             }
-          })
-        ]);
-
-        taskManager.add([
+          }),
           withStandardListrTaskConfig({
             initialTitle: 'Downloading resource records from Cloudflare...',
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ thisTask, dns, taskLogger }) {
+            async callback({ thisTask, api, taskLogger }) {
               try {
                 let totalRecordCount = 0;
                 const resourceRecordsEntries = await Promise.all(
-                  Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
-                    taskLogger('retrieving records for %O (%O)', zoneName, zoneId);
+                  Object.entries(results.zoneApexIds).map(
+                    async ([zoneName, { id: zoneId, origin }]) => {
+                      if (origin === 'cloudflare') {
+                        taskLogger('retrieving records for %O (%O)', zoneName, zoneId);
 
-                    const records_ = await dns.getDnsRecords({
-                      zoneId,
-                      recordName: searchForName ? undefined : recordName,
-                      recordType
-                    });
+                        const records_ = await api.getDnsRecords({
+                          zoneId,
+                          recordName: searchForName ? undefined : recordName,
+                          recordType
+                        });
 
-                    const records =
-                      searchForName && recordName
-                        ? records_.filter(({ name }) => name.startsWith(recordName))
-                        : records_;
+                        const records =
+                          searchForName && recordName
+                            ? records_.filter(({ name }) => name.startsWith(recordName))
+                            : records_;
 
-                    totalRecordCount += records.length;
-                    return [zoneName, records] as const;
-                  })
+                        totalRecordCount += records.length;
+                        return [zoneName, records] as const;
+                      } else {
+                        taskLogger('skipped record retrieval for %O', zoneName);
+                        return [];
+                      }
+                    }
+                  )
                 );
 
-                const resourceRecords = Object.fromEntries(resourceRecordsEntries);
-
                 thisTask.title = `Downloaded ${totalRecordCount} resource record${totalRecordCount === 1 ? '' : 's'} from ${resourceRecordsEntries.length} apex domain(s)`;
-                results.zoneApicesRecords = resourceRecords;
+
+                resourceRecordsEntries.forEach(function ([key, value]) {
+                  if (key && value) {
+                    results.zoneApicesRecords[key] = value;
+                  }
+                });
               } catch (error) {
                 throw new TaskError(
                   'failed to download resource records from Cloudflare account',
+                  { cause: error }
+                );
+              }
+            }
+          }),
+          withStandardListrTaskConfig({
+            initialTitle: `Downloading ${apexAllKnown ? 'all' : 'individual'} apex domain names from DigitalOcean...`,
+            apiCallerFactory: makeDigitalOceanApiCaller,
+            configPath,
+            debug,
+            async callback({ thisTask, api, taskLogger }) {
+              try {
+                const zoneApexNames = (await api.getDnsZones())
+                  .filter(({ name }) => {
+                    const returnValue = apexAllKnown || apex.includes(name);
+                    taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                    return returnValue;
+                  })
+                  .map(({ name }) => {
+                    return (results.zoneApexIds[name] = {
+                      id: name,
+                      origin: 'digitalocean'
+                    });
+                  });
+
+                thisTask.title = `Downloaded ${zoneApexNames.length} apex domain name${zoneApexNames.length === 1 ? '' : 's'} from DigitalOcean`;
+              } catch (error) {
+                throw new TaskError(
+                  'failed to download zone names from DigitalOcean account',
+                  { cause: error }
+                );
+              }
+            }
+          }),
+          withStandardListrTaskConfig({
+            initialTitle: 'Downloading resource records from DigitalOcean...',
+            apiCallerFactory: makeDigitalOceanApiCaller,
+            configPath,
+            debug,
+            async callback({ thisTask, api, taskLogger }) {
+              try {
+                let totalRecordCount = 0;
+                let totalApices = 0;
+
+                const resourceRecordsEntries = await Promise.all(
+                  Object.entries(results.zoneApexIds).map(
+                    async ([zoneName, { origin }]) => {
+                      if (origin === 'digitalocean') {
+                        taskLogger('retrieving records for %O', zoneName);
+
+                        const records_ = await api.getDnsRecords({
+                          zoneName,
+                          fullRecordName: searchForName ? undefined : recordName,
+                          recordType
+                        });
+
+                        const records =
+                          searchForName && recordName
+                            ? records_.filter(({ name }) => name.startsWith(recordName))
+                            : records_;
+
+                        totalRecordCount += records.length;
+                        totalApices += 1;
+                        return [zoneName, records] as const;
+                      } else {
+                        taskLogger('skipped record retrieval for %O', zoneName);
+                        return [];
+                      }
+                    }
+                  )
+                );
+
+                thisTask.title = `Downloaded ${totalRecordCount} resource record${totalRecordCount === 1 ? '' : 's'} from ${totalApices} apex domain${totalApices === 1 ? '' : 's'}`;
+
+                resourceRecordsEntries.forEach(function ([key, value]) {
+                  if (key && value) {
+                    results.zoneApicesRecords[key] = value;
+                  }
+                });
+              } catch (error) {
+                throw new TaskError(
+                  'failed to download resource records from DigitalOcean account',
                   { cause: error }
                 );
               }
@@ -206,13 +311,14 @@ export default async function ({
             ([zoneName, resourceRecords]) => {
               genericLogger(
                 [LogTag.IF_NOT_SILENCED],
-                `${isHushed ? '' : '\n'}Zone: ${zoneName}${isHushed && !isQuieted ? '\n' : ''}${
+                `${isHushed ? '' : '\n'}Zone: ${zoneName} (${results.zoneApexIds[zoneName].origin})${isHushed && !isQuieted ? '\n' : ''}${
                   isQuieted
                     ? ` (${resourceRecords.length} records)`
                     : // eslint-disable-next-line unicorn/no-array-reduce
                       resourceRecords.reduce((str, record) => {
+                        const isCf = isCfResourceRecord(record);
                         const suffix = isHushed
-                          ? `${TAB}${TAB}Content: ${record.content}\n`
+                          ? `${TAB}${TAB}Content: ${isCf ? record.content : record.data}\n`
                           : // eslint-disable-next-line unicorn/no-array-reduce
                             Object.entries(record).reduce((substr, [key, value]) => {
                               return `${substr}\n${TAB}${TAB}${toSpacedSentenceCase(
@@ -222,7 +328,7 @@ export default async function ({
 
                         return (
                           str +
-                          `${isHushed ? '' : '\n\n'}${TAB}[${record.type}] ${record.name}${record.proxied ? ' <PROXIED>' : ''}\n` +
+                          `${isHushed ? '' : '\n\n'}${TAB}[${record.type}] ${record.name === '@' ? zoneName : record.name}${isCf && record.proxied ? ' <PROXIED>' : ''}\n` +
                           suffix
                         );
                       }, '') || `${isHushed ? '' : '\n'}${TAB}(no data)`

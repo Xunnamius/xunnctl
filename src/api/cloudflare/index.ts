@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 
 import { ExtendedLogger } from 'multiverse/rejoinder';
-import { makeApiCaller } from 'universe/api';
+import { makeApiCallerBase } from 'universe/api';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { LogTag } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
@@ -22,8 +22,10 @@ export async function makeCloudflareApiCaller({
   configPath,
   debug: debug_,
   log
-}: { configPath: string; log: ExtendedLogger } & Parameters<typeof makeApiCaller>[0]) {
-  const callApi_ = makeApiCaller({ debug: debug_ });
+}: { configPath: string; log: ExtendedLogger } & Parameters<
+  typeof makeApiCallerBase
+>[0]) {
+  const callApi_ = makeApiCallerBase({ debug: debug_ });
 
   return {
     /**
@@ -265,33 +267,33 @@ export async function makeCloudflareApiCaller({
     /**
      * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
      *
-     * Note that `fullDomainName` must be the **FULLY RESOLVED LEGAL NAME** of
+     * Note that `fullRecordName` must be the **FULLY QUALIFIED RECORD NAME** of
      * the record that includes the zone apex itself (e.g. "\*.xunn.at" instead
-     * of just "\*" when trying to delete said CNAME record).
+     * of just "\*" when trying to retrieve said CNAME record).
      *
      * @return The ID of a DNS record.
      */
     async getDnsRecord({
       zoneId,
-      fullDomainName,
+      fullRecordName,
       type
     }: {
       zoneId: string;
-      fullDomainName: string;
+      fullRecordName: string;
       type: string;
     }) {
       const debug = debug_.extend('getDnsRecordId');
       debug('entered method');
 
       const recordId = await this.callApi<ResourceRecord[]>({
-        uri: `zones/${zoneId}/dns_records?name=${fullDomainName}&type=${type}`,
+        uri: `zones/${zoneId}/dns_records?name=${fullRecordName}&type=${type}`,
         method: 'GET'
       }).then(([records]) => {
-        debug('searching for %O', fullDomainName);
+        debug('searching for %O', fullRecordName);
 
         const record = records.find(({ name }: { name: string }) => {
           debug('saw %O', name);
-          return name === fullDomainName;
+          return name === fullRecordName;
         });
 
         debug('selected record: %O', record);
@@ -305,25 +307,29 @@ export async function makeCloudflareApiCaller({
     /**
      * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
      *
-     * Note that `fullDomainName` must be the **FULLY RESOLVED LEGAL NAME** of
+     * Note that `fullRecordName` must be the **FULLY QUALIFIED RECORD NAME** of
      * the record that includes the zone apex itself (e.g. "*.xunn.at" instead
-     * of just "*" when trying to delete said CNAME record).
+     * of just "*" when trying to retrieve said CNAME record).
      *
      * @return The ID of a DNS record.
      */
     async getDnsRecordId({
       zoneId,
-      fullDomainName,
+      fullRecordName,
       type
     }: {
       zoneId: string;
-      fullDomainName: string;
+      fullRecordName: string;
       type: string;
     }) {
       const debug = debug_.extend('getDnsRecordId');
       debug('entered method');
 
-      const record = await this.getDnsRecord({ zoneId, fullDomainName, type });
+      const record = await this.getDnsRecord({
+        zoneId,
+        fullRecordName: fullRecordName,
+        type
+      });
       const recordId = record?.id;
 
       debug('selected record.id: %O', recordId);
@@ -1007,4 +1013,11 @@ export async function makeCloudflareApiCaller({
       );
     }
   };
+}
+
+/**
+ * Lightweight type guard.
+ */
+export function isCfResourceRecord(obj: unknown): obj is ResourceRecord {
+  return !!obj && typeof obj === 'object' && 'content' in obj;
 }

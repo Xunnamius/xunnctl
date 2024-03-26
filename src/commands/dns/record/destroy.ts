@@ -7,6 +7,9 @@ import { CustomExecutionContext } from 'universe/configure';
 import { standardSuccessMessage } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
 
+import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
+import { makeDigitalOceanApiCaller } from 'universe/api/digitalocean/index.js';
+
 import {
   GlobalCliArguments,
   logStartTime,
@@ -88,7 +91,8 @@ export default async function ({
 
         const { startTime } = state;
         const results = {
-          zoneApexIds: {} as { [name: string]: string }
+          cfZoneApexIds: {} as { [name: string]: string },
+          doApices: [] as string[]
         };
 
         logStartTime({ log, startTime });
@@ -118,11 +122,12 @@ export default async function ({
         taskManager.add([
           withStandardListrTaskConfig({
             initialTitle: `Downloading ${apexAllKnown ? 'all' : 'individual'} apex domain ids from Cloudflare...`,
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ thisTask, dns, taskLogger }) {
+            async callback({ thisTask, api, taskLogger }) {
               try {
-                const zoneApexEntries = (await dns.getDnsZones())
+                const zoneApexEntries = (await api.getDnsZones())
                   .filter(({ name }) => {
                     const returnValue = apexAllKnown || apices.includes(name);
                     taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
@@ -133,7 +138,7 @@ export default async function ({
                 const zoneApexIds = Object.fromEntries(zoneApexEntries);
 
                 thisTask.title = `Downloaded ${zoneApexEntries.length} apex domain id${zoneApexEntries.length === 1 ? '' : 's'} from Cloudflare`;
-                results.zoneApexIds = zoneApexIds;
+                results.cfZoneApexIds = zoneApexIds;
               } catch (error) {
                 throw new TaskError('failed to download zones from Cloudflare account', {
                   cause: error
@@ -142,38 +147,112 @@ export default async function ({
             }
           }),
           withStandardListrTaskConfig({
-            initialTitle: `Downloading resource records from selected zones...`,
+            initialTitle: `Deleting resource records from selected Cloudflare zones...`,
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ dns, taskLogger, thisTask: zoneTask }) {
-              const count = Object.keys(results.zoneApexIds).length;
-              zoneTask.title = `Downloading resource records from ${count} zones...`;
+            async callback({ api, taskLogger, thisTask: zoneTask }) {
+              const count = Object.keys(results.cfZoneApexIds).length;
+              zoneTask.title = `Deleting resource records from ${count} Cloudflare zone${count === 1 ? '' : 's'}...`;
 
               try {
                 let totalRecordCount = 0;
 
                 await Promise.all(
-                  Object.entries(results.zoneApexIds).map(async ([zoneName, zoneId]) => {
-                    taskLogger(
-                      'retrieving and then deleting records for %O (%O)',
-                      zoneName,
-                      zoneId
-                    );
+                  Object.entries(results.cfZoneApexIds).map(
+                    async ([zoneName, zoneId]) => {
+                      taskLogger(
+                        'retrieving and then deleting records for %O (%O)',
+                        zoneName,
+                        zoneId
+                      );
 
-                    const records_ = await dns.getDnsRecords({
-                      zoneId,
-                      recordName: searchForName ? undefined : recordName,
+                      const records_ = await api.getDnsRecords({
+                        zoneId,
+                        recordName: searchForName ? undefined : recordName,
+                        recordType
+                      });
+
+                      const records =
+                        searchForName && recordName
+                          ? records_.filter(({ name }) => name.startsWith(recordName))
+                          : records_;
+
+                      await Promise.all(
+                        records.map(({ id: recordId }) =>
+                          api.deleteDnsRecord({ zoneId, recordId })
+                        )
+                      );
+
+                      totalRecordCount += records.length;
+                    }
+                  )
+                );
+
+                zoneTask.title = `Deleted ${totalRecordCount} resource record${totalRecordCount === 1 ? '' : 's'} from ${count} Cloudflare apex domain${count === 1 ? '' : 's'}`;
+              } catch (error) {
+                throw new TaskError(
+                  'failed to delete resource records from Cloudflare account',
+                  { cause: error }
+                );
+              }
+            }
+          }),
+          withStandardListrTaskConfig({
+            initialTitle: `Downloading ${apexAllKnown ? 'all' : 'individual'} apex domain ids from DigitalOcean...`,
+            apiCallerFactory: makeDigitalOceanApiCaller,
+            configPath,
+            debug,
+            async callback({ thisTask, api, taskLogger }) {
+              try {
+                results.doApices = (await api.getDnsZones())
+                  .filter(({ name }) => {
+                    const returnValue = apexAllKnown || apices.includes(name);
+                    taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
+                    return returnValue;
+                  })
+                  .map(({ name }) => name);
+
+                thisTask.title = `Downloaded ${results.doApices.length} apex domain id${results.doApices.length === 1 ? '' : 's'} from DigitalOcean`;
+              } catch (error) {
+                throw new TaskError(
+                  'failed to download zones from DigitalOcean account',
+                  { cause: error }
+                );
+              }
+            }
+          }),
+          withStandardListrTaskConfig({
+            initialTitle: `Deleting resource records from selected DigitalOcean zones...`,
+            apiCallerFactory: makeDigitalOceanApiCaller,
+            configPath,
+            debug,
+            async callback({ api, taskLogger, thisTask: zoneTask }) {
+              zoneTask.title = `Deleting resource records from ${results.doApices.length} DigitalOcean zone${results.doApices.length === 1 ? '' : 's'}...`;
+
+              try {
+                let totalRecordCount = 0;
+
+                await Promise.all(
+                  results.doApices.map(async (zoneName) => {
+                    taskLogger('retrieving and then deleting records for %O', zoneName);
+
+                    const records_ = await api.getDnsRecords({
+                      zoneName,
+                      fullRecordName: searchForName ? undefined : recordName,
                       recordType
                     });
 
                     const records =
                       searchForName && recordName
-                        ? records_.filter(({ name }) => name.startsWith(recordName))
+                        ? records_.filter(function ({ name }) {
+                            return name.startsWith(recordName.replace('@', zoneName));
+                          })
                         : records_;
 
                     await Promise.all(
                       records.map(({ id: recordId }) =>
-                        dns.deleteDnsRecord({ zoneId, recordId })
+                        api.deleteDnsRecord({ zoneName, recordId })
                       )
                     );
 
@@ -181,10 +260,10 @@ export default async function ({
                   })
                 );
 
-                zoneTask.title = `Deleted ${totalRecordCount} resource record${totalRecordCount === 1 ? '' : 's'} from ${count} apex domain(s)`;
+                zoneTask.title = `Deleted ${totalRecordCount} resource record${totalRecordCount === 1 ? '' : 's'} from ${results.doApices.length} DigitalOcean apex domain${results.doApices.length === 1 ? '' : 's'}`;
               } catch (error) {
                 throw new TaskError(
-                  'failed to delete resource records from Cloudflare account',
+                  'failed to delete resource records from DigitalOcean account',
                   { cause: error }
                 );
               }

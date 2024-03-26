@@ -6,7 +6,6 @@ import ip6addr from 'ip6addr';
 import { Promisable } from 'type-fest';
 import { Options } from 'yargs';
 
-import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import { CustomExecutionContext } from 'universe/configure';
 import { LogTag, globalLoggerNamespace } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
@@ -19,6 +18,8 @@ import {
   createListrTaskLogger,
   disableLoggingByTag
 } from 'multiverse/rejoinder';
+
+import type { ApiCallerFactory } from 'types/global';
 
 // TODO: When we inevitably turn most of this file into libs, be sure to
 // TODO: reference https://github.com/yargs/yargs/issues/2392 in one of the
@@ -465,21 +466,23 @@ export type ListrTaskLiteral = Exclude<
   Function
 >[number];
 
-export function withStandardListrTaskConfig({
+export function withStandardListrTaskConfig<T extends ApiCallerFactory>({
   callback,
   configPath,
   debug,
   initialTitle,
-  shouldRetry = false
+  shouldRetry = false,
+  apiCallerFactory
 }: {
   initialTitle: string;
   debug: ExtendedDebugger;
   configPath: string;
   shouldRetry?: number | false;
+  apiCallerFactory: T;
   callback: (context: {
     ctx: ListrManager['ctx'];
     thisTask: Parameters<ListrTaskLiteral['task']>[1];
-    dns: Awaited<ReturnType<typeof makeCloudflareApiCaller>>;
+    api: Awaited<ReturnType<T>>;
     taskLogger: ExtendedLogger;
   }) => ReturnType<ListrTaskLiteral['task']>;
 }) {
@@ -505,13 +508,13 @@ export function withStandardListrTaskConfig({
         task: thisTask
       });
 
-      const dns = await makeCloudflareApiCaller({
+      const api = (await apiCallerFactory({
         configPath,
         debug,
         log: taskLogger
-      });
+      })) as Awaited<ReturnType<T>>;
 
-      return callback({ ctx, thisTask, dns, taskLogger });
+      return callback({ ctx, thisTask, api, taskLogger });
     }
   } as ListrTaskLiteral;
 }

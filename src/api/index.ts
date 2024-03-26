@@ -6,7 +6,7 @@ let monotonic = 0;
 /**
  * Returns a generic fetch wrapper for making API calls.
  */
-export function makeApiCaller({ debug: debug_ }: { debug: ExtendedDebugger }) {
+export function makeApiCallerBase({ debug: debug_ }: { debug: ExtendedDebugger }) {
   return async function ({
     uri,
     method,

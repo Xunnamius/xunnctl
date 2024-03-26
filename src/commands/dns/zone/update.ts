@@ -2,7 +2,7 @@ import assert from 'node:assert';
 
 import { ParentConfiguration } from '@black-flag/core';
 
-import { Zone, makeCloudflareApiCaller } from 'universe/api/cloudflare';
+import { Zone, makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import { doDnsZoneInitialization } from 'universe/commands/dns/zone/create';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { CustomExecutionContext } from 'universe/configure';
@@ -119,11 +119,12 @@ export default async function ({
         taskManager.add([
           withStandardListrTaskConfig({
             initialTitle: 'Downloading apex domain zones from Cloudflare...',
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ thisTask, dns, taskLogger }) {
+            async callback({ thisTask, api, taskLogger }) {
               try {
-                const zoneApices = (await dns.getDnsZones()).filter(({ name }) => {
+                const zoneApices = (await api.getDnsZones()).filter(({ name }) => {
                   const returnValue = apexAllKnown || apices.includes(name);
                   taskLogger(returnValue ? `KEEP: ${name}` : `DROP: ${name}`);
                   return returnValue;
@@ -148,9 +149,10 @@ export default async function ({
 
                     return withStandardListrTaskConfig({
                       initialTitle: `Reinitializing "${zoneName}"`,
+                      apiCallerFactory: makeCloudflareApiCaller,
                       configPath,
                       debug,
-                      async callback({ dns, taskLogger, thisTask: zoneTask }) {
+                      async callback({ api, taskLogger, thisTask: zoneTask }) {
                         debug('operating on zone %O (%O)', zoneName, zoneId);
 
                         if (purgeFirst) {
@@ -165,7 +167,7 @@ export default async function ({
                           await doDnsZoneInitializationPrePurge({
                             zoneId,
                             withLocalErrorReporting,
-                            dns,
+                            api: api,
                             mainZoneId,
                             zoneName,
                             firewallPhaseName
@@ -180,7 +182,7 @@ export default async function ({
                           errorPrefix: 'failed to reinitialize ',
                           taskLogger
                         })('DNS zone configuration', async function () {
-                          await dns.reinitializeDnsZone({ zoneId });
+                          await api.reinitializeDnsZone({ zoneId });
                         });
 
                         const withLocalErrorReporting = makeLocalErrorReportingWrapper({
@@ -193,7 +195,7 @@ export default async function ({
 
                         await doDnsZoneInitialization({
                           debug,
-                          dns,
+                          api,
                           firewallPhaseName,
                           mainZoneId,
                           wafBlockHostileIpListName,
@@ -235,14 +237,14 @@ export default async function ({
 export async function doDnsZoneInitializationPrePurge({
   zoneId,
   withLocalErrorReporting,
-  dns,
+  api,
   mainZoneId,
   zoneName,
   firewallPhaseName
 }: {
   zoneId: string;
   withLocalErrorReporting: Awaited<ReturnType<typeof makeLocalErrorReportingWrapper>>;
-  dns: Awaited<ReturnType<typeof makeCloudflareApiCaller>>;
+  api: Awaited<ReturnType<typeof makeCloudflareApiCaller>>;
   mainZoneId: string;
   zoneName: string;
   firewallPhaseName: string;
@@ -252,138 +254,138 @@ export async function doDnsZoneInitializationPrePurge({
       async function () {
         const subject = 'root CNAME record';
         await withLocalErrorReporting(subject, async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: zoneName,
+            fullRecordName: zoneName,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       async function () {
         await withLocalErrorReporting('wildcard CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `*.${zoneName}`,
+            fullRecordName: `*.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       async function () {
         await withLocalErrorReporting('MX record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: zoneName,
+            fullRecordName: zoneName,
             type: 'mx'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       async function () {
         await withLocalErrorReporting('mail CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `mail.${zoneName}`,
+            fullRecordName: `mail.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       // async function () {
       //   await withLocalErrorReporting('ACME mail CNAME record', async function () {
-      //     const recordId = await dns.getDnsRecordId({
+      //     const recordId = await api.getDnsRecordId({
       //       zoneId,
-      //       fullDomainName: `_acme-challenge.mail.${zoneName}`,
+      //       fullRecordName: `_acme-challenge.mail.${zoneName}`,
       //       type: 'cname'
       //     });
 
       //     if (recordId) {
-      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //       return api.deleteDnsRecord({ zoneId, recordId });
       //     }
       //   });
       // },
       async function () {
         await withLocalErrorReporting('smtp CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `smtp.${zoneName}`,
+            fullRecordName: `smtp.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       // async function () {
       //   await withLocalErrorReporting('ACME smtp CNAME record', async function () {
-      //     const recordId = await dns.getDnsRecordId({
+      //     const recordId = await api.getDnsRecordId({
       //       zoneId,
-      //       fullDomainName: `_acme-challenge.smtp.${zoneName}`,
+      //       fullRecordName: `_acme-challenge.smtp.${zoneName}`,
       //       type: 'cname'
       //     });
 
       //     if (recordId) {
-      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //       return api.deleteDnsRecord({ zoneId, recordId });
       //     }
       //   });
       // },
       async function () {
         await withLocalErrorReporting('imap CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `imap.${zoneName}`,
+            fullRecordName: `imap.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       // async function () {
       //   await withLocalErrorReporting('ACME imap CNAME record', async function () {
-      //     const recordId = await dns.getDnsRecordId({
+      //     const recordId = await api.getDnsRecordId({
       //       zoneId,
-      //       fullDomainName: `_acme-challenge.imap.${zoneName}`,
+      //       fullRecordName: `_acme-challenge.imap.${zoneName}`,
       //       type: 'cname'
       //     });
 
       //     if (recordId) {
-      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //       return api.deleteDnsRecord({ zoneId, recordId });
       //     }
       //   });
       // },
       async function () {
         await withLocalErrorReporting('neutral SPF TXT record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: zoneName,
+            fullRecordName: zoneName,
             type: 'txt'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       async function () {
         await withLocalErrorReporting('letsencrypt CAA records', async function () {
           const recordIds = (
-            await dns.getDnsRecords({
+            await api.getDnsRecords({
               zoneId,
               recordName: zoneName,
               recordType: 'caa'
@@ -393,7 +395,7 @@ export async function doDnsZoneInitializationPrePurge({
           if (recordIds.length) {
             return void (await Promise.all(
               recordIds.map((recordId) => {
-                return dns.deleteDnsRecord({ zoneId, recordId });
+                return api.deleteDnsRecord({ zoneId, recordId });
               })
             ));
           }
@@ -401,40 +403,40 @@ export async function doDnsZoneInitializationPrePurge({
       },
       async function () {
         await withLocalErrorReporting('ADSP DKIM CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `_adsp._domainkey.${zoneName}`,
+            fullRecordName: `_adsp._domainkey.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       async function () {
         await withLocalErrorReporting('default key DKIM CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `default._domainkey.${zoneName}`,
+            fullRecordName: `default._domainkey.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
       async function () {
         await withLocalErrorReporting('DMARC CNAME record', async function () {
-          const recordId = await dns.getDnsRecordId({
+          const recordId = await api.getDnsRecordId({
             zoneId,
-            fullDomainName: `_dmarc.${zoneName}`,
+            fullRecordName: `_dmarc.${zoneName}`,
             type: 'cname'
           });
 
           if (recordId) {
-            return dns.deleteDnsRecord({ zoneId, recordId });
+            return api.deleteDnsRecord({ zoneId, recordId });
           }
         });
       },
@@ -442,21 +444,21 @@ export async function doDnsZoneInitializationPrePurge({
         await withLocalErrorReporting(
           'DMARC reporter TXT record (to main zone)',
           async function () {
-            const recordId = await dns.getDnsRecordId({
+            const recordId = await api.getDnsRecordId({
               zoneId: mainZoneId,
-              fullDomainName: `${zoneName}._report._dmarc.ergodark.com`,
+              fullRecordName: `${zoneName}._report._dmarc.ergodark.com`,
               type: 'txt'
             });
 
             if (recordId) {
-              return dns.deleteDnsRecord({ zoneId: mainZoneId, recordId });
+              return api.deleteDnsRecord({ zoneId: mainZoneId, recordId });
             }
           }
         );
       },
       async function () {
         await withLocalErrorReporting('WAF fail2ban integration', async function () {
-          return dns.deleteDnsZoneCustomFirewallRuleset({
+          return api.deleteDnsZoneCustomFirewallRuleset({
             zoneId,
             rulesetPhaseName: firewallPhaseName
           });
@@ -464,14 +466,14 @@ export async function doDnsZoneInitializationPrePurge({
       }
       // async function () {
       //   await withLocalErrorReporting('ACME challenge CNAME record', async function () {
-      //     const recordId = await dns.getDnsRecordId({
+      //     const recordId = await api.getDnsRecordId({
       //       zoneId,
-      //       fullDomainName: `_acme-challenge.${zoneName}`,
+      //       fullRecordName: `_acme-challenge.${zoneName}`,
       //       type: 'cname'
       //     });
 
       //     if (recordId) {
-      //       return dns.deleteDnsRecord({ zoneId, recordId });
+      //       return api.deleteDnsRecord({ zoneId, recordId });
       //     }
       //   });
       // }

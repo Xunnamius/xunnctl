@@ -48,3 +48,8 @@ export enum LogTag {
  * https://gist.github.com/JBlond/2fea43a3049b38287e5e9cefc87b2124?permalink_comment_id=4481079#gistcomment-4481079
  */
 export const ansiRedColorCodes = [1, 9, 52, 88, 124, 160, 196];
+
+/**
+ * A key usually combined with API results to track result provenance.
+ */
+export const $originApi = Symbol('originating api');

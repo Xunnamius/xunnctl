@@ -2,7 +2,10 @@ import assert from 'node:assert';
 
 import { ParentConfiguration } from '@black-flag/core';
 
-import { HostileIp } from 'universe/api/cloudflare';
+import {
+  makeCloudflareApiCaller,
+  type HostileIp
+} from 'universe/api/cloudflare/index.js';
 import { loadFromCliConfig } from 'universe/config-manager';
 import { CustomExecutionContext } from 'universe/configure';
 import { standardSuccessMessage } from 'universe/constant';
@@ -79,11 +82,12 @@ export default async function ({
           [
             withStandardListrTaskConfig({
               initialTitle: 'Downloading hostile ip blocklist from Cloudflare...',
+              apiCallerFactory: makeCloudflareApiCaller,
               configPath,
               debug,
-              async callback({ thisTask, dns }) {
+              async callback({ thisTask, api }) {
                 try {
-                  const hostileIps = await dns.getHostileIps({
+                  const hostileIps = await api.getHostileIps({
                     accountId,
                     listId: hostileIpListId
                   });
@@ -100,9 +104,10 @@ export default async function ({
             }),
             withStandardListrTaskConfig({
               initialTitle: 'Removing selected IPs from the blocklist...',
+              apiCallerFactory: makeCloudflareApiCaller,
               configPath,
               debug,
-              async callback({ thisTask, dns }) {
+              async callback({ thisTask, api }) {
                 try {
                   const ipToCidr = makeIpToCidrFn('argument');
                   const filterIpCidrs = Array.from(new Set(filterIps_)).map((ip) =>
@@ -123,7 +128,7 @@ export default async function ({
                   thisTask.title = `Removing ${hostileIpCidrs.length} IP${hostileIpCidrs.length === 1 ? '' : 's'} from the blocklist...`;
 
                   if (hostileIpCidrs.length) {
-                    await dns.deleteHostileIps({
+                    await api.deleteHostileIps({
                       accountId,
                       listId: hostileIpListId,
                       listItemIds: hostileIpCidrs.map(({ id }) => id)

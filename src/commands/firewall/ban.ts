@@ -7,6 +7,7 @@ import { CustomExecutionContext } from 'universe/configure';
 import { standardSuccessMessage } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
 
+import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import {
   GlobalCliArguments,
   logStartTime,
@@ -83,19 +84,20 @@ export default async function ({
           [
             withStandardListrTaskConfig({
               initialTitle: `Adding ${targetIps.length} ips to Cloudflare blocklist...`,
+              apiCallerFactory: makeCloudflareApiCaller,
               configPath,
               debug,
-              async callback({ thisTask, dns }) {
+              async callback({ thisTask, api }) {
                 try {
                   if (targetIps.length) {
-                    await dns.addHostileIps({
+                    await api.addHostileIps({
                       accountId,
                       listId: hostileIpListId,
                       targetIps
                     });
                   }
 
-                  thisTask.title = `Adding ${targetIps.length} ips to Cloudflare blocklist`;
+                  thisTask.title = `Added ${targetIps.length} ips to Cloudflare blocklist`;
                 } catch (error) {
                   throw new TaskError('failed to add ip to Cloudflare blocklist', {
                     cause: error

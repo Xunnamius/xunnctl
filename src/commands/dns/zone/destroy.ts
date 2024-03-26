@@ -7,6 +7,7 @@ import { CustomExecutionContext } from 'universe/configure';
 import { standardSuccessMessage } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
 
+import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import {
   GlobalCliArguments,
   logStartTime,
@@ -98,12 +99,13 @@ export default async function ({
         taskManager.add([
           withStandardListrTaskConfig({
             initialTitle: `Deleting apex zone "${zoneName}"...`,
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ dns, taskLogger, thisTask: zoneTask }) {
+            async callback({ api, taskLogger, thisTask: zoneTask }) {
               taskLogger('acquiring zone ID for %O', zoneName);
 
-              const zoneId = await dns.getDnsZoneId({ domainName: zoneName });
+              const zoneId = await api.getDnsZoneId({ domainName: zoneName });
 
               const reportingOptions = {
                 startedPrefix: 'deleting ',
@@ -124,18 +126,18 @@ export default async function ({
                   taskLogger('purging all resource records for this zone first');
 
                   await withLocalWarningReporting('WAF fail2ban integration', () => {
-                    return dns.deleteDnsZoneCustomFirewallRuleset({
+                    return api.deleteDnsZoneCustomFirewallRuleset({
                       zoneId,
                       rulesetPhaseName: firewallPhaseName
                     });
                   });
 
                   await Promise.all(
-                    (await dns.getDnsRecords({ zoneId })).map(
+                    (await api.getDnsRecords({ zoneId })).map(
                       async ({ name, id: recordId, type }) => {
                         await withLocalWarningReporting(
                           `[${type}] ${name} (${recordId})`,
-                          () => dns.deleteDnsRecord({ zoneId, recordId })
+                          () => api.deleteDnsRecord({ zoneId, recordId })
                         );
                       }
                     )
@@ -145,7 +147,7 @@ export default async function ({
                 if (purgeOnly) {
                   debug('skipped deleting zone (due to purge-only)');
                 } else {
-                  await dns.deleteDnsZone({ zoneId });
+                  await api.deleteDnsZone({ zoneId });
                   debug('zone deleted successfully');
                 }
 
@@ -167,9 +169,9 @@ export default async function ({
                   targetRecordName
                 );
 
-                const targetRecordId = await dns.getDnsRecordId({
+                const targetRecordId = await api.getDnsRecordId({
                   zoneId: mainZoneId as string,
-                  fullDomainName: targetRecordName,
+                  fullRecordName: targetRecordName,
                   type: 'txt'
                 });
 
@@ -177,7 +179,7 @@ export default async function ({
                   await withLocalErrorReporting(
                     'DMARC reporter TXT record from main zone',
                     function () {
-                      return dns.deleteDnsRecord({
+                      return api.deleteDnsRecord({
                         zoneId: mainZoneId as string,
                         recordId: targetRecordId
                       });

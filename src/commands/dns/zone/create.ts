@@ -18,7 +18,7 @@ import {
   withStandardListrTaskConfig
 } from 'universe/util';
 
-import type { makeCloudflareApiCaller } from 'universe/api/cloudflare';
+import { makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 
 // ! Don't forget to update update.ts if adding to the zone creation process!
 
@@ -36,7 +36,7 @@ export type CustomCliArguments = GlobalCliArguments & {
 export async function doDnsZoneInitialization({
   zoneId,
   withLocalErrorReporting,
-  dns,
+  api,
   mainZoneId,
   zoneName,
   wafBlockHostileIpListName,
@@ -46,7 +46,7 @@ export async function doDnsZoneInitialization({
   zoneId: string;
   withLocalErrorReporting: Awaited<ReturnType<typeof makeLocalErrorReportingWrapper>>;
   debug: ExtendedDebugger;
-  dns: Awaited<ReturnType<typeof makeCloudflareApiCaller>>;
+  api: Awaited<ReturnType<typeof makeCloudflareApiCaller>>;
   mainZoneId: string;
   zoneName: string;
   wafBlockHostileIpListName: string;
@@ -58,7 +58,7 @@ export async function doDnsZoneInitialization({
       async function () {
         const subject = 'root CNAME record';
         await withLocalErrorReporting(subject, function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: '@',
             redirectToHostname: 'ergodark.com',
@@ -68,7 +68,7 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('wildcard CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: '*',
             redirectToHostname: '@',
@@ -78,7 +78,7 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('MX record', function () {
-          return dns.createDnsMxRecord({
+          return api.createDnsMxRecord({
             zoneId,
             domainName: '@',
             mailHostname: 'mail.ergodark.com'
@@ -87,7 +87,7 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('mail CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: 'mail',
             redirectToHostname: 'mail.ergodark.com',
@@ -97,7 +97,7 @@ export async function doDnsZoneInitialization({
       },
       // async function () {
       //   await withLocalErrorReporting('ACME mail CNAME record', function () {
-      //     return dns.createDnsCnameRecord({
+      //     return api.createDnsCnameRecord({
       //       zoneId,
       //       domainName: '_acme-challenge.mail',
       //       redirectToHostname: '_acme-challenge.darkgray.org',
@@ -107,7 +107,7 @@ export async function doDnsZoneInitialization({
       // },
       async function () {
         await withLocalErrorReporting('smtp CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: 'smtp',
             redirectToHostname: 'smtp.ergodark.com',
@@ -117,7 +117,7 @@ export async function doDnsZoneInitialization({
       },
       // async function () {
       //   await withLocalErrorReporting('ACME smtp CNAME record', function () {
-      //     return dns.createDnsCnameRecord({
+      //     return api.createDnsCnameRecord({
       //       zoneId,
       //       domainName: '_acme-challenge.smtp',
       //       redirectToHostname: '_acme-challenge.darkgray.org',
@@ -127,7 +127,7 @@ export async function doDnsZoneInitialization({
       // },
       async function () {
         await withLocalErrorReporting('imap CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: 'imap',
             redirectToHostname: 'imap.ergodark.com',
@@ -137,7 +137,7 @@ export async function doDnsZoneInitialization({
       },
       // async function () {
       //   await withLocalErrorReporting('ACME imap CNAME record', function () {
-      //     return dns.createDnsCnameRecord({
+      //     return api.createDnsCnameRecord({
       //       zoneId,
       //       domainName: '_acme-challenge.imap',
       //       redirectToHostname: '_acme-challenge.darkgray.org',
@@ -147,7 +147,7 @@ export async function doDnsZoneInitialization({
       // },
       async function () {
         await withLocalErrorReporting('neutral SPF TXT record', function () {
-          return dns.createDnsTxtRecord({
+          return api.createDnsTxtRecord({
             zoneId,
             domainName: '@',
             content: 'v=spf1 mx a ?all'
@@ -156,12 +156,12 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('letsencrypt CAA records', function () {
-          return dns.createDnsCaaRecords({ zoneId });
+          return api.createDnsCaaRecords({ zoneId });
         });
       },
       async function () {
         await withLocalErrorReporting('ADSP DKIM CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: '_adsp._domainkey',
             redirectToHostname: '_adsp._domainkey.ergodark.com',
@@ -171,7 +171,7 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('default key DKIM CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: 'default._domainkey',
             redirectToHostname: 'default._domainkey.ergodark.com',
@@ -181,7 +181,7 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('DMARC CNAME record', function () {
-          return dns.createDnsCnameRecord({
+          return api.createDnsCnameRecord({
             zoneId,
             domainName: '_dmarc',
             redirectToHostname: '_dmarc.ergodark.com',
@@ -193,7 +193,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting(
           'DMARC reporter TXT record (to main zone)',
           function () {
-            return dns.createDnsTxtRecord({
+            return api.createDnsTxtRecord({
               zoneId: mainZoneId,
               domainName: `${zoneName}._report._dmarc`,
               content: 'v=DMARC1'
@@ -203,7 +203,7 @@ export async function doDnsZoneInitialization({
       },
       async function () {
         await withLocalErrorReporting('WAF fail2ban integration', async function () {
-          await dns.createDnsZoneCustomFirewallRulesetRule({
+          await api.createDnsZoneCustomFirewallRulesetRule({
             zoneId,
             ruleAction: 'block',
             ruleExpression: `(ip.src in $${wafBlockHostileIpListName})`,
@@ -215,7 +215,7 @@ export async function doDnsZoneInitialization({
       // async function () {
       //   if (zoneName !== 'darkgray.org') {
       //     await withLocalErrorReporting('ACME challenge CNAME record', function () {
-      //       return dns.createDnsCnameRecord({
+      //       return api.createDnsCnameRecord({
       //         zoneId,
       //         domainName: '_acme-challenge',
       //         redirectToHostname: '_acme-challenge.darkgray.org',
@@ -311,14 +311,15 @@ export default async function ({
         const zoneCreationTasks = apices.map((zoneName) => {
           return withStandardListrTaskConfig({
             initialTitle: `Creating "${zoneName}"`,
+            apiCallerFactory: makeCloudflareApiCaller,
             configPath,
             debug,
-            async callback({ dns, taskLogger, thisTask: zoneTask }) {
+            async callback({ api, taskLogger, thisTask: zoneTask }) {
               taskLogger('creating apex zone for %O', zoneName);
 
               assert(typeof accountId === 'string');
 
-              const zoneId = await dns.createDnsZone({
+              const zoneId = await api.createDnsZone({
                 domainName: zoneName,
                 accountId
               });
@@ -334,7 +335,7 @@ export default async function ({
 
               await doDnsZoneInitialization({
                 debug,
-                dns,
+                api,
                 firewallPhaseName,
                 mainZoneId,
                 wafBlockHostileIpListName,

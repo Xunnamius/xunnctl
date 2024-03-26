@@ -170,9 +170,9 @@ When called without any arguments, this command is an alias for
 #### Examples
 
 ```bash
-xunnctl config get --name cloudflare.apiToken
-x c g --name cloudflare.apiToken cloudflare.accountId
-x c g --name cloudflare.apiToken --name cloudflare.accountId
+xunnctl config get --name cfApiToken
+x c g --name cfApiToken cfAccountId
+x c g --name cfApiToken --name cfAccountId
 # The next two lines are equivalent
 x c g --all
 x c g
@@ -202,8 +202,8 @@ with the wrong value or type of value will cause undefined behavior**. See
 #### Examples
 
 ```bash
-xunnctl config set --name cloudflare.apiToken --content AbCd1234
-x c s --name cloudflare.apiToken --content AbCd1234
+xunnctl config set --name cfApiToken --content AbCd1234
+x c s --name cfApiToken --content AbCd1234
 ```
 
 #### Parameters
@@ -223,8 +223,8 @@ the `--name` configuration option and commits the change to the filesystem.
 #### Examples
 
 ```bash
-xunnctl config unset --name cloudflare.apiToken
-x c u --name cloudflare.apiToken
+xunnctl config unset --name cfApiToken
+x c u --name cfApiToken
 ```
 
 #### Parameters

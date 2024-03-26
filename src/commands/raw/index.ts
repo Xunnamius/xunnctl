@@ -70,7 +70,7 @@ export default async function ({ log, debug_ }: CustomExecutionContext) {
           debug('startIndex: %O', startIndex);
           debug('endIndex: %O', endIndex);
 
-          const dns = await makeCloudflareApiCaller({
+          const api = await makeCloudflareApiCaller({
             configPath,
             debug: debug_,
             log
@@ -78,7 +78,7 @@ export default async function ({ log, debug_ }: CustomExecutionContext) {
 
           const ips = await (async () => {
             try {
-              return Object.values(await dns.getCloudflareIps()).flat();
+              return Object.values(await api.getCloudflareIps()).flat();
             } catch (error) {
               throw new Error(ErrorMessage.FailedCloudflareIpFetch(), { cause: error });
             }

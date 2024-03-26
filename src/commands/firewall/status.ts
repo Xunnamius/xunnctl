@@ -5,7 +5,7 @@ import { LogTag } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
 
 import assert from 'node:assert';
-import { HostileIp } from 'universe/api/cloudflare';
+import { HostileIp, makeCloudflareApiCaller } from 'universe/api/cloudflare/index.js';
 import { loadFromCliConfig } from 'universe/config-manager';
 import {
   GlobalCliArguments,
@@ -78,11 +78,12 @@ export default async function ({
           [
             withStandardListrTaskConfig({
               initialTitle: 'Downloading hostile ip blocklist from Cloudflare...',
+              apiCallerFactory: makeCloudflareApiCaller,
               configPath,
               debug,
-              async callback({ thisTask, dns }) {
+              async callback({ thisTask, api }) {
                 try {
-                  const hostileIps = await dns.getHostileIps({
+                  const hostileIps = await api.getHostileIps({
                     accountId,
                     listId: hostileIpListId
                   });
@@ -98,7 +99,7 @@ export default async function ({
               }
             })
           ],
-          { concurrent: true }
+          { concurrent: false }
         );
 
         await taskManager.runAll();

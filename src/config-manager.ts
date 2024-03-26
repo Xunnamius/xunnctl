@@ -38,6 +38,10 @@ export type Config = {
    */
   cfMainZoneId: string;
   /**
+   * Cloudflare hostile IP blocking list ID.
+   */
+  cfHostileIpListId: string;
+  /**
    * DigitalOcean API base URI. For example: https://api.digitalocean.com/v2
    */
   doApiUriBase: string;
@@ -45,10 +49,6 @@ export type Config = {
    * DigitalOcean API token.
    */
   doApiToken: string;
-  /**
-   * Cloudflare hostile IP blocking list ID.
-   */
-  cfHostileIpListId: string;
 };
 
 /**
