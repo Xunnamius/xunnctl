@@ -129,7 +129,7 @@ export default async function command({
           ) {
             didOutput = true;
             genericLogger(
-              [LogTag.IF_NOT_SILENCED],
+              [LogTag.IF_NOT_HUSHED],
               isHushed
                 ? hostileIpCidr.toString()
                 : `[${new Date(createdOn).toLocaleString()}]`.padEnd(25) +
