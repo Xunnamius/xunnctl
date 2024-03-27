@@ -1,7 +1,7 @@
 import { ParentConfiguration } from '@black-flag/core';
 
 import { CustomExecutionContext } from 'universe/configure';
-import { LogTag } from 'universe/constant';
+import { LogTag, standardSuccessMessage } from 'universe/constant';
 import { ErrorMessage, TaskError } from 'universe/error';
 
 import assert from 'node:assert';
@@ -89,7 +89,7 @@ export default async function command({
                     listId: hostileIpListId
                   });
 
-                  thisTask.title = `Downloaded hostile ip blocklist (${hostileIps.length} ip${hostileIps.length === 1 ? '' : 's'}) from Cloudflare`;
+                  thisTask.title = `Downloaded hostile ip blocklist from Cloudflare`;
                   results.hostileIps = hostileIps;
                 } catch (error) {
                   throw new TaskError(
@@ -129,7 +129,7 @@ export default async function command({
           ) {
             didOutput = true;
             genericLogger(
-              [LogTag.IF_NOT_HUSHED],
+              [LogTag.IF_NOT_QUIETED],
               isHushed
                 ? hostileIpCidr.toString()
                 : `[${new Date(createdOn).toLocaleString()}]`.padEnd(25) +
@@ -143,6 +143,12 @@ export default async function command({
         if (!didOutput) {
           genericLogger('(no data)');
         }
+
+        genericLogger([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
+        genericLogger(
+          [LogTag.IF_NOT_QUIETED],
+          `Total banned ips: ${hostileIpCidrs.length}`
+        );
       }
     )
   } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
