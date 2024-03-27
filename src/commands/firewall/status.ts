@@ -111,7 +111,7 @@ export default async function command({
         const hostileIpCidrs = results.hostileIps
           .map(makeIpToCidrFn('WAF blocklist'))
           .sort(({ created_on: a }, { created_on: b }) => {
-            return new Date(a).getTime() < new Date(b).getTime() ? 1 : -1;
+            return new Date(a).getTime() < new Date(b).getTime() ? -1 : 1;
           });
 
         let didOutput = false;
@@ -146,7 +146,7 @@ export default async function command({
 
         genericLogger([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
         genericLogger(
-          [LogTag.IF_NOT_QUIETED],
+          [LogTag.IF_NOT_SILENCED],
           `Total banned ips: ${hostileIpCidrs.length}`
         );
       }
