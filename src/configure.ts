@@ -32,6 +32,8 @@ const { IF_NOT_SILENCED, IF_NOT_QUIETED, IF_NOT_HUSHED } = LogTag;
 const rootGenericLogger = createGenericLogger({ namespace: globalLoggerNamespace });
 const rootDebugLogger = createDebugLogger({ namespace: globalDebuggerNamespace });
 
+export { $executionContext } from '@black-flag/core';
+
 export type CustomExecutionContext = ExecutionContext & {
   /**
    * The {@link ExtendedLogger} for the CLI.
