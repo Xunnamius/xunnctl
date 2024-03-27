@@ -22,7 +22,8 @@ export const validIdChoices = {
   confNginxAllowOnlyCloudflare: 'conf.nginx.allowOnlyCloudflare'
 } as const;
 
-export default async function ({ log, debug_ }: CustomExecutionContext) {
+export { command };
+export default async function command({ log, debug_ }: CustomExecutionContext) {
   const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
     id: {
       demandOption: true,

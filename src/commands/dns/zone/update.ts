@@ -25,7 +25,8 @@ export type CustomCliArguments = GlobalCliArguments & {
   purgeFirst?: boolean;
 };
 
-export default async function ({
+export { command };
+export default async function command({
   log,
   debug_,
   taskManager,

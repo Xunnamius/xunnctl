@@ -15,7 +15,8 @@ export type CustomCliArguments = GlobalCliArguments & {
   name?: string[];
 };
 
-export default async function ({ debug_, state }: CustomExecutionContext) {
+export { command };
+export default async function command({ debug_, state }: CustomExecutionContext) {
   const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
     name: {
       array: true,

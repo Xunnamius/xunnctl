@@ -22,7 +22,8 @@ export type CustomCliArguments = GlobalCliArguments & {
   ip?: string[];
 };
 
-export default async function ({
+export { command };
+export default async function command({
   log: genericLogger,
   debug_,
   taskManager,

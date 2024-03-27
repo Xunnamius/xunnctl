@@ -38,7 +38,8 @@ export type CustomCliArguments = GlobalCliArguments & {
   localQuery?: string;
 };
 
-export default async function ({
+export { command };
+export default async function command({
   log: genericLogger,
   debug_,
   taskManager,

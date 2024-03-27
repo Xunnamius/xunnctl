@@ -12,7 +12,8 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function ({ debug_ }: CustomExecutionContext) {
+export { command };
+export default async function command({ debug_ }: CustomExecutionContext) {
   const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
 
   return {

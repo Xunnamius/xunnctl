@@ -17,7 +17,8 @@ export type CustomCliArguments = GlobalCliArguments & {
   name?: string[];
 };
 
-export default async function ({
+export { command };
+export default async function command({
   debug_,
   log,
   state: { startTime }
