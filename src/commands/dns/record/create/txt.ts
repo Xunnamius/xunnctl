@@ -18,7 +18,7 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  name: string;
+  subName: string;
   content: string;
   ttl?: number;
 };
@@ -46,12 +46,13 @@ export default async function command({
       boolean: true,
       description: 'Disable protections'
     },
-    name: {
+    'sub-name': {
       demandOption: true,
       string: true,
-      description: 'DNS record name (or @ for the zone apex) in Punycode'
+      description: 'DNS record name in Punycode, or "@", but excluding apex'
     },
     content: {
+      alias: ['contents'],
       demandOption: true,
       string: true,
       description: 'Text content for the record'
@@ -73,7 +74,7 @@ export default async function command({
         configPath,
         apex: apices = [],
         apexAllKnown,
-        name: domainName,
+        subName,
         content,
         ttl
       }) {
@@ -82,7 +83,7 @@ export default async function command({
 
         debug('apex: %O', apices);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', domainName);
+        debug('subName: %O', subName);
         debug('content: %O', content);
         debug('ttl: %O', ttl);
 
@@ -165,7 +166,7 @@ export default async function command({
 
                       await api.createDnsTxtRecord({
                         zoneId,
-                        domainName,
+                        subRecordName: subName,
                         content,
                         ttl
                       });
@@ -202,7 +203,7 @@ export default async function command({
 
                     await api.createDnsTxtRecord({
                       zoneName,
-                      fullRecordName: domainName,
+                      subRecordName: subName,
                       content,
                       ttl
                     });

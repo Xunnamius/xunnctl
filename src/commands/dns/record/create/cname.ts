@@ -18,7 +18,7 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  name: string;
+  subName: string;
   toName: string;
   ttl?: number;
   proxied?: boolean;
@@ -47,15 +47,15 @@ export default async function command({
       boolean: true,
       description: 'Disable protections'
     },
-    name: {
+    'sub-name': {
       demandOption: true,
       string: true,
-      description: 'DNS record name (or @ for the zone apex) in Punycode'
+      description: 'DNS record name in Punycode, or "@", but excluding apex'
     },
     'to-name': {
       demandOption: true,
       string: true,
-      description: 'A valid hostname'
+      description: 'A valid fully-qualified hostname'
     },
     ttl: {
       number: true,
@@ -63,7 +63,7 @@ export default async function command({
     },
     proxied: {
       boolean: true,
-      description: 'Proxy the record through Cloudflare'
+      description: 'Proxy the record through Cloudflare (if available)'
     }
   });
 
@@ -78,7 +78,7 @@ export default async function command({
         configPath,
         apex: apices = [],
         apexAllKnown,
-        name: domainName,
+        subName,
         toName,
         ttl,
         proxied = false
@@ -88,7 +88,7 @@ export default async function command({
 
         debug('apex: %O', apices);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', domainName);
+        debug('subName: %O', subName);
         debug('toName: %O', toName);
         debug('ttl: %O', ttl);
         debug('proxied: %O', proxied);
@@ -172,7 +172,7 @@ export default async function command({
 
                       await api.createDnsCnameRecord({
                         zoneId,
-                        domainName,
+                        subRecordName: subName,
                         redirectToHostname: toName,
                         ttl,
                         proxied
@@ -210,7 +210,7 @@ export default async function command({
 
                     await api.createDnsCnameRecord({
                       zoneName,
-                      fullRecordName: domainName,
+                      subRecordName: subName,
                       redirectToHostname: toName,
                       ttl
                     });

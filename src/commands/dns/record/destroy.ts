@@ -22,9 +22,9 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  name?: string;
+  targetName?: string;
+  targetType?: string;
   searchForName?: boolean;
-  type?: string;
 };
 
 export { command };
@@ -50,19 +50,20 @@ export default async function command({
       boolean: true,
       description: 'Disable protections'
     },
-    name: {
-      demandOption: ['type'],
+    'target-name': {
+      demandOption: ['target-type'],
       string: true,
-      description: 'DNS record name (or @ for the zone apex) in Punycode'
+      description: 'Target DNS record name in Punycode including apex (without "@")'
+    },
+    'target-type': {
+      demandOption: ['target-name'],
+      string: true,
+      description: 'Case-insensitive DNS record type, such as AAAA or mx'
     },
     'search-for-name': {
       boolean: true,
-      description: 'Match names starting with --name instead of exact match'
-    },
-    type: {
-      demandOption: ['name'],
-      string: true,
-      description: 'Case-insensitive DNS record type, such as AAAA or mx'
+      description:
+        'DNS records STARTING with --target-name are returned instead of exact match'
     }
   });
 
@@ -77,8 +78,8 @@ export default async function command({
         configPath,
         apex: apices = [],
         apexAllKnown,
-        name: recordName,
-        type: recordType,
+        targetName,
+        targetType,
         searchForName = false
       }) {
         const debug = debug_.extend('handler');
@@ -86,8 +87,8 @@ export default async function command({
 
         debug('apex: %O', apices);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', recordName);
-        debug('type: %O', recordType);
+        debug('targetName: %O', targetName);
+        debug('targetType: %O', targetType);
         debug('searchForName: %O', searchForName);
 
         const { startTime } = state;
@@ -170,13 +171,13 @@ export default async function command({
 
                       const records_ = await api.getDnsRecords({
                         zoneId,
-                        recordName: searchForName ? undefined : recordName,
-                        recordType
+                        targetRecordName: searchForName ? undefined : targetName,
+                        targetRecordType: targetType
                       });
 
                       const records =
-                        searchForName && recordName
-                          ? records_.filter(({ name }) => name.startsWith(recordName))
+                        searchForName && targetName
+                          ? records_.filter(({ name }) => name.startsWith(targetName))
                           : records_;
 
                       await Promise.all(
@@ -240,14 +241,14 @@ export default async function command({
 
                     const records_ = await api.getDnsRecords({
                       zoneName,
-                      fullRecordName: searchForName ? undefined : recordName,
-                      recordType
+                      targetRecordName: searchForName ? undefined : targetName,
+                      targetRecordType: targetType
                     });
 
                     const records =
-                      searchForName && recordName
+                      searchForName && targetName
                         ? records_.filter(function ({ name }) {
-                            return name.startsWith(recordName.replace('@', zoneName));
+                            return name.replace('@', zoneName).startsWith(targetName);
                           })
                         : records_;
 

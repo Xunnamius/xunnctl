@@ -18,7 +18,7 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  name: string;
+  subName: string;
   ipv4: string;
   ttl?: number;
   proxied?: boolean;
@@ -47,10 +47,10 @@ export default async function command({
       boolean: true,
       description: 'Disable protections'
     },
-    name: {
+    'sub-name': {
       demandOption: true,
       string: true,
-      description: 'DNS record name (or @ for the zone apex) in Punycode'
+      description: 'DNS record name in Punycode, or "@", but excluding apex'
     },
     ipv4: {
       demandOption: true,
@@ -63,7 +63,7 @@ export default async function command({
     },
     proxied: {
       boolean: true,
-      description: 'Proxy the record through Cloudflare'
+      description: 'Proxy the record through Cloudflare (if available)'
     }
   });
 
@@ -78,7 +78,7 @@ export default async function command({
         configPath,
         apex: apices = [],
         apexAllKnown,
-        name: domainName,
+        subName,
         ipv4,
         ttl,
         proxied = false
@@ -88,7 +88,7 @@ export default async function command({
 
         debug('apex: %O', apices);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', domainName);
+        debug('subName: %O', subName);
         debug('ipv4: %O', ipv4);
         debug('ttl: %O', ttl);
         debug('proxied: %O', proxied);
@@ -172,7 +172,7 @@ export default async function command({
 
                       await api.createDnsARecord({
                         zoneId,
-                        domainName,
+                        subRecordName: subName,
                         ipv4,
                         ttl,
                         proxied
@@ -210,7 +210,7 @@ export default async function command({
 
                     await api.createDnsARecord({
                       zoneName,
-                      fullRecordName: domainName,
+                      subRecordName: subName,
                       ipv4,
                       ttl
                     });

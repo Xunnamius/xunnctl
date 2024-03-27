@@ -32,9 +32,9 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  name?: string;
+  targetName?: string;
+  targetType?: string;
   searchForName?: boolean;
-  type?: string;
   localQuery?: string;
 };
 
@@ -61,17 +61,18 @@ export default async function command({
       boolean: true,
       description: 'Disable protections'
     },
-    name: {
+    'target-name': {
       string: true,
-      description: 'DNS record name (or @ for the zone apex) in Punycode'
+      description: 'Target DNS record name in Punycode including apex (without "@")'
+    },
+    'target-type': {
+      string: true,
+      description: 'Case-insensitive DNS record type, such as AAAA or mx'
     },
     'search-for-name': {
       boolean: true,
-      description: 'Match names starting with --name instead of exact match'
-    },
-    type: {
-      string: true,
-      description: 'Case-insensitive DNS record type, such as AAAA or mx'
+      description:
+        'DNS records STARTING with --target-name are returned instead of exact match'
     },
     'local-query': {
       array: true,
@@ -91,8 +92,8 @@ export default async function command({
         configPath,
         apex = [],
         apexAllKnown,
-        name: recordName,
-        type: recordType,
+        targetName,
+        targetType,
         localQuery,
         searchForName = false
       }) {
@@ -101,9 +102,9 @@ export default async function command({
 
         debug('apex', apex);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', recordName);
-        debug('type: %O', recordType);
-        debug('query: %O', localQuery);
+        debug('targetName: %O', targetName);
+        debug('targetType: %O', targetType);
+        debug('localQuery: %O', localQuery);
         debug('searchForName: %O', searchForName);
 
         const { isHushed, isQuieted, startTime } = state;
@@ -167,13 +168,13 @@ export default async function command({
 
                         const records_ = await api.getDnsRecords({
                           zoneId,
-                          recordName: searchForName ? undefined : recordName,
-                          recordType
+                          targetRecordName: searchForName ? undefined : targetName,
+                          targetRecordType: targetType
                         });
 
                         const records =
-                          searchForName && recordName
-                            ? records_.filter(({ name }) => name.startsWith(recordName))
+                          searchForName && targetName
+                            ? records_.filter(({ name }) => name.startsWith(targetName))
                             : records_;
 
                         totalRecordCount += records.length;
@@ -248,13 +249,13 @@ export default async function command({
 
                         const records_ = await api.getDnsRecords({
                           zoneName,
-                          fullRecordName: searchForName ? undefined : recordName,
-                          recordType
+                          targetRecordName: searchForName ? undefined : targetName,
+                          targetRecordType: targetType
                         });
 
                         const records =
-                          searchForName && recordName
-                            ? records_.filter(({ name }) => name.startsWith(recordName))
+                          searchForName && targetName
+                            ? records_.filter(({ name }) => name.startsWith(targetName))
                             : records_;
 
                         totalRecordCount += records.length;
@@ -314,7 +315,7 @@ export default async function command({
                 [LogTag.IF_NOT_SILENCED],
                 `${isHushed ? '' : '\n'}Zone: ${zoneName} (${results.zoneApexIds[zoneName].origin})${isHushed && !isQuieted ? '\n' : ''}${
                   isQuieted
-                    ? ` (${resourceRecords.length} records)`
+                    ? ` (${resourceRecords.length} record${resourceRecords.length === 1 ? '' : 's'})`
                     : // eslint-disable-next-line unicorn/no-array-reduce
                       resourceRecords.reduce((str, record) => {
                         const isCf = isCfResourceRecord(record);
@@ -325,14 +326,15 @@ export default async function command({
                               return `${substr}\n${TAB}${TAB}${toSpacedSentenceCase(
                                 key
                               )}: ${JSON.stringify(value)}`;
-                            }, '') || `\n${TAB}${TAB}(no data)`;
+                            }, '') || `\n${TAB}${TAB}(no data)${isHushed ? '\n' : ''}`;
 
                         return (
                           str +
                           `${isHushed ? '' : '\n\n'}${TAB}[${record.type}] ${record.name === '@' ? zoneName : record.name}${isCf && record.proxied ? ' <PROXIED>' : ''}\n` +
                           suffix
                         );
-                      }, '') || `${isHushed ? '' : '\n'}${TAB}(no data)`
+                      }, '') ||
+                      `${isHushed ? '' : '\n'}${TAB}(no data)${isHushed ? '\n' : ''}`
                 }`
               );
             }

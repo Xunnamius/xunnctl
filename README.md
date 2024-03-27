@@ -48,6 +48,8 @@ These used to be several CLIs, but the time has come to bring them together!
   - [`xunnctl firewall status`](#xunnctl-firewall-status)
   - [`xunnctl firewall unban`](#xunnctl-firewall-unban)
   - [`xunnctl raw`](#xunnctl-raw)
+  - [`xunnctl super install`](#xunnctl-super-install)
+  - [`xunnctl super uninstall`](#xunnctl-super-uninstall)
 - [Appendix](#appendix)
   - [Published Package Details](#published-package-details)
   - [License](#license)
@@ -170,9 +172,9 @@ When called without any arguments, this command is an alias for
 #### Examples
 
 ```bash
-xunnctl config get --name cfApiToken
-x c g --name cfApiToken cfAccountId
-x c g --name cfApiToken --name cfAccountId
+xunnctl config get --sub-name cfApiToken
+x c g --sub-name cfApiToken cfAccountId
+x c g --sub-name cfApiToken --sub-name cfAccountId
 # The next two lines are equivalent
 x c g --all
 x c g
@@ -180,16 +182,16 @@ x c g
 
 #### Parameters
 
-|                     |   Name   |   Type    |  Default  | Description                                                                                      |
-| :-----------------: | :------: | :-------: | :-------: | :----------------------------------------------------------------------------------------------- |
-| <sub>optional</sub> | `--all`  |  boolean  | undefined | Dump the current value of all configuration options. Cannot be used with the `--name` parameter. |
-| <sub>optional</sub> | `--name` | string\[] | undefined | The names of one or more options to retrieve. Cannot be used with the `--all` parameter.         |
+|                     |     Name     |   Type    |  Default  | Description                                                                                          |
+| :-----------------: | :----------: | :-------: | :-------: | :--------------------------------------------------------------------------------------------------- |
+| <sub>optional</sub> |   `--all`    |  boolean  | undefined | Dump the current value of all configuration options. Cannot be used with the `--sub-name` parameter. |
+| <sub>optional</sub> | `--sub-name` | string\[] | undefined | The names of one or more options to retrieve. Cannot be used with the `--all` parameter.             |
 
 ### `xunnctl config set`
 
 > Alias: `x c s`
 
-This command updates the value of the `--name` configuration option to
+This command updates the value of the `--sub-name` configuration option to
 `--content`, which is a valid JSON value. This includes double quotes if it's a
 string.
 
@@ -202,37 +204,37 @@ with the wrong value or type of value will cause undefined behavior**. See
 #### Examples
 
 ```bash
-xunnctl config set --name cfApiToken --content AbCd1234
-x c s --name cfApiToken --content AbCd1234
+xunnctl config set --sub-name cfApiToken --content AbCd1234
+x c s --sub-name cfApiToken --content AbCd1234
 ```
 
 #### Parameters
 
-|                         |    Name     |                       Type                        |  Default  | Description                                                             |
-| :---------------------: | :---------: | :-----------------------------------------------: | :-------: | :---------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--content` | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | The new value of the option to update. This must be a valid JSON value. |
-| **<sub>REQUIRED</sub>** |  `--name`   |                      string                       | undefined | The name of the option to update.                                       |
+|                         |     Name     |                       Type                        |  Default  | Description                                                             |
+| :---------------------: | :----------: | :-----------------------------------------------: | :-------: | :---------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--content`  | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | The new value of the option to update. This must be a valid JSON value. |
+| **<sub>REQUIRED</sub>** | `--sub-name` |                      string                       | undefined | The name of the option to update.                                       |
 
 ### `xunnctl config unset`
 
 > Alias: `x c u`
 
 This command deletes the configuration entry (name and content) associated with
-the `--name` configuration option and commits the change to the filesystem.
+the `--sub-name` configuration option and commits the change to the filesystem.
 
 #### Examples
 
 ```bash
-xunnctl config unset --name cfApiToken
-x c u --name cfApiToken
+xunnctl config unset --sub-name cfApiToken
+x c u --sub-name cfApiToken
 ```
 
 #### Parameters
 
-|                     |   Name   |   Type    |  Default  | Description                                                                               |
-| :-----------------: | :------: | :-------: | :-------: | :---------------------------------------------------------------------------------------- |
-| <sub>optional</sub> | `--all`  |  boolean  | undefined | Delete all options in the configuration file. Cannot be used with the `--name` parameter. |
-| <sub>optional</sub> | `--name` | string\[] | undefined | The names of one or more options to delete. Cannot be used with the `--all` parameter.    |
+|                     |     Name     |   Type    |  Default  | Description                                                                                   |
+| :-----------------: | :----------: | :-------: | :-------: | :-------------------------------------------------------------------------------------------- |
+| <sub>optional</sub> |   `--all`    |  boolean  | undefined | Delete all options in the configuration file. Cannot be used with the `--sub-name` parameter. |
+| <sub>optional</sub> | `--sub-name` | string\[] | undefined | The names of one or more options to delete. Cannot be used with the `--all` parameter.        |
 
 ### `xunnctl dns record create A`
 
@@ -243,19 +245,19 @@ This command creates a new DNS A resource record in one or more existing zones.
 #### Examples
 
 ```bash
-xunnctl dns record create a --apex xunn.io --name @ --ipv4 1.2.3.4 --proxied=false
-x d r c A --apex xunn.io --name 'something.else' --ipv4 1.2.3.4
+xunnctl dns record create a --apex xunn.io --sub-name @ --ipv4 1.2.3.4 --proxied=false
+x d r c A --apex xunn.io --sub-name 'something.else' --ipv4 1.2.3.4
 ```
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                          |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :----------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.         |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.    |
-|        **<sub>REQUIRED</sub>**         |      `--ipv4`      |  string   | undefined | A valid IPv4 address.                                                                |
-|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                |
-|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------ |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                 |
+|        **<sub>REQUIRED</sub>**         |      `--ipv4`      |  string   | undefined | A valid IPv4 address.                                                                             |
+|        **<sub>REQUIRED</sub>**         |    `--sub-name`    |  string   | undefined | The DNS record name in Punycode, or the character "@", but excluding the apex domain as a suffix. |
+|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.              |
 
 ### `xunnctl dns record create AAAA`
 
@@ -267,19 +269,19 @@ zones.
 #### Examples
 
 ```bash
-xunnctl dns record create aaaa --apex xunn.io --name @ --ipv6 ::ffff:1.2.3.4 --proxied=false
-x d r c AAAA --apex xunn.io --name 'something.else' --ipv6 2001:db8::8a2e:7334
+xunnctl dns record create aaaa --apex xunn.io --sub-name @ --ipv6 ::ffff:1.2.3.4 --proxied=false
+x d r c AAAA --apex xunn.io --sub-name 'something.else' --ipv6 2001:db8::8a2e:7334
 ```
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                          |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :----------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.         |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.    |
-|        **<sub>REQUIRED</sub>**         |      `--ipv6`      |  string   | undefined | A valid IPv6 address.                                                                |
-|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                |
-|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------ |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                 |
+|        **<sub>REQUIRED</sub>**         |      `--ipv6`      |  string   | undefined | A valid IPv6 address.                                                                             |
+|        **<sub>REQUIRED</sub>**         |    `--sub-name`    |  string   | undefined | The DNS record name in Punycode, or the character "@", but excluding the apex domain as a suffix. |
+|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.              |
 
 ### `xunnctl dns record create CAA`
 
@@ -312,19 +314,19 @@ zones.
 #### Examples
 
 ```bash
-xunnctl dns record create cname --apex xunn.io --name 'sub.domain' --to-name 'diff.com'
-x d r c CNAME --apex xunn.io --apex xunn.at --name 'sub.domain' --to-name 'diff.com'
+xunnctl dns record create cname --apex xunn.io --sub-name 'sub.domain' --to-name 'diff.com'
+x d r c CNAME --apex xunn.io --apex xunn.at --sub-name 'sub.domain' --to-name 'diff.com'
 ```
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                          |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :----------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.         |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.    |
-|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                                |
-|        **<sub>REQUIRED</sub>**         |    `--to-name`     |  string   | undefined | A valid hostname. Must not match the record's name.                                  |
-|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare. |
+|                                        |        Name        |   Type    |  Default  | Description                                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------ |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                 |
+|        **<sub>REQUIRED</sub>**         |    `--sub-name`    |  string   | undefined | The DNS record name in Punycode, or the character "@", but excluding the apex domain as a suffix. |
+|        **<sub>REQUIRED</sub>**         |    `--to-name`     |  string   | undefined | A valid fully-qualified hostname. Must not match the record's name.                               |
+|          <sub>optional</sub>           |    `--proxied`     |  boolean  |   false   | Whether the record is receiving the performance and security benefits of Cloudflare.              |
 
 ### `xunnctl dns record create MX`
 
@@ -335,18 +337,18 @@ This command creates a new DNS MX resource record in one or more existing zones.
 #### Examples
 
 ```bash
-xunnctl dns record create mx --apex xunn.io --name '@' --mail-name 'mail.xunn.io'
-x d r c MX --apex xunn.io --apex xunn.at --name 'something.else' --mail-name 'mail.xunn.io'
+xunnctl dns record create mx --apex xunn.io --sub-name '@' --mail-name 'mail.xunn.io'
+x d r c MX --apex xunn.io --apex xunn.at --sub-name 'something.else' --mail-name 'mail.xunn.io'
 ```
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                       |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                             |
-|        **<sub>REQUIRED</sub>**         |   `--mail-name`    |  string   | undefined | A valid mail server hostname.                                                     |
+|                                        |        Name        |   Type    |  Default  | Description                                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------ |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                 |
+|        **<sub>REQUIRED</sub>**         |    `--sub-name`    |  string   | undefined | The DNS record name in Punycode, or the character "@", but excluding the apex domain as a suffix. |
+|        **<sub>REQUIRED</sub>**         |   `--mail-name`    |  string   | undefined | A valid fully-qualified mail server hostname.                                                     |
 
 ### `xunnctl dns record create TXT`
 
@@ -358,29 +360,29 @@ zones.
 #### Examples
 
 ```bash
-xunnctl dns record create txt --apex xunn.io --name @ --content '...'
-x d r c TXT --apex xunn.io --apex xunn.at --name 'something.else' --content '...'
+xunnctl dns record create txt --apex xunn.io --sub-name @ --content '...'
+x d r c TXT --apex xunn.io --apex xunn.at --sub-name 'something.else' --content '...'
 ```
 
 #### Parameters
 
-|                                        |        Name        |   Type    |  Default  | Description                                                                       |
-| :------------------------------------: | :----------------: | :-------: | :-------: | :-------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.      |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. |
-|        **<sub>REQUIRED</sub>**         |      `--name`      |  string   | undefined | DNS record name (or @ for the zone apex) in Punycode.                             |
-|        **<sub>REQUIRED</sub>**         |    `--content`     |  string   | undefined | Text content for the record.                                                      |
+|                                        |        Name        |   Type    |  Default  | Description                                                                                       |
+| :------------------------------------: | :----------------: | :-------: | :-------: | :------------------------------------------------------------------------------------------------ |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`      | string\[] | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                      |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known` |  boolean  | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                 |
+|        **<sub>REQUIRED</sub>**         |    `--sub-name`    |  string   | undefined | The DNS record name in Punycode, or the character "@", but excluding the apex domain as a suffix. |
+|        **<sub>REQUIRED</sub>**         |    `--content`     |  string   | undefined | Text content for the record.                                                                      |
 
 ### `xunnctl dns record retrieve`
 
 > Alias: `x d r r`
 
-This command retrieves one or more resource records of name `--name` and/or of
-type `--type` from the specified `--apex*` DNS zone(s). If `--search-for-name`
-is given, `--name` will be matched partially (via `startsWith()`) rather than
-exactly.
+This command retrieves one or more resource records of name `--target-name`
+and/or of type `--target-type` from the specified `--apex*` DNS zone(s). If
+`--search-for-name` is given, `--target-name` will be matched partially (via
+`startsWith()`) rather than exactly.
 
-Omitting both `--name` and `--type` will retrieve all records.
+Omitting both `--target-name` and `--target-type` will retrieve all records.
 
 The result can be queried via `--local-query`, which accepts a [JMESPath][6]
 value. Note that, as a feature, the presence of spaces in the query does not
@@ -390,49 +392,49 @@ JSON will be dumped straight to stdout.
 #### Examples
 
 ```bash
-xunnctl dns record retrieve --apex xunn.io --name mail --type CNAME
-x d r r --apex-all-known --apex new-site.com --name mail
-x d r r --apex xunn.io --apex xunn.at --type cname --local-query id
+xunnctl dns record retrieve --apex xunn.io --target-name mail --target-type CNAME
+x d r r --apex-all-known --apex new-site.com --target-name mail
+x d r r --apex xunn.io --apex xunn.at --target-type cname --local-query id
 ```
 
 #### Parameters
 
-|                                        |        Name         |                       Type                        |  Default  | Description                                                                                                                |
-| :------------------------------------: | :-----------------: | :-----------------------------------------------: | :-------: | :------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`       |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                               |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known`  |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                          |
-|          <sub>optional</sub>           |      `--name`       |                      string                       | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                      |
-|          <sub>optional</sub>           |      `--type`       |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                  |
-|          <sub>optional</sub>           |   `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout. |
-|          <sub>optional</sub>           | `--search-for-name` |                   boolean<br />                   |   false   | Match names starting with `--name` instead of exact match.                                                                 |
+|                                        |        Name         |                       Type                        |  Default  | Description                                                                                                                        |
+| :------------------------------------: | :-----------------: | :-----------------------------------------------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`       |                     string\[]                     | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                                       |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known`  |                      boolean                      | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters.                                                  |
+|          <sub>optional</sub>           |   `--target-name`   |                      string                       | undefined | The target DNS record name in Punycode, including the apex domain as a suffix. Note that the "@" character is not recognized here. |
+|          <sub>optional</sub>           |   `--target-type`   |                      string                       | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                          |
+|          <sub>optional</sub>           |   `--local-query`   | string<br /><sub>(unescaped spaces allowed)</sub> | undefined | A [JMESPath][6] query string. Unescaped spaces are preserved in CLI. The resulting JSON will be dumped straight to stdout.         |
+|          <sub>optional</sub>           | `--search-for-name` |                   boolean<br />                   |   false   | Match names _starting with_ `--target-name` instead of matching said names _exactly_, which is the default behavior.               |
 
 ### `xunnctl dns record destroy`
 
 > Alias: `x d r d`
 
 This command irrecoverably destroys one or more resource records that are named
-`--name` and are of type `--type` from the specified `--apex*` DNS zone(s). If
-no such record(s) exist, this command is a no-op.
+`--target-name` and are of type `--target-type` from the specified `--apex*` DNS
+zone(s). If no such record(s) exist, this command is a no-op.
 
-If `--search-for-name` is given, `--name` will be matched partially (via
+If `--search-for-name` is given, `--target-name` will be matched partially (via
 `startsWith()`) rather than exactly.
 
 #### Examples
 
 ```bash
-xunnctl dns record destroy --apex dangerous.com --name some.specific.record --type CNAME
-xunnctl d r d --apex dangerous.com --name some.specific.record --type cname
+xunnctl dns record destroy --apex dangerous.com --target-name some.specific.record --target-type CNAME
+xunnctl d r d --apex dangerous.com --target-name some.specific.record --target-type cname
 ```
 
 #### Parameters
 
-|                                        |        Name         |     Type      |  Default  | Description                                                                                                                   |
-| :------------------------------------: | :-----------------: | :-----------: | :-------: | :---------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`       |   string\[]   | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                                  |
-| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known`  |    boolean    | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. **Note that this is incredibly dangerous!** |
-|        **<sub>REQUIRED</sub>**         |      `--name`       |    string     | undefined | DNS record name (or @ for the zone apex) in Punycode.                                                                         |
-|        **<sub>REQUIRED</sub>**         |      `--type`       |    string     | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                     |
-|          <sub>optional</sub>           | `--search-for-name` | boolean<br /> |   false   | Match names starting with `--name` instead of exact match.                                                                    |
+|                                        |        Name         |     Type      |  Default  | Description                                                                                                                        |
+| :------------------------------------: | :-----------------: | :-----------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED <sup>1/2</sup></sub>** |      `--apex`       |   string\[]   | undefined | Zero or more zone apex domains. Can be used with other `--apex*` parameters.                                                       |
+| **<sub>REQUIRED <sup>2/2</sup></sub>** | `--apex-all-known`  |    boolean    | undefined | Include all known zone apex domains. Can be used with other `--apex*` parameters. **Note that this is incredibly dangerous!**      |
+|        **<sub>REQUIRED</sub>**         |   `--target-name`   |    string     | undefined | The target DNS record name in Punycode, including the apex domain as a suffix. Note that the "@" character is not recognized here. |
+|        **<sub>REQUIRED</sub>**         |   `--target-type`   |    string     | undefined | Case-insensitive DNS record type, such as `AAAA` or `mx`.                                                                          |
+|          <sub>optional</sub>           | `--search-for-name` | boolean<br /> |   false   | Match names _starting with_ `--target-name` instead of matching said names _exactly_, which is the default behavior.               |
 
 ### `xunnctl dns zone`
 
@@ -586,9 +588,9 @@ x f b --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 
 #### Parameters
 
-|                         |  Name  |   Type    |  Default  | Description                                                                                                 |
-| :---------------------: | :----: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP addresses to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. |
+|                         |  Name  |   Type    |  Default  | Description                                                                                                                                                                  |
+| :---------------------: | :----: | :-------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP addresses to ban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. Full ipv6 addresses are also supported (converted to /64 CIDRs). |
 
 ### `xunnctl firewall status`
 
@@ -611,9 +613,9 @@ x f s --ip 5.6.7.8 --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 
 #### Parameters
 
-|                     |  Name  |   Type    |  Default  | Description                                                                                                       |
-| :-----------------: | :----: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------------- |
-| <sub>optional</sub> | `--ip` | string\[] | undefined | One or more IP addresses to report on. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. |
+|                     |  Name  |   Type    |  Default  | Description                                                                                                                                                                        |
+| :-----------------: | :----: | :-------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <sub>optional</sub> | `--ip` | string\[] | undefined | One or more IP addresses to report on. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. Full ipv6 addresses are also supported (converted to /64 CIDRs). |
 
 ### `xunnctl firewall unban`
 
@@ -637,9 +639,9 @@ x f u --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 
 #### Parameters
 
-|                         |  Name  |   Type    |  Default  | Description                                                                                                 |
-| :---------------------: | :----: | :-------: | :-------: | :---------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. |
+|                         |  Name  |   Type    |  Default  | Description                                                                                                                                                                  |
+| :---------------------: | :----: | :-------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. Full ipv6 addresses are also supported (converted to /64 CIDRs). |
 
 ### `xunnctl raw`
 
@@ -691,6 +693,54 @@ x r --id conf.nginx.allowOnlyCloudflare
 |                         |  Name  |  Type  |  Default  | Description                                     |
 | :---------------------: | :----: | :----: | :-------: | :---------------------------------------------- |
 | **<sub>REQUIRED</sub>** | `--id` | string | undefined | The identifier associated with the target data. |
+
+### `xunnctl super install`
+
+> Alias: `x s i`
+
+This command will install several privileged commands from a private repository.
+These commands will be dynamically added to xunnctl, potentially updating
+existing commands in the process, thus greatly expanding the available commands
+beyond those listed in this documentation.
+
+This command is idempotent so long as the contents of said private repository
+remain unchanged. Running this command after said repository has been updated
+will install the updates but will not synchronize deletes.
+
+To completely clear out installed commands, see [`xunnctl super uninstall`][13].
+
+#### Examples
+
+```bash
+xunnctl super install
+x s i
+```
+
+#### Parameters
+
+This command does not accept additional parameters.
+
+### `xunnctl super uninstall`
+
+> Alias: `x s u`
+
+This command will completely uninstall any command that has ever been downloaded
+and installed by `xunnctl super install`. Downloaded commands that overwrote
+their public versions will be reverted.
+
+To reinstall all available privileged commands, see
+[`xunnctl super install`][14]
+
+#### Examples
+
+```bash
+xunnctl super uninstall
+x s u
+```
+
+#### Parameters
+
+This command does not accept additional parameters.
 
 ## Appendix
 
@@ -855,3 +905,5 @@ specification. Contributions of any kind welcome!
 [10]: #xunnctl-firewall-status
 [11]: https://developers.cloudflare.com/waf/tools/lists
 [12]: https://developers.cloudflare.com/waf/tools/lists/custom-lists#ip-lists
+[13]: #xunnctl-super-uninstall
+[14]: #xunnctl-super-install

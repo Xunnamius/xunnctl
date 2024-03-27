@@ -151,8 +151,8 @@ export async function makeDigitalOceanApiCaller({
       const record = (
         await this.getDnsRecords({
           zoneName,
-          fullRecordName: fullRecordName,
-          recordType
+          targetRecordName: fullRecordName,
+          targetRecordType: recordType
         })
       ).at(0);
 
@@ -165,7 +165,7 @@ export async function makeDigitalOceanApiCaller({
     /**
      * - https://docs.digitalocean.com/reference/api/api-reference/#operation/domains_list_records
      *
-     * Note that `fullRecordName`, if given, must be the **FULLY QUALIFIED
+     * Note that `targetRecordName`, if given, must be the **FULLY QUALIFIED
      * RECORD NAME** of the record(s) that includes the zone apex itself (e.g.
      * "*.xunn.at" instead of just "*" when trying to retrieve said CNAME
      * record).
@@ -174,12 +174,12 @@ export async function makeDigitalOceanApiCaller({
      */
     async getDnsRecords({
       zoneName,
-      fullRecordName,
-      recordType
+      targetRecordName,
+      targetRecordType
     }: {
       zoneName: string;
-      fullRecordName?: string;
-      recordType?: string;
+      targetRecordName?: string;
+      targetRecordType?: string;
     }) {
       const debug = debug_.extend('getDnsZoneRecords');
       debug('entered method');
@@ -187,8 +187,8 @@ export async function makeDigitalOceanApiCaller({
       const records: ResourceRecord[] = [];
 
       const additionalQuery = Object.entries({
-        name: fullRecordName,
-        type: recordType?.toUpperCase()
+        name: targetRecordName,
+        type: targetRecordType?.toUpperCase()
         // eslint-disable-next-line unicorn/no-array-reduce
       }).reduce(
         (str, [key, value]) => (value !== undefined ? `${str}&${key}=${value}` : str),
@@ -223,12 +223,12 @@ export async function makeDigitalOceanApiCaller({
      */
     async createDnsARecord({
       zoneName,
-      fullRecordName,
+      subRecordName,
       ipv4,
       ttl
     }: {
       zoneName: string;
-      fullRecordName: string;
+      subRecordName: string;
       ipv4: string;
       ttl?: number;
     }): Promise<void> {
@@ -237,8 +237,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'A',
-        fullRecordName,
+        recordType: 'A',
+        subRecordName: subRecordName,
         data: ipv4,
         ttl
       });
@@ -248,13 +248,13 @@ export async function makeDigitalOceanApiCaller({
      * - https://docs.digitalocean.com/reference/api/api-reference/#operation/domains_create_record
      */
     async createDnsAaaaRecord({
-      fullRecordName,
+      subRecordName,
       ipv6: data,
       zoneName,
       ttl
     }: {
       zoneName: string;
-      fullRecordName: string;
+      subRecordName: string;
       ipv6: string;
       ttl?: number;
     }): Promise<void> {
@@ -263,8 +263,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'AAAA',
-        fullRecordName,
+        recordType: 'AAAA',
+        subRecordName: subRecordName,
         data,
         ttl
       });
@@ -281,8 +281,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'CAA',
-        fullRecordName: '@',
+        recordType: 'CAA',
+        subRecordName: '@',
         data: 'letsencrypt.org',
         flags: 128,
         tag: 'issue'
@@ -290,8 +290,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'CAA',
-        fullRecordName: '@',
+        recordType: 'CAA',
+        subRecordName: '@',
         data: 'mailto:diagnostics@ergodark.com',
         flags: 128,
         tag: 'iodef'
@@ -302,13 +302,13 @@ export async function makeDigitalOceanApiCaller({
      * - https://docs.digitalocean.com/reference/api/api-reference/#operation/domains_create_record
      */
     async createDnsCnameRecord({
-      fullRecordName,
+      subRecordName,
       redirectToHostname,
       zoneName,
       ttl
     }: {
       zoneName: string;
-      fullRecordName: string;
+      subRecordName: string;
       redirectToHostname: string;
       ttl?: number;
     }): Promise<void> {
@@ -317,8 +317,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'CNAME',
-        fullRecordName,
+        recordType: 'CNAME',
+        subRecordName: subRecordName,
         data: redirectToHostname,
         ttl
       });
@@ -329,12 +329,12 @@ export async function makeDigitalOceanApiCaller({
      */
     async createDnsMxRecord({
       zoneName,
-      fullRecordName,
+      subRecordName,
       mailHostname,
       ttl
     }: {
       zoneName: string;
-      fullRecordName: string;
+      subRecordName: string;
       mailHostname: string;
       ttl?: number;
     }): Promise<void> {
@@ -343,8 +343,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'MX',
-        fullRecordName,
+        recordType: 'MX',
+        subRecordName: subRecordName,
         data: mailHostname,
         priority: 1,
         ttl
@@ -356,12 +356,12 @@ export async function makeDigitalOceanApiCaller({
      */
     async createDnsTxtRecord({
       content,
-      fullRecordName,
+      subRecordName,
       zoneName,
       ttl
     }: {
       zoneName: string;
-      fullRecordName: string;
+      subRecordName: string;
       content: string;
       ttl?: number;
     }): Promise<void> {
@@ -370,8 +370,8 @@ export async function makeDigitalOceanApiCaller({
 
       await this.createDnsRecord({
         zoneName,
-        type: 'TXT',
-        fullRecordName,
+        recordType: 'TXT',
+        subRecordName: subRecordName,
         data: content,
         ttl
       });
@@ -382,14 +382,14 @@ export async function makeDigitalOceanApiCaller({
      */
     async createDnsRecord({
       zoneName,
-      type,
-      fullRecordName,
+      recordType,
+      subRecordName,
       ttl = 1800 /* TTL of 1800 is DO's default */,
       ...additionalOptions
     }: {
       zoneName: string;
-      type: string;
-      fullRecordName: string;
+      recordType: string;
+      subRecordName: string;
       ttl?: number;
       [additionalOption: string]: unknown;
     }): Promise<void> {
@@ -400,8 +400,8 @@ export async function makeDigitalOceanApiCaller({
         uri: `domains/${zoneName}/records`,
         method: 'POST',
         body: {
-          name: fullRecordName,
-          type,
+          name: subRecordName,
+          type: recordType,
           ttl,
           ...additionalOptions
         }

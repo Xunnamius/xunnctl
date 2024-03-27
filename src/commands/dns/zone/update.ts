@@ -258,7 +258,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: zoneName,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -271,7 +271,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `*.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -284,7 +284,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: zoneName,
-            type: 'mx'
+            recordType: 'mx'
           });
 
           if (recordId) {
@@ -297,7 +297,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `mail.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -323,7 +323,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `smtp.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -349,7 +349,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `imap.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -375,7 +375,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: zoneName,
-            type: 'txt'
+            recordType: 'txt'
           });
 
           if (recordId) {
@@ -388,8 +388,8 @@ export async function doDnsZoneInitializationPrePurge({
           const recordIds = (
             await api.getDnsRecords({
               zoneId,
-              recordName: zoneName,
-              recordType: 'caa'
+              targetRecordName: zoneName,
+              targetRecordType: 'caa'
             })
           ).map(({ id }) => id);
 
@@ -407,7 +407,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `_adsp._domainkey.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -420,7 +420,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `default._domainkey.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -433,7 +433,7 @@ export async function doDnsZoneInitializationPrePurge({
           const recordId = await api.getDnsRecordId({
             zoneId,
             fullRecordName: `_dmarc.${zoneName}`,
-            type: 'cname'
+            recordType: 'cname'
           });
 
           if (recordId) {
@@ -448,7 +448,7 @@ export async function doDnsZoneInitializationPrePurge({
             const recordId = await api.getDnsRecordId({
               zoneId: mainZoneId,
               fullRecordName: `${zoneName}._report._dmarc.ergodark.com`,
-              type: 'txt'
+              recordType: 'txt'
             });
 
             if (recordId) {

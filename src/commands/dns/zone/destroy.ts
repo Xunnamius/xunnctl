@@ -173,7 +173,7 @@ export default async function command({
                 const targetRecordId = await api.getDnsRecordId({
                   zoneId: mainZoneId as string,
                   fullRecordName: targetRecordName,
-                  type: 'txt'
+                  recordType: 'txt'
                 });
 
                 if (targetRecordId) {

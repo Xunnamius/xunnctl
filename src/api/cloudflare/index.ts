@@ -164,10 +164,10 @@ export async function makeCloudflareApiCaller({
      * @return The ID of the newly created DNS zone.
      */
     async createDnsZone({
-      domainName,
+      subDomainName,
       accountId
     }: {
-      domainName: string;
+      subDomainName: string;
       accountId: string;
     }) {
       const debug = debug_.extend('createDnsZone');
@@ -178,7 +178,7 @@ export async function makeCloudflareApiCaller({
         method: 'POST',
         body: {
           account: { id: accountId },
-          name: domainName,
+          name: subDomainName,
           type: 'full'
         }
       });
@@ -276,17 +276,17 @@ export async function makeCloudflareApiCaller({
     async getDnsRecord({
       zoneId,
       fullRecordName,
-      type
+      recordType
     }: {
       zoneId: string;
       fullRecordName: string;
-      type: string;
+      recordType: string;
     }) {
-      const debug = debug_.extend('getDnsRecordId');
+      const debug = debug_.extend('getDnsRecord');
       debug('entered method');
 
       const recordId = await this.callApi<ResourceRecord[]>({
-        uri: `zones/${zoneId}/dns_records?name=${fullRecordName}&type=${type}`,
+        uri: `zones/${zoneId}/dns_records?name=${fullRecordName}&type=${recordType}`,
         method: 'GET'
       }).then(([records]) => {
         debug('searching for %O', fullRecordName);
@@ -307,28 +307,28 @@ export async function makeCloudflareApiCaller({
     /**
      * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-list-dns-records
      *
-     * Note that `fullRecordName` must be the **FULLY QUALIFIED RECORD NAME** of
-     * the record that includes the zone apex itself (e.g. "*.xunn.at" instead
-     * of just "*" when trying to retrieve said CNAME record).
+     * Note that `targetRecordName` must be the **FULLY QUALIFIED RECORD NAME**
+     * of the record that includes the zone apex itself (e.g. "*.xunn.at"
+     * instead of just "*" when trying to retrieve said CNAME record).
      *
      * @return The ID of a DNS record.
      */
     async getDnsRecordId({
       zoneId,
       fullRecordName,
-      type
+      recordType
     }: {
       zoneId: string;
       fullRecordName: string;
-      type: string;
+      recordType: string;
     }) {
       const debug = debug_.extend('getDnsRecordId');
       debug('entered method');
 
       const record = await this.getDnsRecord({
         zoneId,
-        fullRecordName: fullRecordName,
-        type
+        fullRecordName,
+        recordType
       });
       const recordId = record?.id;
 
@@ -343,12 +343,12 @@ export async function makeCloudflareApiCaller({
      */
     async getDnsRecords({
       zoneId,
-      recordName,
-      recordType
+      targetRecordName,
+      targetRecordType
     }: {
       zoneId: string;
-      recordName?: string;
-      recordType?: string;
+      targetRecordName?: string;
+      targetRecordType?: string;
     }) {
       const debug = debug_.extend('getDnsZoneRecords');
       debug('entered method');
@@ -358,8 +358,8 @@ export async function makeCloudflareApiCaller({
       let countRemaining = 0;
 
       const additionalQuery = Object.entries({
-        name: recordName,
-        type: recordType
+        name: targetRecordName,
+        type: targetRecordType
         // eslint-disable-next-line unicorn/no-array-reduce
       }).reduce(
         (str, [key, value]) => (value !== undefined ? `${str}&${key}=${value}` : str),
@@ -403,13 +403,13 @@ export async function makeCloudflareApiCaller({
      */
     async createDnsARecord({
       zoneId,
-      domainName,
+      subRecordName,
       ipv4,
       ttl,
       proxied = false
     }: {
       zoneId: string;
-      domainName: string;
+      subRecordName: string;
       ipv4: string;
       ttl?: number;
       proxied: boolean;
@@ -419,8 +419,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'A',
-        domainName,
+        recordType: 'A',
+        subRecordName,
         content: ipv4,
         ttl,
         proxied
@@ -431,14 +431,14 @@ export async function makeCloudflareApiCaller({
      * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
      */
     async createDnsAaaaRecord({
-      domainName,
-      ipv6: content,
       zoneId,
+      subRecordName,
+      ipv6: content,
       ttl,
       proxied = false
     }: {
       zoneId: string;
-      domainName: string;
+      subRecordName: string;
       ipv6: string;
       ttl?: number;
       proxied: boolean;
@@ -448,8 +448,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'AAAA',
-        domainName,
+        recordType: 'AAAA',
+        subRecordName,
         content,
         ttl,
         proxied
@@ -467,8 +467,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'CAA',
-        domainName: '@',
+        recordType: 'CAA',
+        subRecordName: '@',
         data: {
           flags: 128,
           tag: 'issue',
@@ -478,8 +478,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'CAA',
-        domainName: '@',
+        recordType: 'CAA',
+        subRecordName: '@',
         data: {
           flags: 128,
           tag: 'iodef',
@@ -492,14 +492,14 @@ export async function makeCloudflareApiCaller({
      * - https://developers.cloudflare.com/api/operations/dns-records-for-a-zone-create-dns-record
      */
     async createDnsCnameRecord({
-      domainName,
-      redirectToHostname,
       zoneId,
+      subRecordName,
+      redirectToHostname,
       ttl,
       proxied = false
     }: {
       zoneId: string;
-      domainName: string;
+      subRecordName: string;
       redirectToHostname: string;
       ttl?: number;
       proxied: boolean;
@@ -509,8 +509,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'CNAME',
-        domainName,
+        recordType: 'CNAME',
+        subRecordName,
         content: redirectToHostname,
         ttl,
         proxied
@@ -522,12 +522,12 @@ export async function makeCloudflareApiCaller({
      */
     async createDnsMxRecord({
       zoneId,
-      domainName,
+      subRecordName,
       mailHostname,
       ttl
     }: {
       zoneId: string;
-      domainName: string;
+      subRecordName: string;
       mailHostname: string;
       ttl?: number;
     }): Promise<void> {
@@ -536,8 +536,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'MX',
-        domainName,
+        recordType: 'MX',
+        subRecordName,
         content: mailHostname,
         priority: 1,
         ttl
@@ -549,12 +549,12 @@ export async function makeCloudflareApiCaller({
      */
     async createDnsTxtRecord({
       content,
-      domainName,
+      subRecordName,
       zoneId,
       ttl
     }: {
       zoneId: string;
-      domainName: string;
+      subRecordName: string;
       content: string;
       ttl?: number;
     }): Promise<void> {
@@ -563,8 +563,8 @@ export async function makeCloudflareApiCaller({
 
       await this.createDnsRecord({
         zoneId,
-        type: 'TXT',
-        domainName,
+        recordType: 'TXT',
+        subRecordName,
         content,
         ttl
       });
@@ -575,14 +575,14 @@ export async function makeCloudflareApiCaller({
      */
     async createDnsRecord({
       zoneId,
-      type,
-      domainName,
+      recordType,
+      subRecordName,
       ttl = 1 /* TTL of 1 === "automatic" */,
       ...additionalOptions
     }: {
       zoneId: string;
-      type: string;
-      domainName: string;
+      recordType: string;
+      subRecordName: string;
       ttl?: number;
       [additionalOption: string]: unknown;
     }): Promise<void> {
@@ -593,8 +593,8 @@ export async function makeCloudflareApiCaller({
         uri: `zones/${zoneId}/dns_records`,
         method: 'POST',
         body: {
-          name: domainName,
-          type,
+          name: subRecordName,
+          type: recordType,
           ttl,
           ...additionalOptions
         }

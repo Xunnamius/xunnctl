@@ -30,6 +30,7 @@ export default async function command({
       description: 'The name of the configuration option'
     },
     content: {
+      alias: ['contents'],
       array: true,
       demandOption: true,
       description: 'The new (valid JSON) value of the configuration option',

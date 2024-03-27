@@ -60,7 +60,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting(subject, function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: '@',
+            subRecordName: '@',
             redirectToHostname: 'ergodark.com',
             proxied: true
           });
@@ -70,7 +70,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('wildcard CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: '*',
+            subRecordName: '*',
             redirectToHostname: '@',
             proxied: true
           });
@@ -80,7 +80,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('MX record', function () {
           return api.createDnsMxRecord({
             zoneId,
-            domainName: '@',
+            subRecordName: '@',
             mailHostname: 'mail.ergodark.com'
           });
         });
@@ -89,7 +89,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('mail CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: 'mail',
+            subRecordName: 'mail',
             redirectToHostname: 'mail.ergodark.com',
             proxied: false
           });
@@ -109,7 +109,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('smtp CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: 'smtp',
+            subRecordName: 'smtp',
             redirectToHostname: 'smtp.ergodark.com',
             proxied: false
           });
@@ -129,7 +129,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('imap CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: 'imap',
+            subRecordName: 'imap',
             redirectToHostname: 'imap.ergodark.com',
             proxied: false
           });
@@ -149,7 +149,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('neutral SPF TXT record', function () {
           return api.createDnsTxtRecord({
             zoneId,
-            domainName: '@',
+            subRecordName: '@',
             content: 'v=spf1 mx a ?all'
           });
         });
@@ -163,7 +163,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('ADSP DKIM CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: '_adsp._domainkey',
+            subRecordName: '_adsp._domainkey',
             redirectToHostname: '_adsp._domainkey.ergodark.com',
             proxied: false
           });
@@ -173,7 +173,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('default key DKIM CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: 'default._domainkey',
+            subRecordName: 'default._domainkey',
             redirectToHostname: 'default._domainkey.ergodark.com',
             proxied: false
           });
@@ -183,7 +183,7 @@ export async function doDnsZoneInitialization({
         await withLocalErrorReporting('DMARC CNAME record', function () {
           return api.createDnsCnameRecord({
             zoneId,
-            domainName: '_dmarc',
+            subRecordName: '_dmarc',
             redirectToHostname: '_dmarc.ergodark.com',
             proxied: false
           });
@@ -195,7 +195,7 @@ export async function doDnsZoneInitialization({
           function () {
             return api.createDnsTxtRecord({
               zoneId: mainZoneId,
-              domainName: `${zoneName}._report._dmarc`,
+              subRecordName: `${zoneName}._report._dmarc`,
               content: 'v=DMARC1'
             });
           }
@@ -321,7 +321,7 @@ export default async function command({
               assert(typeof accountId === 'string');
 
               const zoneId = await api.createDnsZone({
-                domainName: zoneName,
+                subDomainName: zoneName,
                 accountId
               });
 

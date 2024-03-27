@@ -18,7 +18,7 @@ import {
 export type CustomCliArguments = GlobalCliArguments & {
   apex?: string[];
   apexAllKnown?: boolean;
-  name: string;
+  subName: string;
   mailName: string;
   ttl?: number;
 };
@@ -46,15 +46,15 @@ export default async function command({
       boolean: true,
       description: 'Disable protections'
     },
-    name: {
+    'sub-name': {
       demandOption: true,
       string: true,
-      description: 'DNS record name (or @ for the zone apex) in Punycode'
+      description: 'DNS record name in Punycode, or "@", but excluding apex'
     },
     'mail-name': {
       demandOption: true,
       string: true,
-      description: 'A valid mail server hostname'
+      description: 'A valid fully-qualified mail server hostname'
     },
     ttl: {
       number: true,
@@ -73,7 +73,7 @@ export default async function command({
         configPath,
         apex: apices = [],
         apexAllKnown,
-        name: domainName,
+        subName,
         mailName,
         ttl
       }) {
@@ -82,7 +82,7 @@ export default async function command({
 
         debug('apex: %O', apices);
         debug('apexAllKnown: %O', apexAllKnown);
-        debug('name: %O', domainName);
+        debug('subName: %O', subName);
         debug('mailName: %O', mailName);
         debug('ttl: %O', ttl);
 
@@ -165,7 +165,7 @@ export default async function command({
 
                       await api.createDnsMxRecord({
                         zoneId,
-                        domainName,
+                        subRecordName: subName,
                         mailHostname: mailName,
                         ttl
                       });
@@ -202,7 +202,7 @@ export default async function command({
 
                     await api.createDnsMxRecord({
                       zoneName,
-                      fullRecordName: domainName,
+                      subRecordName: subName,
                       mailHostname: mailName,
                       ttl
                     });
