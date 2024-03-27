@@ -991,11 +991,13 @@ export async function makeCloudflareApiCaller({
     async addHostileIps({
       accountId,
       listId,
-      targetIps
+      targetIps,
+      comment
     }: {
       accountId: string;
       listId: string;
       targetIps: string[];
+      comment?: string;
     }) {
       const debug = debug_.extend('addHostileIps');
       debug('entered method');
@@ -1005,8 +1007,11 @@ export async function makeCloudflareApiCaller({
           uri: `accounts/${accountId}/rules/lists/${listId}/items`,
           method: 'POST',
           body: targetIps.map((ip) => {
-            debug(`ADD: ${ip}`);
-            return { ip, comment: 'Created by xunnctl' };
+            debug(`ADD: ${ip} (%O)`, comment);
+            return {
+              ip,
+              comment: 'Created by xunnctl' + (comment ? ` (${comment})` : '')
+            };
           })
         },
         { parseResultJson: false }

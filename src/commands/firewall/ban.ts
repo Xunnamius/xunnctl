@@ -20,6 +20,7 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments & {
   ip?: string[];
+  comment?: string;
 };
 
 export { command };
@@ -34,6 +35,10 @@ export default async function command({
       demandOption: true,
       array: true,
       description: 'An ipv4, ipv6, or supported CIDR'
+    },
+    comment: {
+      string: true,
+      description: 'Include custom text with the ban comment where applicable'
     }
   });
 
@@ -44,11 +49,12 @@ export default async function command({
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
-      async function ({ configPath, ip: targetIps_ = [] }) {
+      async function ({ configPath, ip: targetIps_ = [], comment }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
 
         debug('ip: %O', targetIps_);
+        debug('comment: %O', comment);
 
         const { startTime } = state;
 
@@ -94,7 +100,8 @@ export default async function command({
                     await api.addHostileIps({
                       accountId,
                       listId: hostileIpListId,
-                      targetIps
+                      targetIps,
+                      comment
                     });
                   }
 
