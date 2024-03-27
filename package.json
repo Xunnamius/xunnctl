@@ -19,6 +19,14 @@
       "types": "./dist/src/cli.d.ts",
       "default": "./dist/src/cli.js"
     },
+    "./commands/*": {
+      "types": "./dist/src/commands/*",
+      "default": "./dist/src/commands/*"
+    },
+    "./configure": {
+      "types": "./dist/src/configure.d.ts",
+      "default": "./dist/src/configure.js"
+    },
     "./package": "./package.json",
     "./package.json": "./package.json"
   },
@@ -26,6 +34,12 @@
     "*": {
       "index": [
         "dist/src/cli.d.ts"
+      ],
+      "commands/*": [
+        "dist/src/commands/*"
+      ],
+      "configure": [
+        "dist/src/configure.d.ts"
       ],
       "package": [
         "package.json"
