@@ -25,7 +25,7 @@
 
 #### Defined in
 
-[src/configure.ts:37](https://github.com/Xunnamius/xunnctl/blob/b2606e9/src/configure.ts#L37)
+[src/configure.ts:37](https://github.com/Xunnamius/xunnctl/blob/d33e23e/src/configure.ts#L37)
 
 ## Variables
 
@@ -63,7 +63,7 @@ node_modules/@black-flag/core/dist/src/constant.d.ts:5
 
 #### Defined in
 
-[src/configure.ts:88](https://github.com/Xunnamius/xunnctl/blob/b2606e9/src/configure.ts#L88)
+[src/configure.ts:88](https://github.com/Xunnamius/xunnctl/blob/d33e23e/src/configure.ts#L88)
 
 ___
 
@@ -83,4 +83,4 @@ ___
 
 #### Defined in
 
-[src/configure.ts:72](https://github.com/Xunnamius/xunnctl/blob/b2606e9/src/configure.ts#L72)
+[src/configure.ts:72](https://github.com/Xunnamius/xunnctl/blob/d33e23e/src/configure.ts#L72)

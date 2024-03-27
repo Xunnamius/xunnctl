@@ -20,7 +20,7 @@
 
 #### Defined in
 
-[src/commands/index.ts:13](https://github.com/Xunnamius/xunnctl/blob/b2606e9/src/commands/index.ts#L13)
+[src/commands/index.ts:13](https://github.com/Xunnamius/xunnctl/blob/d33e23e/src/commands/index.ts#L13)
 
 ## Functions
 
@@ -40,4 +40,4 @@
 
 #### Defined in
 
-[src/commands/index.ts:15](https://github.com/Xunnamius/xunnctl/blob/b2606e9/src/commands/index.ts#L15)
+[src/commands/index.ts:15](https://github.com/Xunnamius/xunnctl/blob/d33e23e/src/commands/index.ts#L15)
