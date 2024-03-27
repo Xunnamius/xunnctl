@@ -8,6 +8,10 @@
 
 - [CustomExecutionContext](configure.md#customexecutioncontext)
 
+### Variables
+
+- [$executionContext](configure.md#$executioncontext)
+
 ### Functions
 
 - [configureErrorHandlingEpilogue](configure.md#configureerrorhandlingepilogue)
@@ -21,7 +25,20 @@
 
 #### Defined in
 
-[src/configure.ts:35](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/configure.ts#L35)
+[src/configure.ts:37](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/configure.ts#L37)
+
+## Variables
+
+### $executionContext
+
+• `Const` **$executionContext**: unique `symbol`
+
+A symbol allowing access to the `ExecutionContext` object "hidden" within
+each `Arguments` instance.
+
+#### Defined in
+
+node_modules/@black-flag/core/dist/src/constant.d.ts:5
 
 ## Functions
 
@@ -37,7 +54,7 @@
 | `meta.error` | `unknown` |
 | `meta.exitCode` | `number` |
 | `meta.message` | `string` |
-| `argv` | `Omit`\<`Partial`\<`Arguments`\>, typeof `$executionContext`\> & \{ `[$executionContext]`: `ExecutionContext`  } |
+| `argv` | `Omit`\<`Partial`\<`Arguments`\>, typeof [`$executionContext`](configure.md#$executioncontext)\> & \{ `[$executionContext]`: `ExecutionContext`  } |
 | `context` | [`CustomExecutionContext`](configure.md#customexecutioncontext) |
 
 #### Returns
@@ -46,7 +63,7 @@
 
 #### Defined in
 
-[src/configure.ts:86](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/configure.ts#L86)
+[src/configure.ts:88](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/configure.ts#L88)
 
 ___
 
@@ -66,4 +83,4 @@ ___
 
 #### Defined in
 
-[src/configure.ts:70](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/configure.ts#L70)
+[src/configure.ts:72](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/configure.ts#L72)

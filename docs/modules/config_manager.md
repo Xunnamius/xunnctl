@@ -39,7 +39,7 @@ Available configuration keys and their value types.
 
 #### Defined in
 
-[src/config-manager.ts:10](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/config-manager.ts#L10)
+[src/config-manager.ts:10](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/config-manager.ts#L10)
 
 ## Functions
 
@@ -65,7 +65,7 @@ returned.
 
 #### Defined in
 
-[src/config-manager.ts:59](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/config-manager.ts#L59)
+[src/config-manager.ts:59](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/config-manager.ts#L59)
 
 ▸ **loadFromCliConfig**(`«destructured»`): `Promise`\<[`Config`](config_manager.md#config)\>
 
@@ -83,7 +83,7 @@ returned.
 
 #### Defined in
 
-[src/config-manager.ts:66](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/config-manager.ts#L66)
+[src/config-manager.ts:66](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/config-manager.ts#L66)
 
 ___
 
@@ -109,7 +109,7 @@ result into a JSON configuration file while updating the cache.
 
 #### Defined in
 
-[src/config-manager.ts:113](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/config-manager.ts#L113)
+[src/config-manager.ts:113](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/config-manager.ts#L113)
 
 ___
 
@@ -131,4 +131,4 @@ Overwrites the current configuration cache. Useful while testing.
 
 #### Defined in
 
-[src/config-manager.ts:145](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/config-manager.ts#L145)
+[src/config-manager.ts:145](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/config-manager.ts#L145)

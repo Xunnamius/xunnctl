@@ -18,4 +18,4 @@ This is the simple CLI entry point executed directly by node.
 
 #### Defined in
 
-[src/cli.ts:15](https://github.com/Xunnamius/xunnctl/blob/8d13834/src/cli.ts#L15)
+[src/cli.ts:15](https://github.com/Xunnamius/xunnctl/blob/139f1db/src/cli.ts#L15)
