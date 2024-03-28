@@ -6,9 +6,10 @@ import { loadFromCliConfig } from 'universe/config-manager';
 import { LogTag } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
 
-import type { JsonValue } from 'type-fest';
+import type { JsonValue, PartialDeep } from 'type-fest';
 import type {
   HostileIp,
+  Metadata,
   ResourceRecord,
   Ruleset,
   RulesetRule,
@@ -128,27 +129,25 @@ export async function makeCloudflareApiCaller({
       do {
         const [
           zones_,
-          {
-            result_info: { count, page, per_page, total_count }
-          }
+          metadata
           // eslint-disable-next-line no-await-in-loop
-        ] = await this.callApi<
-          Zone[],
-          {
-            result_info: {
-              count: number;
-              page: number;
-              per_page: number;
-              total_count: number;
-            };
-          }
-        >({
+        ] = await this.callApi<Zone[], PartialDeep<Metadata>>({
           uri: `zones?page=${++currentPage}`,
           method: 'GET'
         });
 
+        const { count, page, per_page, total_count } = metadata.result_info || {};
+
         zones.push(...zones_);
-        countRemaining = total_count - (count + (page - 1) * per_page);
+
+        if (
+          count !== undefined &&
+          page !== undefined &&
+          per_page !== undefined &&
+          total_count
+        ) {
+          countRemaining = total_count - (count + (page - 1) * per_page);
+        }
 
         debug('zones.length: %O', zones.length);
         debug('countRemaining: %O', countRemaining);
@@ -369,27 +368,25 @@ export async function makeCloudflareApiCaller({
       do {
         const [
           records_,
-          {
-            result_info: { count, page, per_page, total_count }
-          }
+          metadata
           // eslint-disable-next-line no-await-in-loop
-        ] = await this.callApi<
-          ResourceRecord[],
-          {
-            result_info: {
-              count: number;
-              page: number;
-              per_page: number;
-              total_count: number;
-            };
-          }
-        >({
+        ] = await this.callApi<ResourceRecord[], PartialDeep<Metadata>>({
           uri: `zones/${zoneId}/dns_records?page=${++currentPage}${additionalQuery}`,
           method: 'GET'
         });
 
+        const { count, page, per_page, total_count } = metadata.result_info || {};
+
         records.push(...records_);
-        countRemaining = total_count - (count + (page - 1) * per_page);
+
+        if (
+          count !== undefined &&
+          page !== undefined &&
+          per_page !== undefined &&
+          total_count
+        ) {
+          countRemaining = total_count - (count + (page - 1) * per_page);
+        }
 
         debug('records.length: %O', records.length);
         debug('countRemaining: %O', countRemaining);
@@ -930,22 +927,15 @@ export async function makeCloudflareApiCaller({
       do {
         const [
           ips_,
-          {
-            result_info: {
-              cursors: { after }
-            }
-          }
+          metadata
           // eslint-disable-next-line no-await-in-loop
-        ] = await this.callApi<
-          HostileIp[],
-          { result_info: { cursors: { after: string } } }
-        >({
+        ] = await this.callApi<HostileIp[], PartialDeep<Metadata>>({
           uri: `accounts/${accountId}/rules/lists/${listId}/items?${next ? 'cursor=' + next : ''}`,
           method: 'GET'
         });
 
         ips.push(...ips_);
-        next = after;
+        next = metadata.result_info?.cursors?.after;
 
         debug('ips.length: %O', ips.length);
       } while (next);

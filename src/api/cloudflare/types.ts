@@ -84,3 +84,13 @@ export type HostileIp = {
   ip: string;
   modified_on: string;
 };
+
+export type Metadata = {
+  result_info?: {
+    count?: number;
+    page?: number;
+    per_page?: number;
+    total_count?: number;
+    cursors?: { after?: string };
+  };
+};

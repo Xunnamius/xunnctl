@@ -6,7 +6,7 @@ import { loadFromCliConfig } from 'universe/config-manager';
 import { LogTag } from 'universe/constant';
 import { ErrorMessage } from 'universe/error';
 
-import type { JsonValue } from 'type-fest';
+import type { JsonValue, PartialDeep } from 'type-fest';
 
 import type { Domain, Domains, Links, ResourceRecord, ResourceRecords } from './types';
 
@@ -113,7 +113,7 @@ export async function makeDigitalOceanApiCaller({
           { domains: domains_ },
           responseJson
           // eslint-disable-next-line no-await-in-loop
-        ] = await this.callApi<Domains, Partial<Links>>({
+        ] = await this.callApi<Domains, PartialDeep<Links>>({
           uri: nextUrl,
           method: 'GET'
         });
@@ -204,7 +204,7 @@ export async function makeDigitalOceanApiCaller({
           { domain_records },
           responseJson
           // eslint-disable-next-line no-await-in-loop
-        ] = await this.callApi<ResourceRecords, Partial<Links>>({
+        ] = await this.callApi<ResourceRecords, PartialDeep<Links>>({
           uri: nextUrl,
           method: 'GET'
         });
