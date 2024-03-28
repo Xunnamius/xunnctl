@@ -72,4 +72,4 @@ A collection of possible error and warning messages.
 
 #### Defined in
 
-[src/error.ts:17](https://github.com/Xunnamius/xunnctl/blob/39c1a08/src/error.ts#L17)
+[src/error.ts:17](https://github.com/Xunnamius/xunnctl/blob/313c45f/src/error.ts#L17)
