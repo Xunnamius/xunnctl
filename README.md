@@ -639,9 +639,10 @@ x f u --ip 2600:8800:51a1:1234:5678:9101:2007:76eb
 
 #### Parameters
 
-|                         |  Name  |   Type    |  Default  | Description                                                                                                                                                                  |
-| :---------------------: | :----: | :-------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **<sub>REQUIRED</sub>** | `--ip` | string\[] | undefined | One or more IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. Full ipv6 addresses are also supported (converted to /64 CIDRs). |
+|                         |          Name           |   Type    |  Default  | Description                                                                                                                                                                  |
+| :---------------------: | :---------------------: | :-------: | :-------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **<sub>REQUIRED</sub>** |         `--ip`          | string\[] | undefined | One or more IP address to unban. All IP formats supported by [Cloudflare WAF Lists][11] are supported here. Full ipv6 addresses are also supported (converted to /64 CIDRs). |
+|   <sub>optional</sub>   | `--if-comment-excludes` |  string   | undefined | Only unban if `--ip`'s comment does not include the given text.                                                                                                              |
 
 ### `xunnctl raw`
 

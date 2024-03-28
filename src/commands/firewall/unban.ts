@@ -23,6 +23,7 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments & {
   ip: string[];
+  ifCommentExcludes: string;
 };
 
 export { command };
@@ -36,6 +37,10 @@ export default async function command({
     ip: {
       array: true,
       description: 'An ipv4, ipv6, or supported CIDR'
+    },
+    'if-comment-excludes': {
+      string: true,
+      description: "Only unban if --ip's comment does not include the given text"
     }
   });
 
@@ -46,11 +51,12 @@ export default async function command({
     usage: makeUsageString(),
     handler: await withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
-      async function ({ configPath, ip: filterIps_ = [] }) {
+      async function ({ configPath, ip: filterIps_ = [], ifCommentExcludes }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
 
         debug('ip: %O', filterIps_);
+        debug('ifCommentExcludes: %O', ifCommentExcludes);
 
         const { startTime } = state;
         const results = { hostileIps: [] as HostileIp[] };
@@ -108,23 +114,41 @@ export default async function command({
               apiCallerFactory: makeCloudflareApiCaller,
               configPath,
               debug,
-              async callback({ thisTask, api }) {
+              async callback({ thisTask, api, taskLogger }) {
                 try {
                   const ipToCidr = makeIpToCidrFn('argument');
                   const filterIpCidrs = Array.from(new Set(filterIps_)).map((ip) =>
                     ipToCidr({ ip })
                   );
 
-                  const hostileIpCidrs = results.hostileIps
-                    .map(makeIpToCidrFn('WAF blocklist'))
-                    .filter(({ cidr: hostileIpCidr }) => {
-                      return (
-                        !filterIpCidrs.length ||
-                        filterIpCidrs.some(({ cidr: filterIpCidr }) =>
-                          filterIpCidr.contains(hostileIpCidr.first())
-                        )
-                      );
-                    });
+                  let hostileIpCidrs = results.hostileIps.map(
+                    makeIpToCidrFn('WAF blocklist')
+                  );
+
+                  if (filterIpCidrs.length) {
+                    hostileIpCidrs = hostileIpCidrs.filter(
+                      ({ cidr: hostileIpCidr, comment }) => {
+                        const excludeBecauseComment =
+                          !ifCommentExcludes || !comment?.includes(ifCommentExcludes);
+                        const excludeBecauseFilter = filterIpCidrs.some(
+                          ({ cidr: filterIpCidr }) =>
+                            filterIpCidr.contains(hostileIpCidr.first())
+                        );
+
+                        const returnValue = excludeBecauseComment && excludeBecauseFilter;
+
+                        taskLogger(
+                          `${returnValue ? 'KEEP:' : 'DROP:'} ${hostileIpCidr} "${comment}"`
+                        );
+
+                        taskLogger(
+                          `      Reason: comment-excludes-filter=${excludeBecauseComment} && ip-matches-filter=${excludeBecauseFilter}`
+                        );
+
+                        return returnValue;
+                      }
+                    );
+                  }
 
                   thisTask.title = `Removing ${hostileIpCidrs.length} IP${hostileIpCidrs.length === 1 ? '' : 's'} from the blocklist...`;
 
