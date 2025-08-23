@@ -12,16 +12,16 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function (executionContext: CustomExecutionContext) {
+export default function command(executionContext: CustomExecutionContext) {
   const { debug_ } = executionContext;
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>();
 
   return {
     aliases: ['c'],
     builder,
     description: "Tools to access and mutate this CLI's configuration keys",
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function (argv) {
         const debug = debug_.extend('handler');

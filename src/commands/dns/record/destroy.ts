@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 import { loadFromCliConfig } from 'universe/config-manager';
 
 import { CustomExecutionContext } from 'universe/configure';
@@ -28,13 +28,13 @@ export type CustomCliArguments = GlobalCliArguments & {
 };
 
 export { command };
-export default async function command({
+export default function command({
   log,
   debug_,
   taskManager,
   state
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     apex: {
       demandOption: ['apex-all-known'],
       array: true,
@@ -72,7 +72,7 @@ export default async function command({
     builder,
     description: 'Irrecoverably destroy DNS record(s)',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({
         configPath,
@@ -278,5 +278,5 @@ export default async function command({
         log([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

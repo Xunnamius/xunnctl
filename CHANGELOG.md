@@ -34,7 +34,7 @@ this project adheres to [Semantic Versioning][2].
 
 #### 🪄 Fixes
 
-- **src:** respond properly to --hush et al ([d33e23e][12])
+- **src:** respond properly to --hush etc ([d33e23e][12])
 
 ### [1.3.5][13] (2024-03-27)
 

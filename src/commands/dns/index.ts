@@ -13,15 +13,15 @@ import {
 export type CustomCliArguments = GlobalCliArguments;
 
 export { command };
-export default async function command({ debug_ }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+export default function command({ debug_ }: CustomExecutionContext) {
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>();
 
   return {
     aliases: ['d'],
     builder,
     description: 'Tools for DNS-related tasks',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function () {
         const debug = debug_.extend('handler');

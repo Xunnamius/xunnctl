@@ -13,20 +13,20 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function (executionContext: CustomExecutionContext) {
+export default function command(executionContext: CustomExecutionContext) {
   const {
     debug_,
     log,
     state: { startTime }
   } = executionContext;
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>();
 
   return {
     aliases: ['z'],
     builder,
     description: 'Tools to manage DNS zones',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function (argv) {
         const debug = debug_.extend('handler');

@@ -1,4 +1,4 @@
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 import { loadFromCliConfig, saveToCliConfig } from 'universe/config-manager';
 
 import { CustomExecutionContext } from 'universe/configure';
@@ -18,12 +18,12 @@ export type CustomCliArguments = GlobalCliArguments & {
 };
 
 export { command };
-export default async function command({
+export default function command({
   debug_,
   log,
   state: { startTime }
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     name: {
       array: true,
       description: 'The names of one or more options to delete',
@@ -41,7 +41,7 @@ export default async function command({
     builder,
     description: 'Remove entirely one or more configuration options',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ configPath, name: names, all }) {
         const debug = debug_.extend('handler');
@@ -71,5 +71,5 @@ export default async function command({
         );
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

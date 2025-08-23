@@ -23,8 +23,8 @@ export const validIdChoices = {
 } as const;
 
 export { command };
-export default async function command({ log, debug_ }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+export default function command({ log, debug_ }: CustomExecutionContext) {
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     id: {
       demandOption: true,
       string: true,
@@ -38,7 +38,7 @@ export default async function command({ log, debug_ }: CustomExecutionContext) {
     builder,
     description: 'Dump freeform data into stdout',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ id, configPath }) {
         const debug = debug_.extend('handler');

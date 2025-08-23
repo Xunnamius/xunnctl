@@ -12,16 +12,15 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function (executionContext: CustomExecutionContext) {
-  const { debug_ } = executionContext;
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+export default function command({ debug_ }: CustomExecutionContext) {
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>();
 
   return {
     aliases: ['s'],
     builder,
     description: 'Tools for managing privileged commands',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function (_argv) {
         const debug = debug_.extend('handler');

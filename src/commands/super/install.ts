@@ -1,4 +1,4 @@
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 import { CommandNotImplementedError } from '@black-flag/core/util';
 
 import { CustomExecutionContext } from 'universe/configure';
@@ -12,9 +12,8 @@ import {
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function (executionContext: CustomExecutionContext) {
-  const { debug_ } = executionContext;
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>();
+export default function command({ debug_ }: CustomExecutionContext) {
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>();
 
   return {
     aliases: ['i'],
@@ -23,7 +22,7 @@ export default async function (executionContext: CustomExecutionContext) {
     usage: makeUsageString(
       '$1. These commands will be dynamically added to xunnctl, potentially updating existing commands in the process, thus greatly expanding the available commands beyond those listed in this documentation.\n\nThis command is idempotent so long as the contents of said private repository remain unchanged.'
     ),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function (_argv) {
         const debug = debug_.extend('handler');
@@ -31,5 +30,5 @@ export default async function (executionContext: CustomExecutionContext) {
         throw new CommandNotImplementedError();
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

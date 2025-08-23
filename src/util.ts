@@ -140,11 +140,18 @@ export type ExtendedBuilderObject = {
   };
 };
 
+export type LimitedBuilderFunctionParameters<
+  CustomCliArguments extends GlobalCliArguments,
+  P = Parameters<BuilderFunction<CustomCliArguments>>
+> = P extends [infer R, ...infer S]
+  ? [R & { options: never; option: never }, ...S]
+  : never;
+
 /**
  * Returns a builder function (alongside a live data context) that wraps
- * `customBuilder` to provide standard CLI options (i.e. config-path, silent,
- * etc). Most if not all commands should wrap their builder objects/functions
- * with this function.
+ * `customBuilder` to provide standard CLI options (i.e. silent, etc). Most if
+ * not all commands should wrap their builder objects/functions with this
+ * function.
  *
  * This function enables three additional optionals-related units of
  * functionality:
@@ -162,22 +169,20 @@ export type ExtendedBuilderObject = {
  *    two options was given. Providing such a value for `demandOption` on one
  *    command but not the other will result in an assertion failure.
  *
- * 3. Handles command grouping automatically. However, not that this function
+ * 3. Handles command grouping automatically. However, note that this function
  *    handles command grouping for you **only if you return an options object**
  *    and **only if you add options via said options object**. Specifically:
  *    calling `blackFlag.options(...)` within `customBuilder` will cause
- *    undefined behavior.
+ *    undefined behavior. This is enforced by intellisense.
  */
 export async function withGlobalOptions<CustomCliArguments extends GlobalCliArguments>(
   customBuilder?:
     | ExtendedBuilderObject
     | ((
-        ...args: Parameters<BuilderFunction<CustomCliArguments>>
-      ) => ExtendedBuilderObject),
+        ...args: LimitedBuilderFunctionParameters<CustomCliArguments>
+      ) => ExtendedBuilderObject | void),
   hasVersion = false
 ): Promise<WithGlobalOptionsReturnType<CustomCliArguments>> {
-  const defaultConfigPath = await getWellKnownConfigPath();
-
   const handlerPreCheckData: WithGlobalOptionsReturnType<CustomCliArguments>[1]['handlerPreCheckData'] =
     {
       atLeastOneOfOptions: [],
@@ -196,11 +201,6 @@ export async function withGlobalOptions<CustomCliArguments extends GlobalCliArgu
     debug('entered global options wrapper (builder)');
 
     blackFlag.options({
-      'config-path': {
-        string: true,
-        default: defaultConfigPath,
-        description: 'Use a custom configuration file'
-      },
       hush: {
         boolean: true,
         default: false,
@@ -226,9 +226,13 @@ export async function withGlobalOptions<CustomCliArguments extends GlobalCliArgu
     // ? since we're going to be doing some light mutating
     const result = Object.fromEntries(
       Object.entries(
-        typeof customBuilder === 'function'
-          ? customBuilder(blackFlag, helpOrVersionSet, argv)
-          : customBuilder || {}
+        (typeof customBuilder === 'function'
+          ? customBuilder(
+              blackFlag as LimitedBuilderFunctionParameters<CustomCliArguments>[0],
+              helpOrVersionSet,
+              argv
+            )
+          : customBuilder) || {}
       ).map(([k, v]) => [k, { ...v }])
     );
 
@@ -367,8 +371,7 @@ export async function withGlobalOptions<CustomCliArguments extends GlobalCliArgu
       ...(hasVersion ? ['version'] : []),
       'hush',
       'quiet',
-      'silent',
-      'config-path'
+      'silent'
     ];
 
     blackFlag.group(commonOptions, 'Common Options:');
@@ -466,6 +469,7 @@ export type ListrTaskLiteral = Exclude<
   Function
 >[number];
 
+// TODO: this needs to be added to @-xun/cli and replaced here and in bdpa-cron
 export function withStandardListrTaskConfig<T extends ApiCallerFactory>({
   callback,
   configPath,

@@ -1,4 +1,4 @@
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 import { saveToCliConfig } from 'universe/config-manager';
 
 import { CustomExecutionContext } from 'universe/configure';
@@ -18,12 +18,12 @@ export type CustomCliArguments = GlobalCliArguments & {
 };
 
 export { command };
-export default async function command({
+export default function command({
   log,
   debug_,
   state: { startTime }
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     name: {
       string: true,
       demandOption: true,
@@ -45,7 +45,7 @@ export default async function command({
     usage: makeUsageString(
       '$1. This value is stored locally and protected with 0660 permissions'
     ),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ configPath, content, name }) {
         const debug = debug_.extend('handler');
@@ -61,5 +61,5 @@ export default async function command({
         log([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

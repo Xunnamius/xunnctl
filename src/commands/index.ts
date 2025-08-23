@@ -1,21 +1,18 @@
-import { RootConfiguration } from '@black-flag/core';
+import { type RootConfiguration } from '@black-flag/core';
 import { CommandNotImplementedError } from '@black-flag/core/util';
 
-import { CustomExecutionContext } from 'universe/configure';
+import { type CustomExecutionContext } from 'universe/configure';
 
 import {
-  GlobalCliArguments,
+  type GlobalCliArguments,
   makeUsageString,
-  withGlobalOptions,
-  withGlobalOptionsHandling
+  withGlobalOptions
 } from 'universe/util';
 
 export type CustomCliArguments = GlobalCliArguments;
 
-export default async function (executionContext: CustomExecutionContext) {
-  const { debug_ } = executionContext;
-
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>(
+export default function command({ debug_ }: CustomExecutionContext) {
+  const [builder, withGlobalOptionsHandling] = withGlobalOptions<CustomCliArguments>(
     undefined,
     // ? hasVersion = true
     true
@@ -26,13 +23,10 @@ export default async function (executionContext: CustomExecutionContext) {
     builder,
     description: "Xunnamius's personal switchblade CLI tool",
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
-      builderData,
-      async function (_argv) {
-        const debug = debug_.extend('handler');
-        debug('entered handler');
-        throw new CommandNotImplementedError();
-      }
-    )
+    handler: withGlobalOptionsHandling<CustomCliArguments>(async function (_argv) {
+      const debug = debug_.extend('handler');
+      debug('entered handler');
+      throw new CommandNotImplementedError();
+    })
   } satisfies RootConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

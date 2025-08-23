@@ -77,6 +77,7 @@ export async function loadFromCliConfig({
   configPath: string;
   key?: keyof Config | string;
 }) {
+  // TODO: error if file exists but permissions are bad instead of reading file
   const config: Config = await (async () => {
     if (cache !== undefined) {
       return cache;

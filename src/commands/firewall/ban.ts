@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 
 import { loadFromCliConfig } from 'universe/config-manager';
 import { CustomExecutionContext } from 'universe/configure';
@@ -19,18 +19,18 @@ import {
 } from 'universe/util';
 
 export type CustomCliArguments = GlobalCliArguments & {
-  ip?: string[];
+  ip: string[];
   comment?: string;
 };
 
 export { command };
-export default async function command({
+export default function command({
   log: genericLogger,
   debug_,
   taskManager,
   state
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     ip: {
       demandOption: true,
       array: true,
@@ -47,9 +47,9 @@ export default async function command({
     builder,
     description: 'Add an IP from the global hostile IP list',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
-      async function ({ configPath, ip: targetIps_ = [], comment }) {
+      async function ({ configPath, ip: targetIps_, comment }) {
         const debug = debug_.extend('handler');
         debug('entered handler');
 
@@ -122,5 +122,5 @@ export default async function command({
         genericLogger([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

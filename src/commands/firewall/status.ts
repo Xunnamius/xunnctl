@@ -1,4 +1,4 @@
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 
 import { CustomExecutionContext } from 'universe/configure';
 import { LogTag, standardSuccessMessage } from 'universe/constant';
@@ -22,13 +22,13 @@ export type CustomCliArguments = GlobalCliArguments & {
 };
 
 export { command };
-export default async function command({
+export default function command({
   log: genericLogger,
   debug_,
   taskManager,
   state
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     ip: {
       array: true,
       description: 'An ipv4, ipv6, or supported CIDR'
@@ -40,7 +40,7 @@ export default async function command({
     builder,
     description: 'Retrieve firewall status information',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ configPath, ip: filterIps_ = [] }) {
         const debug = debug_.extend('handler');
@@ -151,5 +151,5 @@ export default async function command({
         );
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

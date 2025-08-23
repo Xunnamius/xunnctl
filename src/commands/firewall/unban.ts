@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 
 import {
   makeCloudflareApiCaller,
@@ -27,13 +27,13 @@ export type CustomCliArguments = GlobalCliArguments & {
 };
 
 export { command };
-export default async function command({
+export default function command({
   log: genericLogger,
   debug_,
   taskManager,
   state
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     ip: {
       array: true,
       description: 'An ipv4, ipv6, or supported CIDR'
@@ -49,7 +49,7 @@ export default async function command({
     builder,
     description: 'Remove an IP from the global hostile IP list',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ configPath, ip: filterIps_ = [], ifCommentExcludes }) {
         const debug = debug_.extend('handler');
@@ -178,5 +178,5 @@ export default async function command({
         genericLogger([LogTag.IF_NOT_QUIETED], standardSuccessMessage);
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

@@ -1,6 +1,6 @@
 import { isNativeError } from 'node:util/types';
 
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 import jmespath from 'jmespath';
 
 import { TAB } from 'multiverse/rejoinder';
@@ -33,13 +33,13 @@ export type CustomCliArguments = GlobalCliArguments & {
 };
 
 export { command };
-export default async function command({
+export default function command({
   log: genericLogger,
   debug_,
   taskManager,
   state
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     apex: {
       demandOption: ['apex-all-known'],
       array: true,
@@ -62,7 +62,7 @@ export default async function command({
     builder,
     description: 'Retrieve information about one or more zones',
     usage: makeUsageString(),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ configPath, apex = [], apexAllKnown, localQuery }) {
         const debug = debug_.extend('handler');
@@ -191,5 +191,5 @@ export default async function command({
         }
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }

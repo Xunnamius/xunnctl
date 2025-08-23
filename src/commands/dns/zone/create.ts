@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 
-import { ParentConfiguration } from '@black-flag/core';
+import { ChildConfiguration } from '@black-flag/core';
 
 import { ExtendedDebugger } from 'multiverse/rejoinder';
 import { loadFromCliConfig } from 'universe/config-manager';
@@ -233,13 +233,13 @@ export async function doDnsZoneInitialization({
 }
 
 export { command };
-export default async function command({
+export default function command({
   log,
   debug_,
   taskManager,
   state
 }: CustomExecutionContext) {
-  const [builder, builderData] = await withGlobalOptions<CustomCliArguments>({
+  const [builder, builderData] = withGlobalOptions<CustomCliArguments>({
     apex: {
       demandOption: true,
       array: true,
@@ -254,7 +254,7 @@ export default async function command({
     usage: makeUsageString(
       "$1. If a conflicting apex zone already exists, this command will fail. If you're trying to bring an existing zone up to current configuration standards, see `xunnctl dns zone update` instead."
     ),
-    handler: await withGlobalOptionsHandling<CustomCliArguments>(
+    handler: withGlobalOptionsHandling<CustomCliArguments>(
       builderData,
       async function ({ configPath, apex: apices = [] }) {
         const debug = debug_.extend('handler');
@@ -387,5 +387,5 @@ export default async function command({
         }
       }
     )
-  } satisfies ParentConfiguration<CustomCliArguments, CustomExecutionContext>;
+  } satisfies ChildConfiguration<CustomCliArguments, CustomExecutionContext>;
 }
